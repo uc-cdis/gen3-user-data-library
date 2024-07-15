@@ -1,0 +1,146 @@
+"""
+This file houses the database logic.
+For schema/model of particular tables, go to `models.py`
+
+OVERVIEW
+--------
+
+We're using SQLAlchemy's async support alongside FastAPI's dependency injection.
+This file also contains the logic for database manipulation in a "data access layer"
+class, such that other areas of the code have simple `.create_list()` calls which
+won't require knowledge on how to manage the session. The session will be managed
+by dep injection of FastAPI's endpoints. The logic that sets up the sessions is
+in this file.
+
+
+DETAILS
+-------
+What do we do in this file?
+
+- We create a sqlalchemy engine and session maker factory as globals
+    - This reads in the db URL from config
+- We define a data access layer class here which isolates the database manipulations
+    - All CRUD operations go through this interface instead of bleeding specific database
+      manipulations into the higher level web app endpoint code
+- We create a function which yields an instance of the data access layer class with
+  a fresh session from the session maker factory
+    - This is what gets injected into endpoint code using FastAPI's dep injections
+"""
+
+import datetime
+from typing import List, Optional
+
+from jsonschema import ValidationError, validate
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.future import select
+
+from gen3datalibrary import config
+from gen3datalibrary.auth import get_user_id
+from gen3datalibrary.models import (
+    ITEMS_JSON_SCHEMA_DRS,
+    ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
+    UserList,
+)
+
+engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
+
+# creates AsyncSession instances
+async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
+
+
+class DataAccessLayer(object):
+    """
+    Defines an abstract interface to manipulate the database. Instances are given a session to
+    act within.
+    """
+
+    def __init__(self, db_session: AsyncSession):
+        self.db_session = db_session
+
+    async def create_user_lists(self, user_lists: List[dict]):
+        """
+
+        Note: if any items in any list fail, or any list fails to get created, no lists are created.
+        """
+        now = datetime.datetime.utcnow()
+
+        # Validate the JSON objects
+        for user_list in user_lists:
+            name = user_list.get("name", f"Saved List {now}")
+            user_list_items = user_list.get("items", {})
+            validated_user_list_items = []
+
+            for item_id, item_contents in user_list_items.items():
+                if item_id.startswith("drs://"):
+                    try:
+                        validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_DRS)
+                    except ValidationError as e:
+                        print(f"JSON is invalid: {e.message}")
+                # TODO THIS NEEDS TO BE CFG
+                elif item_contents.get("type") == "Gen3GraphQL":
+                    try:
+                        validate(
+                            instance=item_contents,
+                            schema=ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
+                        )
+                    except ValidationError as e:
+                        print(f"JSON is invalid: {e.message}")
+
+            user_id = await get_user_id()
+
+            if user_id is None:
+                # TODO make this a reasonable error type
+                raise Exception()
+
+            new_list = UserList(
+                version=1,
+                creator=str(user_id),
+                # temporarily set authz without the list ID since we haven't created the list in the db yet
+                authz={
+                    "version": 0,
+                    "authz": [f"/users/{user_id}/user-library/lists"],
+                },
+                name=name,
+                created_date=now,
+                updated_date=now,
+                items=user_list_items,
+            )
+            self.db_session.add(new_list)
+
+            # correct authz with id, but flush to get the autoincrement id
+            await self.db_session.flush()
+            authz = (
+                {
+                    "version": 0,
+                    "authz": [f"/users/{user_id}/user-library/lists/{new_list.id}"],
+                },
+            )
+            new_list.authz = authz
+
+    async def get_all_lists(self) -> List[UserList]:
+        query = await self.db_session.execute(select(UserList).order_by(UserList.id))
+        return list(query.scalars().all())
+
+    async def update_list(
+        self,
+        list_id: int,
+        name: Optional[str],
+    ):
+        q = update(UserList).where(UserList.id == list_id)
+        if name:
+            q = q.values(name=name)
+        q.execution_options(synchronize_session="fetch")
+        await self.db_session.execute(q)
+
+
+async def get_data_access_layer():
+    """
+    Create an AsyncSession and yield an instance of the Data Access Layer,
+    which acts as an abstract interface to manipulate the database.
+
+    Can be injected as a dependency in FastAPI endpoints.
+    """
+    async with async_sessionmaker() as session:
+        async with session.begin():
+            yield DataAccessLayer(session)

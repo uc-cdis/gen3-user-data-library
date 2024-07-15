@@ -1,0 +1,624 @@
+openapi: 3.0.2
+info:
+  version: 0.1.0
+  title: Gen3 Data Library Service
+  description: |
+    # Overview
+    
+    API for querying about specific pre-configured topics. A topic 
+    has a configured chain of actions that eventually query an LLM and may 
+    contain a knowledge store of documents related to the topic (which may be used to
+    include augmentation of the query).
+
+    At this time, the available configured chain(s) are based on a
+    [Retrieval Augmented Generation (RAG) architecture](https://arxiv.org/abs/2005.11401).
+    Queries will be augmented with relevant information from a 
+    knowledge library for that topic. Upon receiving a query, additional information is 
+    retrieved from the library, relevancy compared to
+    user query, and a prompt to a foundational AI LLM model is augmented with the 
+    additional context from the knowledge library. The foundational model then generates a response.
+
+    In the future, more configured chains may enable alternative architectures or just
+    different versions of RAGs with different models/services.
+tags:
+  - name: AI
+    description: Ask questions about pre-configured topics and learn about those topics
+  - name: Service Info
+    description: Service info
+paths:
+  /ask/:
+    post:
+      tags:
+        - AI
+      summary: Ask AI about a topic
+      description: ''
+      operationId: ask_ask__post
+      parameters:
+        - name: topic
+          in: query
+          required: false
+          schema:
+            type: string
+            title: Topic
+            default: default
+            example: 'default, gen3-docs, heal-datasets'
+          description: A preconfigured topic to ask about
+        - name: conversation_id
+          in: query
+          deprecated: false
+          schema:
+            type: string
+          description: |
+            An existing conversation ID, used to continue from previous q's and a's.
+            IMPORTANT: Not available for every topic (only specific ones)
+      requestBody:
+        description: What to ask
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              title: Data
+              properties:
+                query:
+                  type: string
+                  example: Do you have any COVID-19 data?
+            examples:
+              Example 1:
+                value:
+                  query: Do you have COVID-19 data?
+      responses:
+        '200':
+          description: Successful Response with AI answer and other metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                  conversation_id:
+                    type: string
+                  documents:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        page_content:
+                          type: string
+                        metadata:
+                          type: object
+                          properties:
+                            row:
+                              type: integer
+                            source:
+                              type: string
+
+                  topic:
+                    type: string
+              examples:
+                Example 1:
+                  value:
+                    response: 'Yes, we have COVID-19 data. See these datasets...'
+                    conversation_id: 0001-1222-3333-9999
+                    documents:
+                      - page_content: |
+                          ", symptomatic SARS-CoV-2 infection admitted to 57 US hospitals from March 1 to April 1, 2020 were studied.It was found that in a geographically diverse early-pandemic COVID-19 cohort with complete hospital folllow-up, hospital mortality was associated with older age, comorbidity burden, and male sex. Intensive care unit admissions occurred early and were associated with protracted hospital stays. Survivors often required new health care services or respiratory support at discharge.The PETAL Network central institutional review board at Vanderbilt University and the institutional review boards at each participating hospital approved the study or determined that the study was exempt from review.Instructions for requesting individual-level data are available on BioData Catalyst at https://biodatacatalyst.nhlbi.nih.gov/resources/data/. Apply for data access in dbGaP. Upon approval, users may begin accessing requested data in BioData Catalyst. For questions about availability, you may contact the BioData Catalyst team at https://biodatacatalyst.nhlbi.nih.gov/contact. Study Weblinks: PETAL Network RED CORAL StudyNHLBI BioLINCC (RED CORAL) Study Design:     Control Set Study Type:Case-CohortClinical CohortCohortMulticenter NOTE: This text was scraped from https://www.ncbi.nlm.nih.gov/ on 2022-03-29 and may not include exact formatting or images.\nstudy_id: phs002363.v1.p1.c1\n_tag_0: Program: COVID 19\n_tag_1: Study Registration: dbGaP\n_tag_2: Data Type: Clinical Phenotype\n_tag_3: \n_tag_4: ",
+                        metadata:
+                          row: 148
+                          source: "phs002363.v1.p1.c1"
+                      - page_content: |
+                          " and gene editing.Data available for request include allogeneic hematopoietic cell transplants for sickle cell disease (Hb SS and Hb Sβ thalassemia) in the United States from 1991 to 2019. Follow-up data through December 2020 are available.Instructions for requesting individual-level data are available on BioData Catalyst at https://biodatacatalyst.nhlbi.nih.gov/resources/data/. Apply for data access in dbGaP. Upon approval, users may begin accessing requested data in BioData Catalyst. For questions about availability, you may contact the BioData Catalyst team at https://biodatacatalyst.nhlbi.nih.gov/contact.   Study Weblinks:      ClinicalTrials.gov (HCT for SCD) BioLINCC (HCT for SCD)    Study Design:       Prospective Longitudinal Cohort    Study Type:  Clinical Cohort Cohort Control Set Longitudinal Longitudinal Cohort Multicenter Observational   Number of study subjects that have individual-level data available through Authorized Access:  NOTE: This text was scraped from https://www.ncbi.nlm.nih.gov/ on 2021-07-07 and may not include exact formatting or images.\nstudy_id: phs002385.v1.p1.c1\n_tag_0: Program: BioLINCC\n_tag_1: Study Registration: dbGaP\n_tag_2: Data Type: Clinical Phenotype\n_tag_3: \n_tag_4: ",
+                        metadata:
+                          row: 150
+                          source: "phs002385.v1.p1.c1"
+                    topic: default
+        '400':
+          description: 'Bad Request, please check request format'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: malformed request
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: No authentication provided and it is required
+        '403':
+          description: 'Forbidden, authentication provided but authorization denied'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: authentication provided but authorization denied
+        '404':
+          description: Specified Topic Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: ''
+        '422':
+          description: 'Bad Request, please check request format'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        loc:
+                          type: array
+                          items:
+                            type: string
+                          example:
+                            - "body"
+                        msg:
+                          type: string
+                          example: "field required"
+                        type:
+                          type: string
+                          example: "value_error.missing"
+        '429':
+          description: Too Many Requests for this user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: user's monthly limit reached
+              examples:
+                Example 1:
+                  value:
+                    detail: user's monthly limit reached
+        '503':
+          description: Service Temporarily Unavailable for all users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: global monthly limit reached
+              examples:
+                Example 1:
+                  value:
+                    detail: global monthly limit reached
+  /topics/:
+    get:
+      tags:
+        - AI
+      summary: List all available topics for this AI
+      description: ''
+      operationId: ask_topics__get
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topics:
+                    type: object
+                    properties:
+                      name:
+                        type: object
+                        properties:
+                          description:
+                            type: string
+                          topic_chain:
+                            type: string
+                          system_prompt:
+                            type: string
+                          metadata:
+                            type: object
+                x-examples:
+                  Example 1:
+                    topics:
+                      default:
+                        description: default topic 
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: 'You answer questions about a specific topic. You''ll be given
+                          relevant context for that topic. You are acting as a search assistant for a
+                          researcher who will be asking you questions. The researcher is likely trying
+                          to find data of interest for a particular reason or with specific criteria.
+                          You answer and recommend information that may be of interest to that researcher.
+                          If you are using any particular document to answer, you should cite that and
+                          tell the user where they can find more information. If you don''t know the answer,
+                          just say that you don''t know, don''t try to make up an answer. '
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+                      bdc:
+                        description: Ask about available BDC datasets, powered by public dataset metadata like study descriptions 
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: You answer questions about datasets that are available in BioData
+                          Catalyst. You'll be given relevant dataset descriptions for every dataset that's
+                          been ingested into BioData Catalyst. You are acting as a search assistant for
+                          a biomedical researcher (who will be asking you questions). The researcher is
+                          likely trying to find datasets of interest for a particular research question.
+                          You should recommend datasets that may be of interest to that researcher.
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+                      heal:
+                        description: Ask about available datasets, powered by public dataset metadata like study descriptions 
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: You answer questions about datasets that are available in NIH's
+                          Helping to End Addiction Long-term Initiative, or HEAL Initiative data platform.
+                          You'll be given relevant dataset descriptions for every dataset that's been
+                          ingested into HEAL. You are acting as a search assistant for a biomedical researcher
+                          (who will be asking you questions). The researcher is likely trying to find
+                          datasets of interest for a particular research question. You should recommend
+                          datasets that may be of interest to that researcher.
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+                      gen3-docs:
+                        description: Ask about Gen3 software, powered by public documentation from various sources
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: |
+                          You answer questions about the Gen3 codebase.
+                          You'll be given relevant markdown files from the codebase. 
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+              examples:
+                Example 1:
+                  value:
+                    topics:
+                      default:
+                        description: default topic 
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: 'You answer questions about a specific topic. You''ll be given
+                          relevant context for that topic. You are acting as a search assistant for a
+                          researcher who will be asking you questions. The researcher is likely trying
+                          to find data of interest for a particular reason or with specific criteria.
+                          You answer and recommend information that may be of interest to that researcher.
+                          If you are using any particular document to answer, you should cite that and
+                          tell the user where they can find more information. If you don''t know the answer,
+                          just say that you don''t know, don''t try to make up an answer. '
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+                      bdc:
+                        description: Ask about available BDC datasets, powered by public dataset metadata like study descriptions 
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: You answer questions about datasets that are available in BioData
+                          Catalyst. You'll be given relevant dataset descriptions for every dataset that's
+                          been ingested into BioData Catalyst. You are acting as a search assistant for
+                          a biomedical researcher (who will be asking you questions). The researcher is
+                          likely trying to find datasets of interest for a particular research question.
+                          You should recommend datasets that may be of interest to that researcher.
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+                      heal:
+                        description: Ask about available datasets, powered by public dataset metadata like study descriptions 
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: You answer questions about datasets that are available in NIH's
+                          Helping to End Addiction Long-term Initiative, or HEAL Initiative data platform.
+                          You'll be given relevant dataset descriptions for every dataset that's been
+                          ingested into HEAL. You are acting as a search assistant for a biomedical researcher
+                          (who will be asking you questions). The researcher is likely trying to find
+                          datasets of interest for a particular research question. You should recommend
+                          datasets that may be of interest to that researcher.
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+                      gen3-docs:
+                        description: Ask about Gen3 software, powered by public documentation from various sources
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: |
+                          You answer questions about the Gen3 codebase.
+                          You'll be given relevant markdown files from the codebase. 
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+            application/javascript:
+              schema:
+                type: object
+                properties:
+                  topics:
+                    type: object
+                x-examples:
+                  Example 1:
+                    topics:
+                      topic-A:
+                        system_prompt: example
+                      topic-B:
+                        system_prompt: example
+              examples:
+                Example 1:
+                  value:
+                    topics:
+                      default:
+                        system_prompt: foobar
+                      docs:
+                        system_prompt: fizzbuzz
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: No authentication provided and it is required
+        '403':
+          description: 'Forbidden, authentication provided but authorization denied'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: authentication provided but authorization denied
+  '/topics/{topic}':
+    get:
+      tags:
+        - AI
+      summary: Get information about the specific topic provided
+      description: ''
+      operationId: ask_topics__topic__get
+      parameters:
+        - name: topic
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topics:
+                    type: object
+                    properties:
+                      name:
+                        type: object
+                        properties:
+                          description:
+                            type: string
+                          topic_chain:
+                            type: string
+                          system_prompt:
+                            type: string
+                          metadata:
+                            type: object
+                x-examples:
+                  Example 1:
+                    topics:
+                      bdc:
+                        description: Ask about available BDC datasets, powered by public dataset metadata like study descriptions 
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: You answer questions about datasets that are available in BioData
+                          Catalyst. You'll be given relevant dataset descriptions for every dataset that's
+                          been ingested into BioData Catalyst. You are acting as a search assistant for
+                          a biomedical researcher (who will be asking you questions). The researcher is
+                          likely trying to find datasets of interest for a particular research question.
+                          You should recommend datasets that may be of interest to that researcher.
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+              examples:
+                Example 1:
+                  value:
+                    topics:
+                      bdc:
+                        description: Ask about available BDC datasets, powered by public dataset metadata like study descriptions 
+                        topic_chain: TopicChainOpenAiQuestionAnswerRAG
+                        system_prompt: You answer questions about datasets that are available in BioData
+                          Catalyst. You'll be given relevant dataset descriptions for every dataset that's
+                          been ingested into BioData Catalyst. You are acting as a search assistant for
+                          a biomedical researcher (who will be asking you questions). The researcher is
+                          likely trying to find datasets of interest for a particular research question.
+                          You should recommend datasets that may be of interest to that researcher.
+                        metadata:
+                          model_name: gpt-3.5-turbo
+                          model_temperature: '0.33'
+                          num_similar_docs_to_find: '4'
+                          similarity_score_threshold: '0.5'
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: No authentication provided and it is required
+        '403':
+          description: 'Forbidden, authentication provided but authorization denied'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: authentication provided but authorization denied
+        '404':
+          description: Topic Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: Provided topic does not exist
+  /_version:
+    get:
+      tags:
+        - Service Info
+      summary: Get version of service
+      description: ''
+      operationId: get_version_version_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                x-examples:
+                  Example 1:
+                    version: 1.0.0
+              examples:
+                Example 1:
+                  value:
+                    version: 1.0.0
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: No authentication provided and it is required
+        '403':
+          description: 'Forbidden, authentication provided but authorization denied'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: authentication provided but authorization denied
+  /_status:
+    get:
+      tags:
+        - Service Info
+      summary: Get status of service
+      description: Return 200 if up and running
+      operationId: get_status__status_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                x-examples:
+                  Example 1:
+                    status: OK
+                    timestamp: '2023-09-18T21:57:05.251511+00:00'
+              examples:
+                Example 1:
+                  value:
+                    status: OK
+                    timestamp: '2023-09-18T21:57:05.251511+00:00'
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: No authentication provided and it is required
+        '403':
+          description: 'Forbidden, authentication provided but authorization denied'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                x-examples:
+                  Example 1:
+                    detail: authentication provided but authorization denied
+components:
+  securitySchemes:
+    access_token:
+      type: http
+      scheme: bearer
