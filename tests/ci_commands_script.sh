@@ -9,4 +9,4 @@ echo "current directory: $(pwd)"
 echo "moving the test configuration .env to be the default config for the app w/ 'cp tests/.env ../.env'"
 cp tests/.env .env
 
-poetry run pytest -vv --cov-config=.coveragerc --cov=gen3datalibrary --cov-report term-missing:skip-covered --cov-fail-under 90 --cov-report html:_coverage --cov-branch
+poetry run pytest -vv --cov-config=.coveragerc --cov=gen3userdatalibrary --cov-report term-missing:skip-covered --cov-fail-under 90 --cov-report html:_coverage --cov-branch

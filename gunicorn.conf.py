@@ -1,9 +1,19 @@
 import logging
+import multiprocessing
 
 import cdislogging
 import gunicorn.glogging
+from prometheus_client import multiprocess
 
-import gen3datalibrary.config
+import gen3userdatalibrary.config
+
+
+def child_exit(server, worker):
+    """
+    Required for Prometheus multiprocess setup
+    See: https://prometheus.github.io/client_python/multiprocess/
+    """
+    multiprocess.mark_process_dead(worker.pid)
 
 
 class CustomLogger(gunicorn.glogging.Logger):
@@ -28,25 +38,24 @@ class CustomLogger(gunicorn.glogging.Logger):
 
         self._remove_handlers(logging.getLogger())
         cdislogging.get_logger(
-            None, log_level="debug" if gen3datalibrary.config.DEBUG else "warn"
+            None, log_level="debug" if gen3userdatalibrary.config.DEBUG else "warn"
         )
         for logger_name in ["gunicorn", "gunicorn.error", "gunicorn.access"]:
             self._remove_handlers(logging.getLogger(logger_name))
             cdislogging.get_logger(
                 logger_name,
-                log_level="debug" if gen3datalibrary.config.DEBUG else "info",
+                log_level="debug" if gen3userdatalibrary.config.DEBUG else "info",
             )
 
 
 logger_class = CustomLogger
 
-wsgi_app = "gen3datalibrary.main:app"
-bind = "0.0.0.0:8089"
-workers = 1
-user = "appuser"
-group = "appuser"
+wsgi_app = "gen3userdatalibrary.main:app"
+bind = "0.0.0.0:8000"
 
-# OpenAI API can take a while
-# default was `30`
-timeout = 300
-graceful_timeout = 300
+# NOTE: This is always more than 2
+workers = multiprocessing.cpu_count() * 2 + 1
+
+# default was `30` for the 2 below
+timeout = 90
+graceful_timeout = 90

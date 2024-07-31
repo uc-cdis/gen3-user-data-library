@@ -35,9 +35,9 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 
-from gen3datalibrary import config
-from gen3datalibrary.auth import get_user_id
-from gen3datalibrary.models import (
+from gen3userdatalibrary import config
+from gen3userdatalibrary.auth import get_user_id
+from gen3userdatalibrary.models import (
     ITEMS_JSON_SCHEMA_DRS,
     ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
     UserList,
@@ -63,7 +63,8 @@ class DataAccessLayer(object):
 
         Note: if any items in any list fail, or any list fails to get created, no lists are created.
         """
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
+        new_user_lists = {}
 
         # Validate the JSON objects
         for user_list in user_lists:
@@ -94,7 +95,7 @@ class DataAccessLayer(object):
                 raise Exception()
 
             new_list = UserList(
-                version=1,
+                version=0,
                 creator=str(user_id),
                 # temporarily set authz without the list ID since we haven't created the list in the db yet
                 authz={
@@ -102,21 +103,24 @@ class DataAccessLayer(object):
                     "authz": [f"/users/{user_id}/user-library/lists"],
                 },
                 name=name,
-                created_date=now,
-                updated_date=now,
+                created_time=now,
+                updated_time=now,
                 items=user_list_items,
             )
             self.db_session.add(new_list)
 
             # correct authz with id, but flush to get the autoincrement id
             await self.db_session.flush()
-            authz = (
-                {
-                    "version": 0,
-                    "authz": [f"/users/{user_id}/user-library/lists/{new_list.id}"],
-                },
-            )
+
+            authz = {
+                "version": 0,
+                "authz": [f"/users/{user_id}/user-library/lists/{new_list.id}"],
+            }
             new_list.authz = authz
+
+            new_user_lists[new_list.id] = new_list
+
+        return new_user_lists
 
     async def get_all_lists(self) -> List[UserList]:
         query = await self.db_session.execute(select(UserList).order_by(UserList.id))

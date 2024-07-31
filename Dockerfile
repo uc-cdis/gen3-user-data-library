@@ -2,7 +2,7 @@ FROM quay.io/cdis/amazonlinux:python3.9-master as build-deps
 
 USER root
 
-ENV appname=gen3datalibrary
+ENV appname=gen3userdatalibrary
 
 RUN pip3 install --no-cache-dir --upgrade poetry
 
@@ -12,7 +12,7 @@ RUN yum update -y && yum install -y --setopt install_weak_deps=0 \
 
 WORKDIR /$appname
 
-# copy ONLY poetry artifact, install the dependencies but not gen3datalibrary
+# copy ONLY poetry artifact, install the dependencies but not gen3userdatalibrary
 # this will make sure that the dependencies are cached
 COPY poetry.lock pyproject.toml /$appname/
 COPY ./docs/openapi.yaml /$appname/docs/openapi.yaml
@@ -23,15 +23,15 @@ RUN poetry config virtualenvs.in-project true \
 # copy source code ONLY after installing dependencies
 COPY . /$appname
 
-# install gen3datalibrary
+# install gen3userdatalibrary
 RUN poetry config virtualenvs.in-project true \
     && poetry install -vv --only main --no-interaction \
     && poetry show -v
 
-#Creating the runtime image
+# Creating the runtime image
 FROM quay.io/cdis/amazonlinux:python3.9-master
 
-ENV appname=gen3datalibrary
+ENV appname=gen3userdatalibrary
 
 USER root
 
@@ -49,4 +49,7 @@ WORKDIR /$appname
 
 USER appuser
 
-CMD ["poetry", "run", "gunicorn", "gen3datalibrary.main:app", "-k", "uvicorn.workers.UvicornWorker", "-c", "gunicorn.conf.py"]
+CMD [
+    "poetry", "run", "gunicorn", "gen3userdatalibrary.main:app", "-k", "uvicorn.workers.UvicornWorker",
+    "-c", "gunicorn.conf.py", "--user", "appuser", "--group", "appuser"
+]

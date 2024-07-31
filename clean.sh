@@ -17,5 +17,5 @@ echo
 echo ----------------------------------------------
 echo Running pylint to detect lint
 echo ----------------------------------------------
-echo    Command: pylint -vv "$SCRIPT_DIR/gen3datalibrary" --rcfile ~/.gen3/.github/linters/.python-lint
-pylint -vv "$SCRIPT_DIR/gen3datalibrary" --rcfile ~/.gen3/.github/.github/linters/.python-lint
+echo    Command: pylint -vv "$SCRIPT_DIR/gen3userdatalibrary" --rcfile ~/.gen3/.github/linters/.python-lint
+pylint -vv "$SCRIPT_DIR/gen3userdatalibrary" --rcfile ~/.gen3/.github/.github/linters/.python-lint

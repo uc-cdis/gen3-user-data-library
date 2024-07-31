@@ -4,7 +4,7 @@ import pytest
 
 
 @pytest.mark.parametrize("endpoint", ["/_version", "/_version/"])
-@patch("gen3datalibrary.routes.authorize_request")
+@patch("gen3userdatalibrary.routes.authorize_request")
 def test_version(_, endpoint, client):
     """
     Test that the version endpoint returns a non-empty version
@@ -27,7 +27,7 @@ def test_version_no_token(endpoint, client):
 
 
 @pytest.mark.parametrize("endpoint", ["/_version", "/_version/"])
-@patch("gen3datalibrary.auth.arborist", new_callable=AsyncMock)
+@patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
 def test_version_unauthorized(arborist, endpoint, client):
     """
     Test accessing the endpoint when authorized
@@ -42,7 +42,7 @@ def test_version_unauthorized(arborist, endpoint, client):
 
 
 @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
-@patch("gen3datalibrary.routes.authorize_request")
+@patch("gen3userdatalibrary.routes.authorize_request")
 def test_status(_, endpoint, client):
     """
     Test that the status endpoint returns a non-empty status
@@ -65,7 +65,7 @@ def test_status_no_token(endpoint, client):
 
 
 @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
-@patch("gen3datalibrary.auth.arborist", new_callable=AsyncMock)
+@patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
 def test_status_unauthorized(arborist, endpoint, client):
     """
     Test accessing the endpoint when authorized

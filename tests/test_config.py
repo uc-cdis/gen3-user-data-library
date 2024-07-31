@@ -4,9 +4,9 @@ from unittest.mock import patch
 
 import pytest
 
-from gen3datalibrary import config
-from gen3datalibrary.main import _override_generated_openapi_spec
-from gen3datalibrary.utils import get_from_cfg_metadata
+from gen3userdatalibrary import config
+from gen3userdatalibrary.main import _override_generated_openapi_spec
+from gen3userdatalibrary.utils import get_from_cfg_metadata
 
 
 def test_bad_config_metadata():
@@ -69,14 +69,14 @@ def test_openapi():
     """
     Test our override of FastAPI's default openAPI
     """
-    # change dir so the openapi.yaml is available
+    # change dir so the oldopenapi.yaml is available
     current_dir = os.path.dirname(os.path.abspath(__file__)).rstrip("/")
     os.chdir(current_dir + "/..")
 
     json_data = _override_generated_openapi_spec()
     assert json_data
 
-    # change dir so the openapi.yaml CANNOT be found
+    # change dir so the oldopenapi.yaml CANNOT be found
     os.chdir("./tests")
 
     json_data = _override_generated_openapi_spec()

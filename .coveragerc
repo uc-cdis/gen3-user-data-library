@@ -6,7 +6,7 @@ omit =
     # omit everything in /usr
     /usr/*
     # omit this single file
-    gen3datalibrary/topic_chains/logging.py
+    gen3userdatalibrary/topic_chains/logging.py
 
 [report]
 ; Regexes for lines to exclude from consideration

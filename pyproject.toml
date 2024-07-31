@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "gen3datalibrary"
+name = "gen3userdatalibrary"
 version = "1.0.0"
-description = "Gen3 Data Library Service"
+description = "Gen3 User Data Library Service"
 authors = ["CTDS UChicago <cdis@uchicago.edu>"]
 license = "Apache-2.0"
 readme = "README.md"
-packages = [{include = "gen3datalibrary"}]
+packages = [{include = "gen3userdatalibrary"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.10.dev0"
@@ -21,6 +21,12 @@ alembic = ">=1.13.2"
 sqlalchemy = {extras = ["asyncio"], version = ">=2.0.31"}
 jsonschema = ">=4.23.0"
 asyncpg = ">=0.29.0"
+prometheus-client = "^0.20.0"
+cdispyutils = {git = "https://github.com/uc-cdis/cdis-python-utils/", rev = "feat/common_metrics"}
+
+# NOTE:
+# for testing with updated libaries as git repos:
+# foobar = {git = "https://github.com/uc-cdis/some-repo", rev = "feat/test"}
 
 
 [tool.poetry.group.dev.dependencies]
@@ -48,7 +54,7 @@ pytest-profiling = ">=1.7.0"
 # see .coveragerc for what the coverage omits
 #addopts = """
 #-vv --cov-config=.coveragerc
-#--cov=gen3datalibrary
+#--cov=gen3userdatalibrary
 #--cov-report term-missing:skip-covered
 #--cov-fail-under 90
 #--cov-report html:_coverage
@@ -57,7 +63,7 @@ pytest-profiling = ">=1.7.0"
 #"""
 
 [tool.isort]
-known_first_party = ["gen3datalibrary"]
+known_first_party = ["gen3userdatalibrary"]
 profile = "black"
 line_length = 88
 

@@ -10,7 +10,7 @@ from starlette.status import (
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
-from gen3datalibrary import config, logging
+from gen3userdatalibrary import config, logging
 
 get_bearer_token = HTTPBearer(auto_error=False)
 arborist = ArboristClient()

@@ -25,7 +25,7 @@ target_metadata = None
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-from gen3datalibrary import config
+from gen3userdatalibrary import config
 
 
 def run_migrations_offline() -> None:

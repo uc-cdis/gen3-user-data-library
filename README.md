@@ -1,4 +1,4 @@
-# Gen3 Data Library
+# Gen3 User Data Library
 
 [short description]
 
@@ -51,7 +51,7 @@ Install and run service locally:
 
 ```bash
 poetry install
-poetry run python run.py
+./run.sh
 ```
 
 Hit the API:
@@ -100,28 +100,28 @@ Here's how you can run it:
 To build:
 
 ```bash
-docker build -t gen3datalibrary:latest .
+docker build -t gen3userdatalibrary:latest .
 ```
 
 To run:
 
 ```bash
-docker run --name gen3datalibrary \
+docker run --name gen3userdatalibrary \
 --env-file "./.env" \
 -v "$SOME_OTHER_CONFIG":"$SOME_OTHER_CONFIG" \
 -p 8089:8089 \
-gen3datalibrary:latest
+gen3userdatalibrary:latest
 ```
 
 To exec into a bash shell in running container:
 
 ```bash
-docker exec -it gen3datalibrary bash
+docker exec -it gen3userdatalibrary bash
 ```
 
 To kill and remove running container:
 
 ```bash
-docker kill gen3datalibrary
-docker remove gen3datalibrary
+docker kill gen3userdatalibrary
+docker remove gen3userdatalibrary
 ```

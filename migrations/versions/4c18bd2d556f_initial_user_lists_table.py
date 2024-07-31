@@ -26,9 +26,20 @@ def upgrade() -> None:
         sa.Column("creator", sa.String, nullable=False, index=True),
         sa.Column("authz", sa.JSON, nullable=False),
         sa.Column("name", sa.String, nullable=False),
-        sa.Column("created_date", sa.DateTime, nullable=False, default=sa.func.now()),
-        sa.Column("updated_date", sa.DateTime, nullable=False, default=sa.func.now()),
+        sa.Column(
+            "created_time",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            default=sa.func.now(),
+        ),
+        sa.Column(
+            "updated_time",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            default=sa.func.now(),
+        ),
         sa.Column("items", sa.JSON),
+        sa.UniqueConstraint('name', 'creator', name='_name_creator_uc')
     )
 
 

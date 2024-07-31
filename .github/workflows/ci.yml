@@ -29,7 +29,7 @@ jobs:
     name: Get Lint Config
     uses: uc-cdis/.github/.github/workflows/lint-create-config.yaml@master
     with:
-      python-module-name: "gen3datalibrary"
+      python-module-name: "gen3userdatalibrary"
 
 #  # (optional) modify the linter configurations from above. You could omit this if you didn't need to do this
 #  CustomizeLintConfig:
@@ -44,7 +44,7 @@ jobs:
 #          path: .github/linters
 #
 #      # modify default isort to specify the module name for proper formatting
-#      - run: echo "known_first_party=gen3datalibrary" >> .github/linters/.isort.cfg
+#      - run: echo "known_first_party=gen3userdatalibrary" >> .github/linters/.isort.cfg
 #
 #      # now we need to re-upload the artifacts with the changes
 #      - uses: actions/upload-artifact@v3
