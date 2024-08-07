@@ -34,6 +34,9 @@ Here's an example `.env` file you can copy and modify:
 ```.env
 ########## Secrets ##########
 
+# make sure you have `postgresql+asyncpg` or you'll get errors about the default psycopg not supporting async
+DB_CONNECTION_STRING="postgresql+asyncpg://postgres:postgres@localhost:5432/gen3userdatalibrary"
+
 ########## Configuration ##########
 
 ########## Debugging and Logging Configurations ##########
@@ -46,6 +49,25 @@ DEBUG_SKIP_AUTH=False
 ```
 
 ### Running locally
+
+You need Postgres databases set up and you need to migrate them to the latest schema
+using Alembic.
+
+#### Setup DBs and Migrate
+
+The test db config by default is:
+
+```
+DB_CONNECTION_STRING="postgresql+asyncpg://postgres:postgres@localhost:5432/testgen3datalibrary"
+```
+
+So expects a `postres` user with access to a `testgen3datalibrary`.
+
+The general app expects the same `postgres` user with access to `gen3datalibrary`.
+
+You need to `alembic migrate head` on both.
+
+#### Run the Service
 
 Install and run service locally:
 
@@ -66,9 +88,9 @@ Hit the API:
 
 ## Local Dev
 
-You can `poetry run python run.py` after install to run the app locally.
+You can `bash run.sh` after install to run the app locally.
 
-For testing, you can `poetry run pytest`. 
+For testing, you can `bash test.sh`. 
 
 The default `pytest` options specified 
 in the `pyproject.toml` additionally:
@@ -78,7 +100,7 @@ in the `pyproject.toml` additionally:
 
 #### Automatically format code and run pylint
 
-This quick `clean.sh` script is used to run `isort` and `black` over everything if 
+This quick `bash clean.sh` script is used to run `isort` and `black` over everything if 
 you don't integrate those with your editor/IDE.
 
 > NOTE: This requires the beginning of the setup for using Super 

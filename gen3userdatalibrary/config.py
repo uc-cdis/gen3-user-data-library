@@ -29,7 +29,7 @@ if DEBUG_SKIP_AUTH:
 DB_CONNECTION_STRING = config(
     "DB_CONNECTION_STRING",
     cast=Secret,
-    default="postgresql://postgres:postgres@localhost:5432/gen3userdatalibrary",
+    default="postgresql+asyncpg://postgres:postgres@localhost:5432/testgen3datalibrary",
 )
 
 URL_PREFIX = config("URL_PREFIX", default=None)
@@ -42,4 +42,6 @@ URL_PREFIX = config("URL_PREFIX", default=None)
 # IMPORTANT: This enables a /metrics endpoint which is OPEN TO ALL TRAFFIC, unless controlled upstream
 ENABLE_PROMETHEUS_METRICS = config("ENABLE_PROMETHEUS_METRICS", default=False)
 
-PROMETHEUS_MULTIPROC_DIR = config("PROMETHEUS_MULTIPROC_DIR", default="/var/tmp/prometheus_metrics")
+PROMETHEUS_MULTIPROC_DIR = config(
+    "PROMETHEUS_MULTIPROC_DIR", default="/var/tmp/prometheus_metrics"
+)

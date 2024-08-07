@@ -2,7 +2,7 @@ from cdispyutils.metrics import BaseMetrics
 
 USER_LIST_COUNTER = {
     "name": "gen3_data_library_user_lists",
-    "description": "Gen3 User Data Library User Lists"
+    "description": "Gen3 User Data Library User Lists",
 }
 
 

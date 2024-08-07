@@ -29,7 +29,8 @@ async def lifespan(fastapi_app: FastAPI):
     # startup
     # TODO pass in config
     fastapi_app.state.metrics = Metrics(
-        enabled=config.ENABLE_PROMETHEUS_METRICS, prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR
+        enabled=config.ENABLE_PROMETHEUS_METRICS,
+        prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
     )
 
     yield

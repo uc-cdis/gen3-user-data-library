@@ -39,7 +39,7 @@ def upgrade() -> None:
             default=sa.func.now(),
         ),
         sa.Column("items", sa.JSON),
-        sa.UniqueConstraint('name', 'creator', name='_name_creator_uc')
+        sa.UniqueConstraint("name", "creator", name="_name_creator_uc"),
     )
 
 

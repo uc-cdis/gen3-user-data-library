@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette import status
 from sqlalchemy.exc import IntegrityError
@@ -88,11 +89,11 @@ class UserListResponseModel(BaseModel):
         Depends(raise_if_user_exceeded_limits),
     ],
 )
-async def create_list(
+async def create_user_list(
     request: Request,
     data: dict,
     data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
-) -> dict:
+) -> JSONResponse:
     """
     Create a new list with the provided items
 
@@ -132,7 +133,8 @@ async def create_list(
         )
         logging.debug(f"Details: {exc}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid list information provided"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid list information provided",
         )
 
     response_user_lists = {}
@@ -149,7 +151,7 @@ async def create_list(
     )
     logging.debug(response)
 
-    return response
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
 
 @root_router.get(

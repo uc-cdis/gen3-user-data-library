@@ -55,9 +55,7 @@ class UserList(Base):
     # see ITEMS_JSON_SCHEMA_* above for various schemas for different items here
     items = Column(JSON)
 
-    __table_args__ = (
-        UniqueConstraint('name', 'creator', name='_name_creator_uc'),
-    )
+    __table_args__ = (UniqueConstraint("name", "creator", name="_name_creator_uc"),)
 
     def to_dict(self):
         return {
