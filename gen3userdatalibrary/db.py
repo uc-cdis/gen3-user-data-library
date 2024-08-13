@@ -36,11 +36,12 @@ from sqlalchemy import update, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 
-from gen3userdatalibrary import config
+from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import get_user_id
 from gen3userdatalibrary.models import (
     ITEMS_JSON_SCHEMA_DRS,
     ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
+    ITEMS_JSON_SCHEMA_GENERIC,
     UserList,
 )
 
@@ -74,12 +75,13 @@ class DataAccessLayer(object):
             validated_user_list_items = []
 
             for item_id, item_contents in user_list_items.items():
-                if item_id.startswith("drs://"):
+                # TODO THIS NEEDS TO BE CFG
+                if item_contents.get("type") == "GA4GH_DRS":
                     try:
                         validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_DRS)
                     except ValidationError as e:
-                        print(f"JSON is invalid: {e.message}")
-                # TODO THIS NEEDS TO BE CFG
+                        logging.debug(f"User-provided JSON is invalid: {e.message}")
+                        raise
                 elif item_contents.get("type") == "Gen3GraphQL":
                     try:
                         validate(
@@ -87,7 +89,21 @@ class DataAccessLayer(object):
                             schema=ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
                         )
                     except ValidationError as e:
-                        print(f"JSON is invalid: {e.message}")
+                        logging.debug(f"User-provided JSON is invalid: {e.message}")
+                        raise
+                else:
+                    try:
+                        validate(
+                            instance=item_contents,
+                            schema=ITEMS_JSON_SCHEMA_GENERIC,
+                        )
+                    except ValidationError as e:
+                        logging.debug(f"User-provided JSON is invalid: {e.message}")
+                        raise
+
+                    logging.warning(
+                        f"User-provided JSON is an unknown type. Creating anyway..."
+                    )
 
             user_id = await get_user_id()
 
@@ -101,7 +117,7 @@ class DataAccessLayer(object):
                 # temporarily set authz without the list ID since we haven't created the list in the db yet
                 authz={
                     "version": 0,
-                    "authz": [f"/users/{user_id}/user-library/lists"],
+                    "authz": [f"/users/{user_id}/user-data-library/lists"],
                 },
                 name=name,
                 created_time=now,
@@ -115,7 +131,7 @@ class DataAccessLayer(object):
 
             authz = {
                 "version": 0,
-                "authz": [f"/users/{user_id}/user-library/lists/{new_list.id}"],
+                "authz": [f"/users/{user_id}/user-data-library/lists/{new_list.id}"],
             }
             new_list.authz = authz
 
@@ -140,7 +156,7 @@ class DataAccessLayer(object):
         # await self.db_session.execute(q)
 
     async def test_connection(self):
-        await self.db_session.execute(text('SELECT 1;'))
+        await self.db_session.execute(text("SELECT 1;"))
 
 
 async def get_data_access_layer():

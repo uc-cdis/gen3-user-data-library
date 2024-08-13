@@ -3,6 +3,36 @@ from typing import Any, Dict
 from gen3userdatalibrary import logging
 
 
+def add_user_list_metric(fastapi_app, action, lists, response_time_seconds, user_id):
+    """
+    Add a metric to the Metrics() instance on the specified FastAPI app for managing user lists.
+
+    # TODO
+
+    Args:
+        fastapi_app:
+        action:
+        lists:
+        response_time_seconds:
+        user_id:
+
+    Returns:
+
+    """
+    for list in lists:
+        fastapi_app.state.metrics.add_user_list_counter(
+            action=action, user_id=user_id, response_time_seconds=response_time_seconds
+        )
+        for item_id, item in list.get("items", {}).items():
+            fastapi_app.state.metrics.add_user_list_item_counter(
+                action=action,
+                user_id=user_id,
+                type=item.get("type", "Unknown"),
+                schema_version=item.get("schema_version", "Unknown"),
+                response_time_seconds=response_time_seconds,
+            )
+
+
 def get_from_cfg_metadata(
     field: str, metadata: Dict[str, Any], default: Any, type_: Any
 ) -> Any:

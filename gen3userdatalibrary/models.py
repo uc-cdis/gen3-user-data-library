@@ -5,6 +5,12 @@ from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
+ITEMS_JSON_SCHEMA_GENERIC = {
+    "type": "object",
+    "properties": {"type": {"type": "string"}},
+    "required": ["type"],
+}
+
 ITEMS_JSON_SCHEMA_GEN3_GRAPHQL = {
     "type": "object",
     "properties": {
@@ -26,8 +32,8 @@ ITEMS_JSON_SCHEMA_GEN3_GRAPHQL = {
 
 ITEMS_JSON_SCHEMA_DRS = {
     "type": "object",
-    "properties": {"dataset_guid": {"type": "string"}},
-    "required": ["dataset_guid"],
+    "properties": {"dataset_guid": {"type": "string"}, "type": {"type": "string"}},
+    "required": ["dataset_guid", "type"],
 }
 
 

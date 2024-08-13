@@ -28,17 +28,22 @@ async def lifespan(fastapi_app: FastAPI):
         fastapi_app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    # TODO pass in config
     fastapi_app.state.metrics = Metrics(
         enabled=config.ENABLE_PROMETHEUS_METRICS,
         prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
     )
 
     try:
+        logging.debug(
+            "Startup database connection test initiating. Attempting a simple query..."
+        )
         async for data_access_layer in get_data_access_layer():
             await data_access_layer.test_connection()
+            logging.debug("Startup database connection test PASSED.")
     except Exception as exc:
-        logging.exception("Startup database connection test FAILED. Unable to connect to the configured database.")
+        logging.exception(
+            "Startup database connection test FAILED. Unable to connect to the configured database."
+        )
         logging.debug(exc)
         raise
 
@@ -70,7 +75,6 @@ def get_app() -> fastapi.FastAPI:
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:
         metrics_app = make_metrics_app()
-        fastapi_app.metrics = Metrics()
         fastapi_app.mount("/metrics", metrics_app)
 
     return fastapi_app

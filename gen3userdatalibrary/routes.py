@@ -5,6 +5,7 @@ import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
+from jsonschema.exceptions import ValidationError
 from pydantic import BaseModel
 from starlette import status
 from sqlalchemy.exc import IntegrityError
@@ -15,6 +16,7 @@ from gen3userdatalibrary.auth import (
     get_user_id,
 )
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.utils import add_user_list_metric
 
 root_router = APIRouter()
 
@@ -102,7 +104,7 @@ async def create_user_list(
     await authorize_request(
         request=request,
         authz_access_method="create",
-        authz_resources=[f"/users/{user_id}/user-library/"],
+        authz_resources=[f"/users/{user_id}/user-data-library/"],
     )
 
     lists = data.get("lists")
@@ -119,6 +121,14 @@ async def create_user_list(
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name"
+        )
+    except ValidationError as exc:
+        logging.debug(
+            f"Invalid user-provided data when trying to create lists for user {user_id}."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid list information provided",
         )
     except Exception as exc:
         logging.exception(
@@ -138,10 +148,23 @@ async def create_user_list(
     response = {"lists": response_user_lists}
 
     end_time = time.time()
+
+    # TODO: make a function for this
+    action = "CREATE"
+    response_time_seconds = end_time - start_time
     logging.info(
-        "Gen3 User Data Library Response. "
-        f"lists={lists}, response={response}, response_time_seconds={end_time - start_time} user_id={user_id}"
+        f"Gen3 User Data Library Response. Action: {action}. "
+        f"lists={lists}, response={response}, response_time_seconds={response_time_seconds} user_id={user_id}"
     )
+
+    add_user_list_metric(
+        fastapi_app=request.app,
+        action=action,
+        lists=lists,
+        response_time_seconds=response_time_seconds,
+        user_id=user_id,
+    )
+
     logging.debug(response)
 
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
@@ -170,7 +193,7 @@ async def read_all_lists(
     await authorize_request(
         request=request,
         authz_access_method="create",
-        authz_resources=[f"/users/{user_id}/user-library/"],
+        authz_resources=[f"/users/{user_id}/user-data-library/"],
     )
 
     return {}
@@ -198,7 +221,7 @@ async def delete_all_lists(request: Request, data: dict) -> dict:
     await authorize_request(
         request=request,
         authz_access_method="create",
-        authz_resources=[f"/users/{user_id}/user-library/"],
+        authz_resources=[f"/users/{user_id}/user-data-library/"],
     )
 
     return {}
@@ -227,7 +250,7 @@ async def delete_all_lists(
     await authorize_request(
         request=request,
         authz_access_method="create",
-        authz_resources=[f"/users/{user_id}/user-library/"],
+        authz_resources=[f"/users/{user_id}/user-data-library/"],
     )
 
     return {}
