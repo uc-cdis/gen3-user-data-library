@@ -6,11 +6,12 @@ OVERVIEW
 --------
 
 We're using SQLAlchemy's async support alongside FastAPI's dependency injection.
-This file also contains the logic for database manipulation in a "data access layer"
+
+This file contains the logic for database manipulation in a "data access layer"
 class, such that other areas of the code have simple `.create_list()` calls which
-won't require knowledge on how to manage the session. The session will be managed
-by dep injection of FastAPI's endpoints. The logic that sets up the sessions is
-in this file.
+won't require knowledge on how to manage the session or interact with the db.
+The session will be managed by dep injection of FastAPI's endpoints.
+The logic that sets up the sessions is in this file.
 
 
 DETAILS

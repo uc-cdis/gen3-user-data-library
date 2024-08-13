@@ -58,10 +58,6 @@ def get_app() -> fastapi.FastAPI:
     )
     fastapi_app.include_router(root_router)
 
-    # this makes the docs at /doc and /redoc the same openapi docs in the docs folder
-    # instead of the default behavior of generating openapi spec based from FastAPI
-    fastapi_app.openapi = _override_generated_openapi_spec
-
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:
         metrics_app = make_metrics_app()
@@ -79,20 +75,6 @@ def make_metrics_app():
     registry = CollectorRegistry()
     multiprocess.MultiProcessCollector(registry)
     return make_asgi_app(registry=registry)
-
-
-def _override_generated_openapi_spec():
-    json_data = None
-    try:
-        openapi_filepath = os.path.abspath("./docs/openapi.yaml")
-        with open(openapi_filepath, "r", encoding="utf-8") as yaml_in:
-            json_data = yaml.safe_load(yaml_in)
-    except FileNotFoundError:
-        logging.info(
-            "could not find custom openapi spec at `docs/openapi.yaml`, using default generated one"
-        )
-
-    return json_data
 
 
 app = get_app()

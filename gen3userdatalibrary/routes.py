@@ -13,7 +13,6 @@ from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import (
     authorize_request,
     get_user_id,
-    raise_if_user_exceeded_limits,
 )
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 
@@ -63,9 +62,6 @@ class UserListResponseModel(BaseModel):
 
 @root_router.post(
     "/lists/",
-    dependencies=[
-        Depends(raise_if_user_exceeded_limits),
-    ],
     # most of the following stuff helps populate the openapi docs
     response_model=UserListResponseModel,
     status_code=status.HTTP_201_CREATED,
@@ -85,9 +81,6 @@ class UserListResponseModel(BaseModel):
 @root_router.post(
     "/lists",
     include_in_schema=False,
-    dependencies=[
-        Depends(raise_if_user_exceeded_limits),
-    ],
 )
 async def create_user_list(
     request: Request,
@@ -156,16 +149,10 @@ async def create_user_list(
 
 @root_router.get(
     "/lists/",
-    dependencies=[
-        Depends(raise_if_user_exceeded_limits),
-    ],
 )
 @root_router.get(
     "/lists",
     include_in_schema=False,
-    dependencies=[
-        Depends(raise_if_user_exceeded_limits),
-    ],
 )
 async def read_all_lists(
     request: Request,
@@ -191,16 +178,10 @@ async def read_all_lists(
 
 @root_router.put(
     "/lists/",
-    dependencies=[
-        Depends(raise_if_user_exceeded_limits),
-    ],
 )
 @root_router.put(
     "/lists",
     include_in_schema=False,
-    dependencies=[
-        Depends(raise_if_user_exceeded_limits),
-    ],
 )
 async def delete_all_lists(request: Request, data: dict) -> dict:
     """
@@ -225,16 +206,10 @@ async def delete_all_lists(request: Request, data: dict) -> dict:
 
 @root_router.delete(
     "/lists/",
-    dependencies=[
-        Depends(raise_if_user_exceeded_limits),
-    ],
 )
 @root_router.delete(
     "/lists",
     include_in_schema=False,
-    dependencies=[
-        Depends(raise_if_user_exceeded_limits),
-    ],
 )
 async def delete_all_lists(
     request: Request,

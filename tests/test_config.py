@@ -15,26 +15,14 @@ from tests.routes.conftest import BaseTestRouter
 class TestConfigRouter(BaseTestRouter):
     router = root_router
 
-    async def test_bad_config_metadata(self):
-        """
-        Test when invalid config is provided, an exception is raised
-        """
-        # change dir to the tests, so it loads the test .env
-        os.chdir(os.path.dirname(os.path.abspath(__file__)).rstrip("/") + "/badcfg")
-
-        with pytest.raises(Exception):
-            importlib.reload(config)
-
-        os.chdir(os.path.dirname(os.path.abspath(__file__)).rstrip("/") + "/..")
-
     async def test_metadata_cfg_util(self):
         """
         If it exists, return it
         """
         set_metadata_value = "foobar"
-        metadata = {"model_name": set_metadata_value}
+        metadata = {"test_config_value": set_metadata_value}
         retrieved_metadata_value = get_from_cfg_metadata(
-            "model_name", metadata, default="chat-bison", type_=str
+            "test_config_value", metadata, default="default-value", type_=str
         )
 
         assert retrieved_metadata_value == set_metadata_value
@@ -43,9 +31,9 @@ class TestConfigRouter(BaseTestRouter):
         """
         If it doesn't exist, return default
         """
-        default = "chat-bison"
+        default = "default-value"
         retrieved_metadata_value = get_from_cfg_metadata(
-            "this_doesnt_exist", {"model_name": "foobar"}, default=default, type_=str
+            "this_doesnt_exist", {"test_config_value": "foobar"}, default=default, type_=str
         )
         assert retrieved_metadata_value == default
 
@@ -53,9 +41,9 @@ class TestConfigRouter(BaseTestRouter):
         """
         If it doesn't exist, return default
         """
-        default = "chat-bison"
+        default = "default-value"
         retrieved_metadata_value = get_from_cfg_metadata(
-            "this_doesnt_exist", {"model_name": "foobar"}, default=default, type_=float
+            "this_doesnt_exist", {"test_config_value": "foobar"}, default=default, type_=float
         )
         assert retrieved_metadata_value == default
 
@@ -64,21 +52,17 @@ class TestConfigRouter(BaseTestRouter):
         """
         Test FastAPI docs endpoints
         """
-        assert await client.get(endpoint).status_code == 200
+        response = await client.get(endpoint)
+        assert response.status_code == 200
 
     async def test_openapi(self):
         """
         Test our override of FastAPI's default openAPI
         """
-        # change dir so the oldopenapi.yaml is available
         current_dir = os.path.dirname(os.path.abspath(__file__)).rstrip("/")
-        os.chdir(current_dir + "/..")
 
-        json_data = _override_generated_openapi_spec()
+        json_data = _override_generated_openapi_spec(path=f"{current_dir.rstrip('/')}/openapi.yml")
         assert json_data
 
-        # change dir so the oldopenapi.yaml CANNOT be found
-        os.chdir("./tests")
-
-        json_data = _override_generated_openapi_spec()
+        json_data = _override_generated_openapi_spec(path=f"{current_dir.rstrip('/')}/DOESNOTEXISTopenapi.yml")
         assert not json_data

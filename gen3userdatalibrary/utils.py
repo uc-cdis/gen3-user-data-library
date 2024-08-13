@@ -1,7 +1,6 @@
 from typing import Any, Dict
 
 from gen3userdatalibrary import logging
-from gen3userdatalibrary.factory import Factory
 
 
 def get_from_cfg_metadata(

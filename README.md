@@ -61,11 +61,12 @@ The test db config by default is:
 DB_CONNECTION_STRING="postgresql+asyncpg://postgres:postgres@localhost:5432/testgen3datalibrary"
 ```
 
-So expects a `postres` user with access to a `testgen3datalibrary`.
+So it expects a `postgres` user with access to a `testgen3datalibrary` database.
 
 The general app expects the same `postgres` user with access to `gen3datalibrary`.
 
-You need to `alembic migrate head` on both.
+> You must create the `testgen3datalibrary` and `gen3datalibrary` databases in Postgres yourself before attempting the migration.
+> Once created, you need to `alembic migrate head` on both.
 
 #### Run the Service
 

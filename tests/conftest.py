@@ -1,32 +1,47 @@
+"""
+This is modeled after docs and articles showing how to properly setup testing
+using async sqlalchemy, while properly ensuring isolation between the tests.
+
+Ultimately, these are fixtures used by the tests which handle the isolation behind the scenes,
+by using properly scoped fixtures with cleanup/teardown.
+
+More info on how this setup works:
+
+- Creates a session-level, shared event loop
+- The "session" uses a fuction-scoped engine + the shared session event loop
+    - Function-scoped engine clears out the database at the beginning and end to ensure test isolation
+        - This could maybe be set at the class level or higher, but without running into major performance issues,
+          I think it's better to ensure a full cleanup between tests
+    - session uses a nested transaction, which it starts but then rolls back after the test (meaning that
+      any changes should be isolated)
+"""
+
 import importlib
 import os
 
-import pytest
+import asyncio
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+import pytest
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from gen3userdatalibrary.models import Base
 from gen3userdatalibrary import config
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 
-# https://medium.com/@lawsontaylor/the-ultimate-fastapi-project-setup-fastapi-async-postgres-sqlmodel-pytest-and-docker-ed0c6afea11b
-import asyncio
-
-import pytest
-import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-
-
-@pytest.fixture(scope="session")
-def event_loop(request):
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+@pytest.fixture(scope="session", autouse=True)
+def ensure_test_config():
+    os.chdir(os.path.dirname(os.path.abspath(__file__)).rstrip("/"))
+    importlib.reload(config)
+    assert not config.DEBUG_SKIP_AUTH
 
 
 @pytest_asyncio.fixture(scope="function")
 async def engine():
+    """
+    Non-session scoped engine which recreates the database, yields, then drops the tables
+    """
     engine = create_async_engine(
         str(config.DB_CONNECTION_STRING),
         echo=False,
@@ -42,11 +57,16 @@ async def engine():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
-    await engine.dispose()  # Ensure proper disposal of the engine
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture()
-async def session(engine, event_loop):
+async def session(engine):
+    """
+    Database session which utilizes the above engine and event loop and sets up a nested transaction before yielding.
+    It rolls back the nested transaction after yield.
+    """
+    event_loop = asyncio.get_running_loop()
     session_maker = async_sessionmaker(
         engine,
         expire_on_commit=False,
@@ -57,9 +77,7 @@ async def session(engine, event_loop):
     async with engine.connect() as conn:
         tsx = await conn.begin()
         async with session_maker(bind=conn) as session:
-            nested_tsx = await conn.begin_nested()
+
             yield session
 
-            if nested_tsx.is_active:
-                await nested_tsx.rollback()
             await tsx.rollback()

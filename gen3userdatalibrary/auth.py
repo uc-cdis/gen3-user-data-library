@@ -113,36 +113,6 @@ async def get_user_id(
     return token_claims["sub"]
 
 
-async def raise_if_user_exceeded_limits(
-    token: HTTPAuthorizationCredentials = Depends(get_bearer_token),
-    request: Request = None,
-):
-    """
-    Checks if the user has exceeded certain limits which should prevent them from using the AI.
-
-    Args:
-        token (HTTPAuthorizationCredentials): an authorization token (optional, you can also provide request
-            and this can be parsed from there). this has priority over any token from request.
-        request (Request): The incoming HTTP request. Used to parse tokens from header.
-
-    Returns:
-        bool: True if the user has exceeded limits; False otherwise.
-    """
-    user_limit_exceeded = False
-
-    token = await _get_token(token, request)
-
-    # TODO logic to determine if it's been exceeded
-    #      make sure you try to handle the case where ALLOW_ANONYMOUS_ACCESS is on
-
-    if user_limit_exceeded:
-        logging.error("User has exceeded limits!")
-        raise HTTPException(
-            HTTP_429_TOO_MANY_REQUESTS,
-            "You've reached a limit for your user. Please try again later.",
-        )
-
-
 async def _get_token_claims(
     token: HTTPAuthorizationCredentials = None,
     request: Request = None,
