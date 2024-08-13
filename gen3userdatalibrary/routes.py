@@ -258,7 +258,10 @@ async def get_version(request: Request) -> dict:
 
 @root_router.get("/_status/")
 @root_router.get("/_status", include_in_schema=False)
-async def get_status(request: Request) -> dict:
+async def get_status(
+    request: Request,
+    data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
+) -> JSONResponse:
     """
     Return the status of the running service
 
@@ -266,11 +269,23 @@ async def get_status(request: Request) -> dict:
         request (Request): FastAPI request (so we can check authorization)
 
     Returns:
-        dict: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
+        JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
     await authorize_request(
         request=request,
         authz_access_method="read",
         authz_resources=["/gen3_data_library/service_info/status"],
     )
-    return {"status": "OK", "timestamp": time.time()}
+
+    return_status = status.HTTP_201_CREATED
+    status_text = "OK"
+
+    try:
+        await data_access_layer.test_connection()
+    except Exception:
+        return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+        status_text = "UNHEALTHY"
+
+    response = {"status": status_text, "timestamp": time.time()}
+
+    return JSONResponse(status_code=return_status, content=response)

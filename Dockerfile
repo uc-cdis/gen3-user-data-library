@@ -1,4 +1,4 @@
-FROM quay.io/cdis/amazonlinux:python3.9-master as build-deps
+FROM quay.io/cdis/amazonlinux:python3.9-master AS build-deps
 
 USER root
 
@@ -15,7 +15,6 @@ WORKDIR /$appname
 # copy ONLY poetry artifact, install the dependencies but not gen3userdatalibrary
 # this will make sure that the dependencies are cached
 COPY poetry.lock pyproject.toml /$appname/
-COPY ./docs/openapi.yaml /$appname/docs/openapi.yaml
 RUN poetry config virtualenvs.in-project true \
     && poetry install -vv --no-root --only main --no-interaction \
     && poetry show -v
@@ -49,7 +48,4 @@ WORKDIR /$appname
 
 USER appuser
 
-CMD [
-    "poetry", "run", "gunicorn", "gen3userdatalibrary.main:app", "-k", "uvicorn.workers.UvicornWorker",
-    "-c", "gunicorn.conf.py", "--user", "appuser", "--group", "appuser"
-]
+CMD ["poetry", "run", "gunicorn", "gen3userdatalibrary.main:app", "-k", "uvicorn.workers.UvicornWorker", "-c", "gunicorn.conf.py", "--user", "appuser", "--group", "appuser"]

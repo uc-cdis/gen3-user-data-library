@@ -32,7 +32,7 @@ import datetime
 from typing import List, Optional
 
 from jsonschema import ValidationError, validate
-from sqlalchemy import update
+from sqlalchemy import update, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 
@@ -132,11 +132,15 @@ class DataAccessLayer(object):
         list_id: int,
         name: Optional[str],
     ):
-        q = update(UserList).where(UserList.id == list_id)
-        if name:
-            q = q.values(name=name)
-        q.execution_options(synchronize_session="fetch")
-        await self.db_session.execute(q)
+        pass
+        # q = update(UserList).where(UserList.id == list_id)
+        # if name:
+        #     q = q.values(name=name)
+        # q.execution_options(synchronize_session="fetch")
+        # await self.db_session.execute(q)
+
+    async def test_connection(self):
+        await self.db_session.execute(text('SELECT 1;'))
 
 
 async def get_data_access_layer():

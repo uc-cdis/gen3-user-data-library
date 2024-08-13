@@ -132,7 +132,7 @@ To run:
 docker run --name gen3userdatalibrary \
 --env-file "./.env" \
 -v "$SOME_OTHER_CONFIG":"$SOME_OTHER_CONFIG" \
--p 8089:8089 \
+-p 8089:8000 \
 gen3userdatalibrary:latest
 ```
 

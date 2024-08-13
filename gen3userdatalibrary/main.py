@@ -11,6 +11,7 @@ import yaml
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.routes import root_router
 from gen3userdatalibrary.metrics import Metrics
+from gen3userdatalibrary.db import get_data_access_layer
 
 
 @asynccontextmanager
@@ -32,6 +33,14 @@ async def lifespan(fastapi_app: FastAPI):
         enabled=config.ENABLE_PROMETHEUS_METRICS,
         prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
     )
+
+    try:
+        async for data_access_layer in get_data_access_layer():
+            await data_access_layer.test_connection()
+    except Exception as exc:
+        logging.exception("Startup database connection test FAILED. Unable to connect to the configured database.")
+        logging.debug(exc)
+        raise
 
     yield
 

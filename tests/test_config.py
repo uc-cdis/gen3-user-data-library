@@ -33,7 +33,10 @@ class TestConfigRouter(BaseTestRouter):
         """
         default = "default-value"
         retrieved_metadata_value = get_from_cfg_metadata(
-            "this_doesnt_exist", {"test_config_value": "foobar"}, default=default, type_=str
+            "this_doesnt_exist",
+            {"test_config_value": "foobar"},
+            default=default,
+            type_=str,
         )
         assert retrieved_metadata_value == default
 
@@ -43,7 +46,10 @@ class TestConfigRouter(BaseTestRouter):
         """
         default = "default-value"
         retrieved_metadata_value = get_from_cfg_metadata(
-            "this_doesnt_exist", {"test_config_value": "foobar"}, default=default, type_=float
+            "this_doesnt_exist",
+            {"test_config_value": "foobar"},
+            default=default,
+            type_=float,
         )
         assert retrieved_metadata_value == default
 
@@ -61,8 +67,12 @@ class TestConfigRouter(BaseTestRouter):
         """
         current_dir = os.path.dirname(os.path.abspath(__file__)).rstrip("/")
 
-        json_data = _override_generated_openapi_spec(path=f"{current_dir.rstrip('/')}/openapi.yml")
+        json_data = _override_generated_openapi_spec(
+            path=f"{current_dir.rstrip('/')}/openapi.yml"
+        )
         assert json_data
 
-        json_data = _override_generated_openapi_spec(path=f"{current_dir.rstrip('/')}/DOESNOTEXISTopenapi.yml")
+        json_data = _override_generated_openapi_spec(
+            path=f"{current_dir.rstrip('/')}/DOESNOTEXISTopenapi.yml"
+        )
         assert not json_data
