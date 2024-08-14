@@ -16,16 +16,16 @@ More info on how this setup works:
       any changes should be isolated)
 """
 
+import asyncio
 import importlib
 import os
 
-import asyncio
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from gen3userdatalibrary.models import Base
 from gen3userdatalibrary import config
+from gen3userdatalibrary.models import Base
 
 
 @pytest.fixture(scope="session", autouse=True)

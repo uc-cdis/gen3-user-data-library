@@ -29,10 +29,10 @@ What do we do in this file?
 """
 
 import datetime
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from jsonschema import ValidationError, validate
-from sqlalchemy import update, text
+from sqlalchemy import text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 
@@ -51,7 +51,7 @@ engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
 
-class DataAccessLayer(object):
+class DataAccessLayer():
     """
     Defines an abstract interface to manipulate the database. Instances are given a session to
     act within.
@@ -72,9 +72,8 @@ class DataAccessLayer(object):
         for user_list in user_lists:
             name = user_list.get("name", f"Saved List {now}")
             user_list_items = user_list.get("items", {})
-            validated_user_list_items = []
 
-            for item_id, item_contents in user_list_items.items():
+            for _, item_contents in user_list_items.items():
                 # TODO THIS NEEDS TO BE CFG
                 if item_contents.get("type") == "GA4GH_DRS":
                     try:
@@ -102,7 +101,7 @@ class DataAccessLayer(object):
                         raise
 
                     logging.warning(
-                        f"User-provided JSON is an unknown type. Creating anyway..."
+                        "User-provided JSON is an unknown type. Creating anyway..."
                     )
 
             user_id = await get_user_id()

@@ -1,17 +1,14 @@
-import os
+from contextlib import asynccontextmanager
 from importlib.metadata import version
 
-from contextlib import asynccontextmanager
 import fastapi
-from fastapi import FastAPI, Request, Response
-from prometheus_client import make_asgi_app, multiprocess
-from prometheus_client import CollectorRegistry
-import yaml
+from fastapi import FastAPI
+from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.routes import root_router
-from gen3userdatalibrary.metrics import Metrics
 from gen3userdatalibrary.db import get_data_access_layer
+from gen3userdatalibrary.metrics import Metrics
+from gen3userdatalibrary.routes import root_router
 
 
 @asynccontextmanager

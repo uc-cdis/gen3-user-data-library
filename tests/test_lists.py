@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from gen3userdatalibrary.main import root_router
+import pytest
 from tests.routes.conftest import BaseTestRouter
+
+from gen3userdatalibrary.main import root_router
 
 VALID_LIST_A = {
     "name": "My Saved List 1",

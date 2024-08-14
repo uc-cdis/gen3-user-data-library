@@ -1,20 +1,17 @@
+import time
 from datetime import datetime
 from importlib.metadata import version
-from typing import Dict, Any, Optional
-import time
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from jsonschema.exceptions import ValidationError
 from pydantic import BaseModel
-from starlette import status
 from sqlalchemy.exc import IntegrityError
+from starlette import status
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import (
-    authorize_request,
-    get_user_id,
-)
+from gen3userdatalibrary.auth import authorize_request, get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.utils import add_user_list_metric
 
@@ -141,7 +138,7 @@ async def create_user_list(
         )
 
     response_user_lists = {}
-    for user_list_id, user_list in new_user_lists.items():
+    for _, user_list in new_user_lists.items():
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
 
@@ -149,7 +146,6 @@ async def create_user_list(
 
     end_time = time.time()
 
-    # TODO: make a function for this
     action = "CREATE"
     response_time_seconds = end_time - start_time
     logging.info(
@@ -160,7 +156,7 @@ async def create_user_list(
     add_user_list_metric(
         fastapi_app=request.app,
         action=action,
-        lists=lists,
+        user_lists=lists,
         response_time_seconds=response_time_seconds,
         user_id=user_id,
     )

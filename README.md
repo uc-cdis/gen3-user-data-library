@@ -68,20 +68,15 @@ The general app expects the same `postgres` user with access to `gen3datalibrary
 > You must create the `testgen3datalibrary` and `gen3datalibrary` databases in Postgres yourself before attempting the migration.
 > Once created, you need to `alembic migrate head` on both.
 
-#### Run the Service
-
-Install and run service locally:
+The following script will migrate, setup env, and run the service locally:
 
 ```bash
-poetry install
 ./run.sh
 ```
 
 Hit the API:
 
 [insert example]
-
-> You can change the port in the `run.py` as needed
 
 ## Authz
 

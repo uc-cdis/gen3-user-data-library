@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from fastapi import FastAPI
 
@@ -8,9 +8,9 @@ from gen3userdatalibrary import logging
 def add_user_list_metric(
     fastapi_app: FastAPI,
     action: str,
-    lists: List[Dict[str, Any]],
+    user_lists: List[Dict[str, Any]],
     response_time_seconds: float,
-    user_id: str
+    user_id: str,
 ) -> None:
     """
     Add a metric to the Metrics() instance on the specified FastAPI app for managing user lists.
@@ -27,7 +27,7 @@ def add_user_list_metric(
     if not getattr(fastapi_app.state, "metrics", None):
         return
 
-    for list in lists:
+    for user_list in user_lists:
         fastapi_app.state.metrics.add_user_list_counter(
             action=action, user_id=user_id, response_time_seconds=response_time_seconds
         )

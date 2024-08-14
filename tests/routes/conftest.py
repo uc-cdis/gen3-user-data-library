@@ -1,7 +1,7 @@
-from httpx import AsyncClient
 import pytest_asyncio
+from httpx import AsyncClient
 
-from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
+from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.main import get_app
 
 
