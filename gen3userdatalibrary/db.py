@@ -29,7 +29,7 @@ What do we do in this file?
 """
 
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from jsonschema import ValidationError, validate
 from sqlalchemy import update, text
@@ -60,7 +60,7 @@ class DataAccessLayer(object):
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    async def create_user_lists(self, user_lists: List[dict]):
+    async def create_user_lists(self, user_lists: List[dict]) -> Dict[int, UserList]:
         """
 
         Note: if any items in any list fail, or any list fails to get created, no lists are created.
@@ -155,11 +155,11 @@ class DataAccessLayer(object):
         # q.execution_options(synchronize_session="fetch")
         # await self.db_session.execute(q)
 
-    async def test_connection(self):
+    async def test_connection(self) -> None:
         await self.db_session.execute(text("SELECT 1;"))
 
 
-async def get_data_access_layer():
+async def get_data_access_layer() -> DataAccessLayer:
     """
     Create an AsyncSession and yield an instance of the Data Access Layer,
     which acts as an abstract interface to manipulate the database.

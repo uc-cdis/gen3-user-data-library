@@ -1,24 +1,32 @@
-from typing import Any, Dict
+from typing import List, Dict, Any
+
+from fastapi import FastAPI
 
 from gen3userdatalibrary import logging
 
 
-def add_user_list_metric(fastapi_app, action, lists, response_time_seconds, user_id):
+def add_user_list_metric(
+    fastapi_app: FastAPI,
+    action: str,
+    lists: List[Dict[str, Any]],
+    response_time_seconds: float,
+    user_id: str
+) -> None:
     """
     Add a metric to the Metrics() instance on the specified FastAPI app for managing user lists.
 
-    # TODO
-
     Args:
-        fastapi_app:
-        action:
-        lists:
-        response_time_seconds:
-        user_id:
-
-    Returns:
-
+        fastapi_app (FastAPI): The FastAPI application instance where the metrics are being added, this
+            assumes that the .state.metrics contains a Metrics() instance
+        action (str): The action being performed (e.g., "CREATE", "READ", "UPDATE", "DELETE").
+        lists (list): A list of dictionaries representing user lists. Each dictionary may contain
+                      an "items" key with item details
+        response_time_seconds (float): The response time in seconds for the action performed
+        user_id (str): The identifier of the user associated with the action
     """
+    if not getattr(fastapi_app.state, "metrics", None):
+        return
+
     for list in lists:
         fastapi_app.state.metrics.add_user_list_counter(
             action=action, user_id=user_id, response_time_seconds=response_time_seconds

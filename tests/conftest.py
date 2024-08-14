@@ -20,8 +20,6 @@ import importlib
 import os
 
 import asyncio
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine

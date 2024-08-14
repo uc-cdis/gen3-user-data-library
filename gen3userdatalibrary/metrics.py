@@ -1,4 +1,8 @@
+from typing import Dict, Any
+
 from cdispyutils.metrics import BaseMetrics
+
+from gen3userdatalibrary import config
 
 USER_LIST_GAUGE= {
     "name": "gen3_data_library_user_lists",
@@ -17,8 +21,17 @@ API_USER_LIST_ITEM_COUNTER = {
 
 
 class Metrics(BaseMetrics):
-    def add_user_list_counter(self, **kwargs):
+    def __init__(self, prometheus_dir: str, enabled: bool = True) -> None:
+        super().__init__(prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR, enabled=enabled)
+
+    def add_user_list_counter(self, **kwargs: Dict[str, Any]) -> None:
+        if not self.enabled:
+            return
+
         self.increment_counter(labels=kwargs, **API_USER_LIST_COUNTER)
 
-    def add_user_list_item_counter(self, **kwargs):
+    def add_user_list_item_counter(self, **kwargs: Dict[str, Any]) -> None:
+        if not self.enabled:
+            return
+
         self.increment_counter(labels=kwargs, **API_USER_LIST_ITEM_COUNTER)

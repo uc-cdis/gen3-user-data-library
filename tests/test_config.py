@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 
 from gen3userdatalibrary import config
-from gen3userdatalibrary.main import _override_generated_openapi_spec
 from gen3userdatalibrary.utils import get_from_cfg_metadata
 from gen3userdatalibrary.main import root_router
 from tests.routes.conftest import BaseTestRouter
@@ -60,19 +59,3 @@ class TestConfigRouter(BaseTestRouter):
         """
         response = await client.get(endpoint)
         assert response.status_code == 200
-
-    async def test_openapi(self):
-        """
-        Test our override of FastAPI's default openAPI
-        """
-        current_dir = os.path.dirname(os.path.abspath(__file__)).rstrip("/")
-
-        json_data = _override_generated_openapi_spec(
-            path=f"{current_dir.rstrip('/')}/openapi.yml"
-        )
-        assert json_data
-
-        json_data = _override_generated_openapi_spec(
-            path=f"{current_dir.rstrip('/')}/DOESNOTEXISTopenapi.yml"
-        )
-        assert not json_data

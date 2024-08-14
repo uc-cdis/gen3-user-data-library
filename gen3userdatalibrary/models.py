@@ -1,4 +1,5 @@
 import datetime
+from typing import Dict
 
 from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import declarative_base
@@ -63,7 +64,7 @@ class UserList(Base):
 
     __table_args__ = (UniqueConstraint("name", "creator", name="_name_creator_uc"),)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         return {
             "id": self.id,
             "version": self.version,

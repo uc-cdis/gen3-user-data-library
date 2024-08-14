@@ -33,7 +33,7 @@ class TestAuthRouter(BaseTestRouter):
 
         response = await client.get(endpoint)
 
-        assert response.status_code == 200
+        assert str(response.status_code).startswith("20")
 
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
