@@ -31,7 +31,7 @@ def add_user_list_metric(
         fastapi_app.state.metrics.add_user_list_counter(
             action=action, user_id=user_id, response_time_seconds=response_time_seconds
         )
-        for item_id, item in list.get("items", {}).items():
+        for item_id, item in user_list.get("items", {}).items():
             fastapi_app.state.metrics.add_user_list_item_counter(
                 action=action,
                 user_id=user_id,
