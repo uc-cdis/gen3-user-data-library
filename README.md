@@ -63,10 +63,9 @@ DB_CONNECTION_STRING="postgresql+asyncpg://postgres:postgres@localhost:5432/test
 
 So it expects a `postgres` user with access to a `testgen3datalibrary` database.
 
-The general app expects the same `postgres` user with access to `gen3datalibrary`.
+The general app (by default) expects the same `postgres` user with access to `gen3datalibrary`.
 
-> You must create the `testgen3datalibrary` and `gen3datalibrary` databases in Postgres yourself before attempting the migration.
-> Once created, you need to `alembic migrate head` on both.
+> NOTE: The run.sh (and test.sh) scripts will attempt to create the database using the configured `DB_CONNECTION_STRING` if it doesn't exist.
 
 The following script will migrate, setup env, and run the service locally:
 
