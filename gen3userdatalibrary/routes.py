@@ -15,7 +15,7 @@ from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import authorize_request, get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.utils import add_user_list_metric
-
+from fastapi.responses import RedirectResponse
 root_router = APIRouter()
 
 
@@ -60,6 +60,11 @@ class UserListResponseModel(BaseModel):
     lists: Dict[int, UserListModel]
 
 
+@root_router.get("/", include_in_schema=False)
+async def redirect_to_docs():
+    return RedirectResponse(url="/redoc")
+
+
 @root_router.post(
     "/lists/",
     # most of the following stuff helps populate the openapi docs
@@ -83,9 +88,9 @@ class UserListResponseModel(BaseModel):
     include_in_schema=False,
 )
 async def create_user_list(
-    request: Request,
-    data: dict,
-    data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
+        request: Request,
+        data: dict,
+        data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
 ) -> JSONResponse:
     """
     Create a new list with the provided items
@@ -193,7 +198,7 @@ async def create_user_list(
     include_in_schema=False,
 )
 async def read_all_lists(
-    request: Request,
+        request: Request,
 ) -> dict:
     """
     Read
@@ -250,7 +255,7 @@ async def delete_all_lists(request: Request, data: dict) -> dict:
     include_in_schema=False,
 )
 async def delete_all_lists(
-    request: Request,
+        request: Request,
 ) -> dict:
     """
     Delete all lists
@@ -297,8 +302,8 @@ async def get_version(request: Request) -> dict:
 @root_router.get("/_status/")
 @root_router.get("/_status", include_in_schema=False)
 async def get_status(
-    request: Request,
-    data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
+        request: Request,
+        data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
 ) -> JSONResponse:
     """
     Return the status of the running service
