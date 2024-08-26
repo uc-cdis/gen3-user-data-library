@@ -146,9 +146,8 @@ async def _get_token_claims(
         logging.debug(
             f"checking access token for scopes: `user` and `openid` and audience: `{audience}`"
         )
-        token_claims = await access_token(
-            "user", "openid", audience=audience, purpose="access"
-        )(token)
+        g = access_token("user", "openid", audience=audience, purpose="access")
+        token_claims = await g(token)
     except Exception as exc:
         logging.error(exc.detail if hasattr(exc, "detail") else exc, exc_info=True)
         raise HTTPException(

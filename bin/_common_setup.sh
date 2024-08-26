@@ -7,7 +7,7 @@ set -e
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source the environment variables from the metrics setup script
-source "${CURRENT_DIR}/bin/setup_prometheus"
+source "${CURRENT_DIR}/setup_prometheus"
 
 echo "installing dependencies w/ 'poetry install -vv'..."
 poetry install -vv

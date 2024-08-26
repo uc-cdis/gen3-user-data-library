@@ -58,7 +58,8 @@ The test db config by default is:
 DB_CONNECTION_STRING="postgresql+asyncpg://postgres:postgres@localhost:5432/testgen3datalibrary"
 ```
 
-So it expects a `postgres` user with access to a `testgen3datalibrary` database.
+So it expects a `postgres` user with access to a `testgen3datalibrary` database; you will need to ensure both are
+created and set up correctly.
 
 The general app (by default) expects the same `postgres` user with access to `gen3datalibrary`.
 
