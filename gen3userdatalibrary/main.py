@@ -3,6 +3,7 @@ from importlib.metadata import version
 
 import fastapi
 from fastapi import FastAPI
+from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 
 from gen3userdatalibrary import config, logging
@@ -12,7 +13,7 @@ from gen3userdatalibrary.routes import root_router
 
 
 @asynccontextmanager
-async def lifespan(fastapi_app: FastAPI):
+async def lifespan(app: FastAPI):
     """
     Parse the configuration, setup and instantiate necessary classes.
 
@@ -22,13 +23,15 @@ async def lifespan(fastapi_app: FastAPI):
     https://fastapi.tiangolo.com/advanced/events/#lifespan
 
     Args:
-        fastapi_app (fastapi.FastAPI): The FastAPI app object
+        app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    fastapi_app.state.metrics = Metrics(
+    app.state.metrics = Metrics(
         enabled=config.ENABLE_PROMETHEUS_METRICS,
         prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
     )
+
+    app.state.arborist_client = ArboristClient(arborist_base_url=config.ARBORIST_URL)
 
     try:
         logging.debug(
@@ -43,6 +46,19 @@ async def lifespan(fastapi_app: FastAPI):
         )
         logging.debug(exc)
         raise
+
+    if not config.DEBUG_SKIP_AUTH:
+        try:
+            logging.debug(
+                "Startup policy engine (Arborist) connection test initiating..."
+            )
+            assert app.state.arborist_client.healthy()
+        except Exception as exc:
+            logging.exception(
+                "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
+            )
+            logging.debug(exc)
+            raise
 
     yield
 

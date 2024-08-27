@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
+from gen3authz.client.arborist.errors import ArboristError
 from jsonschema.exceptions import ValidationError
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
@@ -96,7 +97,23 @@ async def create_user_list(
     """
     user_id = await get_user_id(request=request)
 
-    # TODO dynamically create user policy
+    # TODO dynamically create user policy, ROUGH UNTESTED VERSION: need to verify
+    if not config.DEBUG_SKIP_AUTH:
+        # make sure the user exists in Arborist
+        # IMPORTANT: This is using the user's unique subject ID
+        request.app.state.arborist_client.create_user_if_not_exist(user_id)
+
+        resource = f"/users/{user_id}/user-data-library"
+
+        try:
+            logging.debug(
+                "attempting to update arborist resource: {}".format(resource)
+            )
+            request.app.state.arborist_client.update_resource("/", resource, merge=True)
+        except ArboristError as e:
+            logging.error(e)
+            # keep going; maybe just some conflicts from things existing already
+            # TODO: Unsure if this is safe, we might need to actually error here?
 
     await authorize_request(
         request=request,
@@ -166,6 +183,9 @@ async def create_user_list(
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
 
+# TODO: add GET for specific list
+# remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}}
+
 @root_router.get(
     "/lists/",
 )
@@ -188,7 +208,7 @@ async def read_all_lists(
 
     await authorize_request(
         request=request,
-        authz_access_method="create",
+        authz_access_method="read",
         authz_resources=[f"/users/{user_id}/user-data-library/"],
     )
 
@@ -216,7 +236,7 @@ async def delete_all_lists(request: Request, data: dict) -> dict:
 
     await authorize_request(
         request=request,
-        authz_access_method="create",
+        authz_access_method="delete",
         authz_resources=[f"/users/{user_id}/user-data-library/"],
     )
 
@@ -245,7 +265,7 @@ async def delete_all_lists(
 
     await authorize_request(
         request=request,
-        authz_access_method="create",
+        authz_access_method="delete",
         authz_resources=[f"/users/{user_id}/user-data-library/"],
     )
 

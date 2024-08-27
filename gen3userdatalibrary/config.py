@@ -45,3 +45,7 @@ ENABLE_PROMETHEUS_METRICS = config("ENABLE_PROMETHEUS_METRICS", default=False)
 PROMETHEUS_MULTIPROC_DIR = config(
     "PROMETHEUS_MULTIPROC_DIR", default="/var/tmp/prometheus_metrics"
 )
+
+# Location of the policy engine service, Arborist
+# Defaults to the default service name in k8s magic DNS setup
+ARBORIST_URL = config("ARBORIST_URL", default="http://arborist-service")

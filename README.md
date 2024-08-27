@@ -2,9 +2,6 @@
 
 [short description]
 
-https://docs.google.com/document/d/15V4ukguiPA-05Yg3u4zXEg1_NsxcRz_kq-6AS8xPMZU/edit#heading=h.1xf8she1w5nv
-https://towardsdatascience.com/build-an-async-python-service-with-fastapi-sqlalchemy-196d8792fa08
-
 
 **Table of Contents**
 
@@ -142,3 +139,13 @@ To kill and remove running container:
 docker kill gen3userdatalibrary
 docker remove gen3userdatalibrary
 ```
+
+#### Debug in an IDE (such as PyCharm)
+
+If you want to debug the running app in an IDE and the bash scripts
+are not an easy option (I'm looking at you PyCharm), then 
+you can use `debug_run.py` in the root folder as an entrypoint.
+
+> NOTE: There are some setup steps that the bash scripts do that you'll need to ensure 
+> are done. A key one is ensuring that the `PROMETHEUS_MULTIPROC_DIR` env var is set (default
+> is `/var/tmp/prometheus_metrics`). And make sure the database exists and is migrated.

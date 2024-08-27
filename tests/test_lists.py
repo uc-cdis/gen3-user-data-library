@@ -192,9 +192,6 @@ class TestUserListsRouter(BaseTestRouter):
             else:
                 # fail if the list is neither A or B
                 assert False
-        #
-        # # this cannot be a fixture b/c it needs to run for each parameter from parameterize, not after the whole test
-        # test_data_access_layer.db_session.metadata.drop_all(bind=test_data_access_layer.db_session.session.get_bind())
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
