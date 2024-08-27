@@ -27,7 +27,6 @@ class Metrics(BaseMetrics):
             prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR, enabled=enabled
         )
 
-
     def add_user_list_counter(self, **kwargs: Dict[str, Any]) -> None:
         """
         Increment the counter for API requests related to user lists,

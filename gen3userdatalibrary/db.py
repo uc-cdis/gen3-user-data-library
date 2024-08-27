@@ -51,7 +51,7 @@ engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
 
-class DataAccessLayer():
+class DataAccessLayer:
     """
     Defines an abstract interface to manipulate the database. Instances are given a session to
     act within.

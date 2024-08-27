@@ -106,9 +106,7 @@ async def create_user_list(
         resource = f"/users/{user_id}/user-data-library"
 
         try:
-            logging.debug(
-                "attempting to update arborist resource: {}".format(resource)
-            )
+            logging.debug("attempting to update arborist resource: {}".format(resource))
             request.app.state.arborist_client.update_resource("/", resource, merge=True)
         except ArboristError as e:
             logging.error(e)
@@ -185,6 +183,7 @@ async def create_user_list(
 
 # TODO: add GET for specific list
 # remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}}
+
 
 @root_router.get(
     "/lists/",
