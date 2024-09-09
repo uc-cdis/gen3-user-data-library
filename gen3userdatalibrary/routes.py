@@ -227,8 +227,8 @@ async def read_all_lists(
     return JSONResponse(status_code=status.HTTP_200_OK, content=response)
 
 
-@root_router.put("/lists/")
-@root_router.put("/lists", include_in_schema=False)
+@root_router.delete("/lists/")
+@root_router.delete("/lists", include_in_schema=False)
 async def delete_all_lists(request: Request,
                            data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
@@ -373,8 +373,8 @@ async def get_list_by_id(
     return JSONResponse(status_code=return_status, content=response)
 
 
-@root_router.post("/lists/{ID}/")
-@root_router.post("/lists/{ID}", include_in_schema=False)
+@root_router.put("/lists/{ID}/")
+@root_router.put("/lists/{ID}", include_in_schema=False)
 async def upsert_list_by_id(
         request: Request,
         list_id: int,
@@ -393,7 +393,7 @@ async def upsert_list_by_id(
 
     await authorize_request(
         request=request,
-        authz_access_method="upsert",
+        authz_access_method="put",
         authz_resources=["/gen3_data_library/service_info/status"])
 
     return_status = status.HTTP_201_CREATED
