@@ -4,7 +4,6 @@ from importlib.metadata import version
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
 from gen3authz.client.arborist.errors import ArboristError
 from jsonschema.exceptions import ValidationError
 from pydantic import BaseModel
@@ -65,10 +64,21 @@ class UserListResponseModel(BaseModel):
 
 @root_router.get("/", include_in_schema=False)
 async def redirect_to_docs():
+    """
+    Redirects to the API docs if they hit the base endpoint.
+    :return:
+    """
     return RedirectResponse(url="/redoc")
 
 
 async def try_creating_lists(data_access_layer, lists, user_id) -> Dict[int, UserList]:
+    """
+    Handler for modeling endpoint data into orm
+    :param data_access_layer: an instance of our DAL
+    :param lists: list of user lists to shape
+    :param user_id: id of the list owner
+    :return: dict that maps id -> user list
+    """
     try:
         new_user_lists = await data_access_layer.create_user_lists(user_lists=lists)
     except IntegrityError:
@@ -168,20 +178,21 @@ async def create_user_list(
     logging.debug(response)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
+
 # TODO: add GET for specific list
 # remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}}
 
+
 @root_router.get("/lists/")
-@root_router.get("/lists", include_in_schema=False,)
+@root_router.get("/lists", include_in_schema=False, )
 async def read_all_lists(
         request: Request,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
-    Read
+    Return all lists for user
 
     Args:
-        request (Request): FastAPI request (so we can check authorization)
-        :param request: request object
+        :param request: FastAPI request (so we can check authorization)
         :param data_access_layer: how we interface with db
     """
     user_id = await get_user_id(request=request)
@@ -217,17 +228,15 @@ async def read_all_lists(
 
 
 @root_router.put("/lists/")
-@root_router.put("/lists",include_in_schema=False)
+@root_router.put("/lists", include_in_schema=False)
 async def delete_all_lists(request: Request,
                            data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
-    Update
+    Delete all lists for a provided user
 
     Args:
-        request (Request): FastAPI request (so we can check authorization)
-        data (dict): Body from the POST
-        :param request:
-        :param data_access_layer:
+        :param request: FastAPI request (so we can check authorization)
+        :param data_access_layer: how we interface with db
     """
     user_id = await get_user_id(request=request)
 
@@ -238,7 +247,7 @@ async def delete_all_lists(request: Request,
         authz_resources=[f"/users/{user_id}/user-data-library/"])
 
     start_time = time.time()
-    user_id = "1"  # tood: derive correct user id from token
+    user_id = "1"  # todo: derive correct user id from token
 
     try:
         number_of_lists_deleted = await data_access_layer.delete_all_lists(user_id)
@@ -299,12 +308,11 @@ async def get_status(
     Return the status of the running service
 
     Args:
-        request (Request): FastAPI request (so we can check authorization)
+        :param request: FastAPI request (so we can check authorization)
+        :param data_access_layer: how we interface with db
 
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
-        :param request:
-        :param data_access_layer:
     """
     await authorize_request(
         request=request,
@@ -316,7 +324,7 @@ async def get_status(
 
     try:
         await data_access_layer.test_connection()
-    except Exception:
+    except Exception as e:
         return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
         status_text = "UNHEALTHY"
 
@@ -328,42 +336,36 @@ async def get_status(
 @root_router.get("/lists/{id}/")
 @root_router.get("/lists/{id}", include_in_schema=False)
 async def get_list_by_id(
-        id: int,
+        list_id: int,
         request: Request,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
-    todo: fix this doc and check that the other docs are correct
-    Return the status of the running service
+    Find list by its id
 
     Args:
-        request (Request): FastAPI request (so we can check authorization)
+        :param list_id: the id of the list you wish to retrieve
+        :param request: FastAPI request (so we can check authorization)
+        :param data_access_layer: how we interface with db
 
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
-        :param id:
-        :param request:
-        :param data_access_layer:
     """
     await authorize_request(
         request=request,
         authz_access_method="read",
-        authz_resources=["/gen3_data_library/service_info/status"],
-    )
+        authz_resources=["/gen3_data_library/service_info/status"])
 
     return_status = status.HTTP_201_CREATED
     status_text = "OK"
 
     try:
-        user_list = await data_access_layer.get_list(id)
+        user_list = await data_access_layer.get_list(list_id)
         if user_list is None:
             raise HTTPException(status_code=404, detail="List not found")
         response = {"status": status_text, "timestamp": time.time(), "body": {
             "lists": {
-                user_list.id: user_list.to_dict()
-            }
-        }}
-
-    except Exception:
+                user_list.id: user_list.to_dict()}}}
+    except Exception as e:
         return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
         status_text = "UNHEALTHY"
         response = {"status": status_text, "timestamp": time.time()}
@@ -375,30 +377,29 @@ async def get_list_by_id(
 @root_router.post("/lists/{ID}", include_in_schema=False)
 async def upsert_list_by_id(
         request: Request,
-        ID: int,
+        list_id: int,
         body: dict,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
-    Return the status of the running service
+    Create a new list if it does not exist with the provided content OR updates a list with the
+        provided content if a list already exists.
 
-    Args:
-        request (Request): FastAPI request (so we can check authorization)
-
-    Returns:
-        JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
-        :param request:
-        :param data_access_layer:
+    :param list_id: the id of the list you wish to retrieve
+    :param request: FastAPI request (so we can check authorization)
+    :param data_access_layer: how we interface with db
+    :param body: content to change list
+    :return: JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
+
     await authorize_request(
         request=request,
         authz_access_method="upsert",
-        authz_resources=["/gen3_data_library/service_info/status"],
-    )
+        authz_resources=["/gen3_data_library/service_info/status"])
 
     return_status = status.HTTP_201_CREATED
     status_text = "OK"
     # todo: we should probably not be trying to create entries by id, that should be private right?
-    list_exists = await data_access_layer.get_list(ID) is not None
+    list_exists = await data_access_layer.get_list(list_id) is not None
     user_list = dict(body.items())
     if not list_exists:
         user_id = await get_user_id(request=request)
@@ -417,7 +418,7 @@ async def upsert_list_by_id(
         return JSONResponse(status_code=return_status, content=response)
 
     try:
-        outcome = await data_access_layer.update_list(ID, list_as_orm)
+        outcome = await data_access_layer.update_list(list_id, list_as_orm)
         response = {"status": status_text, "timestamp": time.time(), "updated_list": outcome.to_dict()}
     except Exception as e:
         return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -430,20 +431,16 @@ async def upsert_list_by_id(
 @root_router.delete("/lists/{ID}/")
 @root_router.delete("/lists/{ID}", include_in_schema=False)
 async def delete_list_by_id(
-        ID: int,
+        list_id: int,
         request: Request,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
-    Return the status of the running service
+    Delete a list under the given id
 
-    Args:
-        request (Request): FastAPI request (so we can check authorization)
-
-    Returns:
-        JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
-        :param ID:
-        :param request:
-        :param data_access_layer:
+    :param list_id: the id of the list you wish to retrieve
+    :param request: FastAPI request (so we can check authorization)
+    :param data_access_layer: how we interface with db
+    :return: JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
     await authorize_request(
         request=request,
@@ -454,8 +451,8 @@ async def delete_list_by_id(
     status_text = "OK"
 
     try:
-        list_deleted = await data_access_layer.delete_list(ID)
-    except Exception:
+        list_deleted = await data_access_layer.delete_list(list_id)
+    except Exception as e:
         return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
         status_text = "UNHEALTHY"
         list_deleted = 0

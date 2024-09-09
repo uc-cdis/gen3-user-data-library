@@ -22,7 +22,7 @@ import os
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.models import Base

@@ -15,7 +15,7 @@ poetry env info
 echo "ensuring db exists"
 
 # Read the .env file and export environment variables
-export $(grep -v '^#' "${CURRENT_DIR}/.env" | xargs)
+export "$(grep -v '^#' "${CURRENT_DIR}/.env" | xargs)"
 
 if [ -z "${DB_CONNECTION_STRING}" ]; then
     echo "DB_CONNECTION_STRING is not set in the .env file"

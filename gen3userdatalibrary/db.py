@@ -29,11 +29,9 @@ What do we do in this file?
 """
 
 import datetime
-from typing import Dict, List, Optional
-
-from fastapi import HTTPException
+from typing import Dict, List
 from jsonschema import ValidationError, validate
-from sqlalchemy import text, update, delete, func
+from sqlalchemy import text, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 
@@ -172,22 +170,6 @@ class DataAccessLayer():
         result = await self.db_session.execute(query)
         count = result.scalar()
         await self.db_session.execute(delete(UserList).where(UserList.creator == sub_id))
-        await self.db_session.commit()
-        return count
-
-    async def get_list(self, list_id: int) -> UserList:
-        query = select(UserList).where(UserList.id == list_id)
-        result = await self.db_session.execute(query)
-        user_list = result.scalar_one_or_none()  # Returns the first row or None if no match
-        return user_list
-
-    async def delete_list(self, list_id: int):
-        count_query = select(func.count()).select_from(UserList).where(UserList.id == list_id)
-        count_result = await self.db_session.execute(count_query)
-        count = count_result.scalar()
-        del_query = delete(UserList).where(UserList.id == list_id)
-        count_query.execution_options(synchronize_session="fetch")
-        await self.db_session.execute(del_query)
         await self.db_session.commit()
         return count
 

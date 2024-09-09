@@ -1,11 +1,5 @@
-import importlib
-import os
-from unittest.mock import patch
-
 import pytest
 from tests.routes.conftest import BaseTestRouter
-
-from gen3userdatalibrary import config
 from gen3userdatalibrary.main import root_router
 from gen3userdatalibrary.utils import get_from_cfg_metadata
 

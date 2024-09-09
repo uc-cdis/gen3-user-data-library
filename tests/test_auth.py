@@ -1,16 +1,9 @@
-import os
 from unittest.mock import AsyncMock, patch
-
 import pytest
-from fastapi.security import HTTPAuthorizationCredentials
-
 from tests.routes.conftest import BaseTestRouter
-
 from gen3userdatalibrary import config
-from gen3userdatalibrary.auth import _get_token, authorize_request
+from gen3userdatalibrary.auth import _get_token
 from gen3userdatalibrary.main import root_router
-from gen3.auth import Gen3Auth
-
 
 @pytest.mark.asyncio
 class TestAuthRouter(BaseTestRouter):

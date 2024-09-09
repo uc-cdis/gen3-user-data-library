@@ -10,8 +10,7 @@ def add_user_list_metric(
     action: str,
     user_lists: List[Dict[str, Any]],
     response_time_seconds: float,
-    user_id: str,
-) -> None:
+    user_id: str) -> None:
     """
     Add a metric to the Metrics() instance on the specified FastAPI app for managing user lists.
 
@@ -19,7 +18,7 @@ def add_user_list_metric(
         fastapi_app (FastAPI): The FastAPI application instance where the metrics are being added, this
             assumes that the .state.metrics contains a Metrics() instance
         action (str): The action being performed (e.g., "CREATE", "READ", "UPDATE", "DELETE").
-        lists (list): A list of dictionaries representing user lists. Each dictionary may contain
+        user_lists (list): A list of dictionaries representing user lists. Each dictionary may contain
                       an "items" key with item details
         response_time_seconds (float): The response time in seconds for the action performed
         user_id (str): The identifier of the user associated with the action
