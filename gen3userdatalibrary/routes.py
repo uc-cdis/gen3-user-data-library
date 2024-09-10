@@ -373,8 +373,8 @@ async def get_list_by_id(
     return JSONResponse(status_code=return_status, content=response)
 
 
-@root_router.post("/lists/{ID}/")
-@root_router.post("/lists/{ID}", include_in_schema=False)
+@root_router.put("/lists/{ID}/")
+@root_router.put("/lists/{ID}", include_in_schema=False)
 async def upsert_list_by_id(
         request: Request,
         list_id: int,
