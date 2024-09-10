@@ -227,8 +227,8 @@ async def read_all_lists(
     return JSONResponse(status_code=status.HTTP_200_OK, content=response)
 
 
-@root_router.put("/lists/")
-@root_router.put("/lists", include_in_schema=False)
+@root_router.delete("/lists/")
+@root_router.delete("/lists", include_in_schema=False)
 async def delete_all_lists(request: Request,
                            data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """

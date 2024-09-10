@@ -22,7 +22,7 @@ sqlalchemy = {extras = ["asyncio"], version = ">=2.0.31"}
 asyncpg = ">=0.29.0"
 prometheus-client = ">=0.20.0"
 cdispyutils = {git = "https://github.com/uc-cdis/cdis-python-utils/", rev = "feat/common_metrics"}
-
+cryptography = "43.0.1"
 # NOTE:
 # for testing with updated libaries as git repos:
 # foobar = {git = "https://github.com/uc-cdis/some-repo", rev = "feat/test"}
