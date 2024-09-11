@@ -29,7 +29,7 @@ What do we do in this file?
 """
 
 import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 from jsonschema import ValidationError, validate
 from sqlalchemy import text, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -173,7 +173,7 @@ class DataAccessLayer():
         await self.db_session.commit()
         return count
 
-    async def get_list(self, list_id: int) -> UserList:
+    async def get_list(self, list_id: int) -> Optional[UserList]:
         query = select(UserList).where(UserList.id == list_id)
         result = await self.db_session.execute(query)
         user_list = result.scalar_one_or_none()  # Returns the first row or None if no match
