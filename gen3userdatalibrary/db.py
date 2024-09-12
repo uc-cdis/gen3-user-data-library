@@ -104,7 +104,7 @@ async def create_user_list_instance(user_list: dict, user_id):
     return new_list
 
 
-class DataAccessLayer():
+class DataAccessLayer:
     """
     Defines an abstract interface to manipulate the database. Instances are given a session to
     act within.
@@ -145,15 +145,23 @@ class DataAccessLayer():
         query = await self.db_session.execute(select(UserList).order_by(UserList.id))
         return list(query.scalars().all())
 
+    async def get_list(self, list_id: int) -> Optional[UserList]:
+        query = select(UserList).where(UserList.id == list_id)
+        result = await self.db_session.execute(query)
+        user_list = result.scalar_one_or_none()
+        return user_list
+
+    async def get_existing_list_or_throw(self, list_id: int) -> UserList:
+        existing_record = await self.get_list(list_id)
+        if existing_record is None:
+            raise ValueError(f"No UserList found with id {list_id}")
+        return existing_record
+
     async def update_list(
             self,
             list_id: int,
             user_list: UserList) -> UserList:
-        q = select(UserList).where(UserList.id == list_id)
-        result = await self.db_session.execute(q)
-        existing_record = result.scalar_one_or_none()
-        if existing_record is None:
-            raise ValueError(f"No UserList found with id {list_id}")
+        existing_record = await self.get_existing_list_or_throw(list_id)
         for attr in dir(user_list):
             if not attr.startswith('_') and hasattr(existing_record, attr):
                 setattr(existing_record, attr, getattr(user_list, attr))
@@ -173,12 +181,6 @@ class DataAccessLayer():
         await self.db_session.commit()
         return count
 
-    async def get_list(self, list_id: int) -> Optional[UserList]:
-        query = select(UserList).where(UserList.id == list_id)
-        result = await self.db_session.execute(query)
-        user_list = result.scalar_one_or_none()  # Returns the first row or None if no match
-        return user_list
-
     async def delete_list(self, list_id: int):
         count_query = select(func.count()).select_from(UserList).where(UserList.id == list_id)
         count_result = await self.db_session.execute(count_query)
@@ -188,6 +190,17 @@ class DataAccessLayer():
         await self.db_session.execute(del_query)
         await self.db_session.commit()
         return count
+
+    async def replace_list(self, list_id, list_as_orm):
+        existing_obj = self.get_existing_list_or_throw(list_id)
+        await self.db_session.delete(existing_obj)
+        await self.db_session.commit()
+        await self.create_user_list(list_as_orm)
+
+    async def add_items_to_list(self, list_id: int, list_as_orm: UserList):
+        user_list = await self.get_existing_list_or_throw(list_id)
+        user_list.items.extend(list_as_orm.items)
+        await self.db_session.commit()
 
 
 async def get_data_access_layer() -> DataAccessLayer:

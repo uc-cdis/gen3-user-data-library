@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 from importlib.metadata import version
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
@@ -97,7 +97,7 @@ async def try_creating_lists(data_access_layer, lists, user_id) -> Dict[int, Use
     return new_user_lists
 
 
-@root_router.post(
+@root_router.put(
     "/lists/",
     # most of the following stuff helps populate the openapi docs
     response_model=UserListResponseModel,
@@ -112,12 +112,11 @@ async def try_creating_lists(data_access_layer, lists, user_id) -> Dict[int, Use
         },
         status.HTTP_400_BAD_REQUEST: {
             "description": "Bad request, unable to create list",
-        },
-    })
-@root_router.post(
+        }})
+@root_router.put(
     "/lists",
     include_in_schema=False)
-async def create_user_list(
+async def upsert_user_lists(
         request: Request,
         data: dict,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
@@ -156,6 +155,7 @@ async def create_user_list(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no lists provided")
     start_time = time.time()
 
+    # todo: try creating or updating lists
     new_user_lists = await try_creating_lists(data_access_layer, lists, user_id)
 
     response_user_lists = {}
@@ -179,9 +179,7 @@ async def create_user_list(
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
 
-# TODO: add GET for specific list
 # remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}}
-
 
 @root_router.get("/lists/")
 @root_router.get("/lists", include_in_schema=False, )
@@ -373,6 +371,41 @@ async def get_list_by_id(
     return JSONResponse(status_code=return_status, content=response)
 
 
+# todo: put replaces list, patch updates
+async def create_list_and_return_response(request, data_access_layer, user_list):
+    user_id = await get_user_id(request=request)
+    list_info = await try_creating_lists(data_access_layer, [user_list], user_id)
+    list_data = list_info.popitem()
+    assert list_data is not None
+    response = {"status": "OK", "timestamp": time.time(), "created_list": list_data[1].to_dict()}
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
+
+
+async def try_modeling_user_list(user_list) -> Union[UserList, JSONResponse]:
+    try:
+        user_id = await get_user_id()
+        list_as_orm = await create_user_list_instance(user_list, user_id)
+    except Exception as e:
+        return_status = status.HTTP_400_BAD_REQUEST
+        status_text = "UNHEALTHY"
+        response = {"status": status_text, "timestamp": time.time(),
+                    "error": "malformed list, could not update"}
+        return JSONResponse(status_code=return_status, content=response)
+    return list_as_orm
+
+
+async def ensure_list_exists_and_can_be_conformed(data_access_layer,
+                                                  list_id,
+                                                  body,
+                                                  request) -> Union[UserList, JSONResponse]:
+    list_exists = await data_access_layer.get_list(list_id) is not None
+    user_list = dict(body.items())
+    if not list_exists:
+        return await create_list_and_return_response(request, data_access_layer, user_list)
+    list_as_orm = await try_modeling_user_list(user_list)
+    return list_as_orm
+
+
 @root_router.put("/lists/{ID}/")
 @root_router.put("/lists/{ID}", include_in_schema=False)
 async def upsert_list_by_id(
@@ -393,39 +426,57 @@ async def upsert_list_by_id(
 
     await authorize_request(
         request=request,
+        # todo: what methods can we use?
         authz_access_method="upsert",
         authz_resources=["/gen3_data_library/service_info/status"])
 
-    return_status = status.HTTP_201_CREATED
-    status_text = "OK"
-    # todo: we should probably not be trying to create entries by id, that should be private right?
-    list_exists = await data_access_layer.get_list(list_id) is not None
-    user_list = dict(body.items())
-    if not list_exists:
-        user_id = await get_user_id(request=request)
-        list_info = await try_creating_lists(data_access_layer, [user_list], user_id)
-        list_data = list_info.popitem()
-        assert list_data is not None
-        response = {"status": status_text, "timestamp": time.time(), "created_list": list_data[1].to_dict()}
-        return JSONResponse(status_code=return_status, content=response)
-    try:
-        user_id = await get_user_id()
-        list_as_orm = await create_user_list_instance(user_list, user_id)
-    except Exception as e:
-        return_status = status.HTTP_400_BAD_REQUEST
-        status_text = "UNHEALTHY"
-        response = {"status": status_text, "timestamp": time.time(), "error": "malformed list, could not update"}
-        return JSONResponse(status_code=return_status, content=response)
+    # todo: decide to keep ids as is, or switch to guids
+    list_as_orm = await ensure_list_exists_and_can_be_conformed(data_access_layer,
+                                                                list_id, body, request)
+    if isinstance(list_as_orm, JSONResponse):
+        return list_as_orm  # todo bonus: variable name is misleading, is there a better way to do this?
 
     try:
-        outcome = await data_access_layer.update_list(list_id, list_as_orm)
-        response = {"status": status_text, "timestamp": time.time(), "updated_list": outcome.to_dict()}
+        outcome = await data_access_layer.replace_list(list_id, list_as_orm)
+        response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
+        return_status = status.HTTP_200_OK
     except Exception as e:
         return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
         status_text = "UNHEALTHY"
         response = {"status": status_text, "timestamp": time.time()}
 
     return JSONResponse(status_code=return_status, content=response)
+
+
+@root_router.patch("/lists/{ID}/")
+@root_router.patch("/lists/{ID}", include_in_schema=False)
+async def append_items_to_list(
+        request: Request,
+        list_id: int,
+        body: dict,
+        data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
+    await authorize_request(
+        request=request,
+        # todo: what methods can we use?
+        authz_access_method="upsert",
+        authz_resources=["/gen3_data_library/service_info/status"])
+    # todo: decide to keep ids as is, or switch to guids
+    list_as_orm = await ensure_list_exists_and_can_be_conformed(data_access_layer,
+                                                                list_id, body, request)
+    if isinstance(list_as_orm, JSONResponse):
+        return list_as_orm  # todo bonus: variable name is misleading, is there a better way to do this?
+
+    try:
+        outcome = await data_access_layer.add_items_to_list(list_id, list_as_orm)
+        response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
+        return_status = status.HTTP_200_OK
+    except Exception as e:
+        return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+        status_text = "UNHEALTHY"
+        response = {"status": status_text, "timestamp": time.time()}
+
+    return JSONResponse(status_code=return_status, content=response)
+
 
 
 @root_router.delete("/lists/{ID}/")
