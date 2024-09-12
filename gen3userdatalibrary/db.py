@@ -116,17 +116,22 @@ class DataAccessLayer:
     async def create_user_list(self, user_list) -> UserList:
         user_id = await get_user_id()
         new_list = await create_user_list_instance(user_list, user_id)
-        self.db_session.add(new_list)
+        return await self.persist_user_list(new_list, user_id)
 
+    # todo bonus: we should have a way to ensure we are not doing multiple
+    # updates to the db. ideally, each endpoint should query the db once.
+    # less than ideally, it only writes to the db once
+    async def persist_user_list(self, user_list: UserList, user_id):
+        self.db_session.add(user_list)
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()
-
+        # todo: check user_id.id
         authz = {
             "version": 0,
-            "authz": [f"/users/{user_id}/user-data-library/lists/{new_list.id}"],
+            "authz": [f"/users/{user_id}/user-data-library/lists/{user_id.id}"],
         }
-        new_list.authz = authz
-        return new_list
+        user_list.authz = authz
+        return user_list
 
     async def create_user_lists(self, user_lists: List[dict]) -> Dict[int, UserList]:
         """
@@ -201,6 +206,12 @@ class DataAccessLayer:
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.extend(list_as_orm.items)
         await self.db_session.commit()
+
+    async def grab_all_lists_that_exist(self, list_ids):
+        q = select(UserList).filter(UserList.id.in_(list_ids))
+        query_result = await self.db_session.execute(q)
+        existing_user_lists = query_result.all()
+        return existing_user_lists
 
 
 async def get_data_access_layer() -> DataAccessLayer:

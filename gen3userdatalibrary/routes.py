@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from functools import partial
 from importlib.metadata import version
 from typing import Any, Dict, Optional, Union
 
@@ -71,7 +72,7 @@ async def redirect_to_docs():
     return RedirectResponse(url="/redoc")
 
 
-async def try_creating_lists(data_access_layer, lists, user_id) -> Dict[int, UserList]:
+async def try_creating_lists(data_access_layer, user_id, lists) -> Dict[int, UserList]:
     """
     Handler for modeling endpoint data into orm
     :param data_access_layer: an instance of our DAL
@@ -121,7 +122,8 @@ async def upsert_user_lists(
         data: dict,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
-    Create a new list with the provided items
+    Create a new list with the provided items, or update any lists that already exist
+
 
     Args:
         request (Request): FastAPI request (so we can check authorization)
@@ -156,10 +158,19 @@ async def upsert_user_lists(
     start_time = time.time()
 
     # todo: try creating or updating lists
-    new_user_lists = await try_creating_lists(data_access_layer, lists, user_id)
+
+    lists_as_orm = list(map(partial(try_creating_lists, data_access_layer, user_id), lists))
+    lists_to_update = await data_access_layer.grab_all_lists_that_exist(lists_as_orm)
+    set_of_existing_ids = set(map(lambda ul: ul.id, lists_to_update))
+    lists_to_create = list(filter(lambda ul: ul.id not in set_of_existing_ids, lists_as_orm))
+
+    (map(lambda list_to_update: data_access_layer.replace_list(list_to_update.id, list_to_update),
+         lists_to_update))
+    (map(lambda list_to_create: data_access_layer.persist_user_list(list_to_create, user_id),
+         lists_to_create))
 
     response_user_lists = {}
-    for _, user_list in new_user_lists.items():
+    for user_list in lists_to_create:
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
     response = {"lists": response_user_lists}
@@ -374,7 +385,7 @@ async def get_list_by_id(
 # todo: put replaces list, patch updates
 async def create_list_and_return_response(request, data_access_layer, user_list):
     user_id = await get_user_id(request=request)
-    list_info = await try_creating_lists(data_access_layer, [user_list], user_id)
+    list_info = await try_creating_lists(data_access_layer, user_id, [user_list])
     list_data = list_info.popitem()
     assert list_data is not None
     response = {"status": "OK", "timestamp": time.time(), "created_list": list_data[1].to_dict()}
@@ -404,7 +415,6 @@ async def ensure_list_exists_and_can_be_conformed(data_access_layer,
         return await create_list_and_return_response(request, data_access_layer, user_list)
     list_as_orm = await try_modeling_user_list(user_list)
     return list_as_orm
-
 
 @root_router.put("/lists/{ID}/")
 @root_router.put("/lists/{ID}", include_in_schema=False)

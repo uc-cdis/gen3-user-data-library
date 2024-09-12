@@ -77,7 +77,7 @@ async def authorize_request(
 
 async def get_user_id(
     token: HTTPAuthorizationCredentials = None, request: Request = None
-):
+) -> str:
     """
     Retrieves the user ID from the provided token/request
 
@@ -111,7 +111,7 @@ async def get_user_id(
 async def _get_token_claims(
     token: HTTPAuthorizationCredentials = None,
     request: Request = None,
-):
+) -> dict:
     """
     Retrieves and validates token claims from the provided token.
 
