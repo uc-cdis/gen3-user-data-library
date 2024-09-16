@@ -88,7 +88,7 @@ class TestUserListsRouter(BaseTestRouter):
         Test that the lists endpoint returns a 401 with details when no token is provided
         """
         valid_single_list_body = {"lists": [user_list]}
-        response = await client.post(endpoint, json=valid_single_list_body)
+        response = await client.put(endpoint, json=valid_single_list_body)
         assert response
         assert response.status_code == 401
         assert response.json().get("detail")
@@ -106,20 +106,17 @@ class TestUserListsRouter(BaseTestRouter):
         # not a valid token
         headers = {"Authorization": "Bearer ofbadnews"}
 
-        response = await client.post(
-            endpoint, headers=headers, json={"lists": [user_list]}
-        )
+        response = await client.put(endpoint, headers=headers, json={"lists": [user_list]})
         assert response.status_code == 401
         assert response.json().get("detail")
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @pytest.mark.parametrize("method", ["post", "get", "delete"])
+    @pytest.mark.parametrize("method", ["put", "get", "delete"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_create_lists_unauthorized(
-        self, get_token_claims, arborist, method, user_list, endpoint, client
-    ):
+    async def test_create_lists_unauthorized(self, get_token_claims, arborist,
+                                             method, user_list, endpoint, client):
         """
         Test accessing the endpoint when unauthorized
         """
@@ -130,17 +127,12 @@ class TestUserListsRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         if method == "post":
             response = await client.post(
-                endpoint, headers=headers, json={"lists": [user_list]}
-            )
+                endpoint, headers=headers, json={"lists": [user_list]})
         elif method == "get":
             response = await client.get(endpoint, headers=headers)
         elif method == "put":
-            # todo: we do not have an put paths that fit this case I think?
-            assert True
-            pass
-            # response = await client.put(
-            #     endpoint, headers=headers, json={"lists": [user_list]}
-            # )
+            response = await client.put(
+                endpoint, headers=headers, json={"lists": [user_list]})
         elif method == "delete":
             response = await client.delete(endpoint, headers=headers)
         else:
@@ -154,21 +146,19 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_create_single_valid_list(
-        self, get_token_claims, arborist, endpoint, user_list, client, session
-    ):
+    async def test_create_single_valid_list(self, get_token_claims, arborist,
+                                            endpoint, user_list, client, session):
         """
         Test the response for creating a single valid list
         """
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = "79"
+        user_id = {"name": "example_user", "id": 79}
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.post(
-            endpoint, headers=headers, json={"lists": [user_list]}
-        )
+        response = await client.put(
+            endpoint, headers=headers, json={"lists": [user_list]})
 
         assert response.status_code == 201
         assert "lists" in response.json()
@@ -185,8 +175,7 @@ class TestUserListsRouter(BaseTestRouter):
             #       version type
             assert user_list["authz"].get("version", {}) == 0
             assert user_list["authz"].get("authz") == (
-                [f"/users/{user_id}/user-data-library/lists/{user_list_id}"]
-            )
+                [f"/users/{user_id}/user-data-library/lists/{user_list_id}"])
 
             if user_list["name"] == VALID_LIST_A["name"]:
                 assert user_list["items"] == VALID_LIST_A["items"]

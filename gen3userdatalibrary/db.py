@@ -104,6 +104,14 @@ async def create_user_list_instance(user_list: dict, user_id):
     return new_list
 
 
+def update_db_record_from_orm_user_list(user_list, list_id, existing_record):
+    for attr in dir(user_list):
+        if not attr.startswith('_') and hasattr(existing_record, attr):
+            setattr(existing_record, attr, getattr(user_list, attr))
+    existing_record.id = list_id
+    return existing_record
+
+
 class DataAccessLayer:
     """
     Defines an abstract interface to manipulate the database. Instances are given a session to
@@ -113,7 +121,7 @@ class DataAccessLayer:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    async def create_user_list(self, user_list) -> UserList:
+    async def create_user_list(self, user_list: dict) -> UserList:
         user_id = await get_user_id()
         new_list = await create_user_list_instance(user_list, user_id)
         return await self.persist_user_list(new_list, user_id)
@@ -122,13 +130,19 @@ class DataAccessLayer:
     # updates to the db. ideally, each endpoint should query the db once.
     # less than ideally, it only writes to the db once
     async def persist_user_list(self, user_list: UserList, user_id):
+        """
+
+        :param user_list:
+        :param user_id: expects dict in the form { name: foo, id: bar } todo: should be obj?
+        :return:
+        """
         self.db_session.add(user_list)
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()
         # todo: check user_id.id
         authz = {
             "version": 0,
-            "authz": [f"/users/{user_id}/user-data-library/lists/{user_id.id}"],
+            "authz": [f"/users/{user_id['name']}/user-data-library/lists/{user_id['id']}"],
         }
         user_list.authz = authz
         return user_list
@@ -162,17 +176,15 @@ class DataAccessLayer:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record
 
-    async def update_list(
+    async def update_and_persist_list(
             self,
             list_id: int,
+            existing_record_before_update,
             user_list: UserList) -> UserList:
-        existing_record = await self.get_existing_list_or_throw(list_id)
-        for attr in dir(user_list):
-            if not attr.startswith('_') and hasattr(existing_record, attr):
-                setattr(existing_record, attr, getattr(user_list, attr))
-        existing_record.id = list_id
+        existing_record_after_update = update_db_record_from_orm_user_list(user_list, list_id,
+                                                                           existing_record_before_update)
         await self.db_session.commit()
-        return existing_record
+        return existing_record_after_update
 
     async def test_connection(self) -> None:
         await self.db_session.execute(text("SELECT 1;"))
@@ -196,22 +208,28 @@ class DataAccessLayer:
         await self.db_session.commit()
         return count
 
-    async def replace_list(self, list_id, list_as_orm):
-        existing_obj = self.get_existing_list_or_throw(list_id)
-        await self.db_session.delete(existing_obj)
-        await self.db_session.commit()
-        await self.create_user_list(list_as_orm)
+    async def replace_list(self, list_as_orm: UserList):
+        """
+
+        :param list_as_orm:
+        :return:
+        """
+        existing_obj = await self.get_existing_list_or_throw(list_as_orm.id)
+        existing_obj.items.clear()
+        return await self.update_and_persist_list(list_as_orm.id, existing_obj, list_as_orm)
 
     async def add_items_to_list(self, list_id: int, list_as_orm: UserList):
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.extend(list_as_orm.items)
         await self.db_session.commit()
 
-    async def grab_all_lists_that_exist(self, list_ids):
+    async def grab_all_lists_that_exist(self, list_ids) -> List[UserList]:
+        #todo: test two lists
         q = select(UserList).filter(UserList.id.in_(list_ids))
         query_result = await self.db_session.execute(q)
         existing_user_lists = query_result.all()
-        return existing_user_lists
+        from_sequence_to_list = [row[0] for row in existing_user_lists]
+        return from_sequence_to_list
 
 
 async def get_data_access_layer() -> DataAccessLayer:

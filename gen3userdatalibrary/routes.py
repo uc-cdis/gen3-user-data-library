@@ -157,17 +157,15 @@ async def upsert_user_lists(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no lists provided")
     start_time = time.time()
 
-    # todo: try creating or updating lists
-
-    lists_as_orm = list(map(partial(try_creating_lists, data_access_layer, user_id), lists))
-    lists_to_update = await data_access_layer.grab_all_lists_that_exist(lists_as_orm)
+    lists_as_orm = await try_creating_lists(data_access_layer, user_id, lists)
+    lists_to_update = await data_access_layer.grab_all_lists_that_exist(list(lists_as_orm.keys()))
     set_of_existing_ids = set(map(lambda ul: ul.id, lists_to_update))
-    lists_to_create = list(filter(lambda ul: ul.id not in set_of_existing_ids, lists_as_orm))
+    lists_to_create = list(filter(lambda ul: ul.id not in set_of_existing_ids, list(lists_as_orm.values())))
 
-    (map(lambda list_to_update: data_access_layer.replace_list(list_to_update.id, list_to_update),
-         lists_to_update))
-    (map(lambda list_to_create: data_access_layer.persist_user_list(list_to_create, user_id),
-         lists_to_create))
+    for list_to_update in lists_to_update:
+        await data_access_layer.replace_list(list_to_update)
+    for list_to_create in lists_to_create:
+        await data_access_layer.persist_user_list(list_to_create, user_id)
 
     response_user_lists = {}
     for user_list in lists_to_create:
@@ -416,6 +414,7 @@ async def ensure_list_exists_and_can_be_conformed(data_access_layer,
     list_as_orm = await try_modeling_user_list(user_list)
     return list_as_orm
 
+
 @root_router.put("/lists/{ID}/")
 @root_router.put("/lists/{ID}", include_in_schema=False)
 async def upsert_list_by_id(
@@ -447,7 +446,7 @@ async def upsert_list_by_id(
         return list_as_orm  # todo bonus: variable name is misleading, is there a better way to do this?
 
     try:
-        outcome = await data_access_layer.replace_list(list_id, list_as_orm)
+        outcome = await data_access_layer.replace_list(list_as_orm)
         response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
         return_status = status.HTTP_200_OK
     except Exception as e:

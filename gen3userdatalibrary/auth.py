@@ -1,3 +1,5 @@
+from typing import Union, Any
+
 from authutils.token.fastapi import access_token
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -75,9 +77,8 @@ async def authorize_request(
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
 
 
-async def get_user_id(
-    token: HTTPAuthorizationCredentials = None, request: Request = None
-) -> str:
+async def get_user_id(token: HTTPAuthorizationCredentials = None,
+                      request: Request = None) -> Union[int, Any]:
     """
     Retrieves the user ID from the provided token/request
 
