@@ -13,7 +13,7 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import authorize_request, get_user_id
+from gen3userdatalibrary.auth import authorize_request, get_user_id, get_user_data_library_endpoint
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer, create_user_list_instance
 from gen3userdatalibrary.models import UserList
 from gen3userdatalibrary.utils import add_user_list_metric
@@ -138,7 +138,7 @@ async def upsert_user_lists(
         # IMPORTANT: This is using the user's unique subject ID
         request.app.state.arborist_client.create_user_if_not_exist(user_id)
 
-        resource = f"/users/{user_id}/user-data-library"
+        resource = get_user_data_library_endpoint(user_id["name"])
 
         try:
             logging.debug("attempting to update arborist resource: {}".format(resource))
@@ -151,7 +151,7 @@ async def upsert_user_lists(
     await authorize_request(
         request=request,
         authz_access_method="create",
-        authz_resources=[f"/users/{user_id}/user-data-library/"])
+        authz_resources=[get_user_data_library_endpoint(user_id["name"])])
     lists = data.get("lists")
     if not lists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no lists provided")
@@ -168,7 +168,7 @@ async def upsert_user_lists(
         await data_access_layer.persist_user_list(list_to_create, user_id)
 
     response_user_lists = {}
-    for user_list in lists_to_create:
+    for user_list in (lists_to_create + lists_to_update):
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
     response = {"lists": response_user_lists}
@@ -208,7 +208,7 @@ async def read_all_lists(
     await authorize_request(
         request=request,
         authz_access_method="read",
-        authz_resources=[f"/users/{user_id}/user-data-library/"])
+        authz_resources=[get_user_data_library_endpoint(user_id["name"])])
     start_time = time.time()
 
     try:
@@ -251,7 +251,7 @@ async def delete_all_lists(request: Request,
     await authorize_request(
         request=request,
         authz_access_method="delete",
-        authz_resources=[f"/users/{user_id}/user-data-library/"])
+        authz_resources=[get_user_data_library_endpoint(user_id["name"])])
 
     start_time = time.time()
     user_id = "1"  # todo: derive correct user id from token

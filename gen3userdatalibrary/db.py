@@ -36,7 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.future import select
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import get_user_id
+from gen3userdatalibrary.auth import get_user_id, get_lists_endpoint, get_list_by_id_endpoint
 from gen3userdatalibrary.models import (
     ITEMS_JSON_SCHEMA_DRS,
     ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
@@ -95,7 +95,7 @@ async def create_user_list_instance(user_list: dict, user_id):
         # temporarily set authz without the list ID since we haven't created the list in the db yet
         authz={
             "version": 0,
-            "authz": [f"/users/{user_id}/user-data-library/lists"],
+            "authz": [get_lists_endpoint(user_id['name'])],
         },
         name=name,
         created_time=now,
@@ -142,7 +142,7 @@ class DataAccessLayer:
         # todo: check user_id.id
         authz = {
             "version": 0,
-            "authz": [f"/users/{user_id['name']}/user-data-library/lists/{user_id['id']}"],
+            "authz": [get_list_by_id_endpoint(user_id["name"], user_id["id"])],
         }
         user_list.authz = authz
         return user_list

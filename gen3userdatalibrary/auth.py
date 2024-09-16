@@ -12,6 +12,10 @@ from gen3userdatalibrary import config, logging
 get_bearer_token = HTTPBearer(auto_error=False)
 arborist = ArboristClient()
 
+get_user_data_library_endpoint = lambda name: f"/users/{name}/user-data-library"
+get_lists_endpoint = lambda name: f"/users/{name}/user-data-library/lists"
+get_list_by_id_endpoint = lambda name, list_id: f"/users/{name}/user-data-library/lists/{list_id}"
+
 
 async def authorize_request(
     authz_access_method: str = "access",

@@ -1,6 +1,8 @@
 from unittest.mock import AsyncMock, patch
-
+import ast
 import pytest
+
+from gen3userdatalibrary.auth import get_list_by_id_endpoint
 from tests.routes.conftest import BaseTestRouter
 
 from gen3userdatalibrary.main import root_router
@@ -18,7 +20,7 @@ VALID_LIST_A = {
             "schema_version": "c246d0f",
             "data": {
                 "query": "query ($filter: JSON) { _aggregation { subject (filter: $filter) "
-                "{ file_count { histogram { sum } } } } }",
+                         "{ file_count { histogram { sum } } } } }",
                 "variables": {
                     "filter": {
                         "AND": [
@@ -33,7 +35,6 @@ VALID_LIST_A = {
     },
 }
 
-
 VALID_LIST_B = {
     "name": "õ(*&!@#)(*$%)() 2",
     "items": {
@@ -43,11 +44,11 @@ VALID_LIST_B = {
             "schema_version": "aacc222",
             "data": {
                 "query": "query ($filter: JSON,) {\n"
-                "    subject (accessibility: accessible, offset: 0, first: 20, , filter: $filter,) {\n"
-                "      \n    project_id\n    \n\n    data_format\n    \n\n    race\n    \n\n"
-                "    annotated_sex\n    \n\n    ethnicity\n    \n\n    hdl\n    \n\n    ldl\n    \n    }\n"
-                "    _aggregation {\n      subject (filter: $filter, accessibility: accessible) {\n"
-                "        _totalCount\n      }\n    }\n  }",
+                         "    subject (accessibility: accessible, offset: 0, first: 20, , filter: $filter,) {\n"
+                         "      \n    project_id\n    \n\n    data_format\n    \n\n    race\n    \n\n"
+                         "    annotated_sex\n    \n\n    ethnicity\n    \n\n    hdl\n    \n\n    ldl\n    \n    }\n"
+                         "    _aggregation {\n      subject (filter: $filter, accessibility: accessible) {\n"
+                         "        _totalCount\n      }\n    }\n  }",
                 "variables": {
                     "filter": {
                         "AND": [
@@ -72,7 +73,6 @@ VALID_LIST_B = {
         },
     },
 }
-
 
 VALID_MULTI_LIST_BODY = {"lists": [VALID_LIST_A, VALID_LIST_B]}
 
@@ -175,7 +175,7 @@ class TestUserListsRouter(BaseTestRouter):
             #       version type
             assert user_list["authz"].get("version", {}) == 0
             assert user_list["authz"].get("authz") == (
-                [f"/users/{user_id}/user-data-library/lists/{user_list_id}"])
+                [get_list_by_id_endpoint(user_id["name"], user_id["id"])])
 
             if user_list["name"] == VALID_LIST_A["name"]:
                 assert user_list["items"] == VALID_LIST_A["items"]
@@ -188,18 +188,15 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_create_multiple_valid_lists(
-        self, get_token_claims, arborist, endpoint, client
-    ):
+    async def test_create_multiple_valid_lists(self, get_token_claims, arborist,
+                                               endpoint, client):
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = "79"
+        user_id = {"name": "foo", "id": 79}
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.post(
-            endpoint, headers=headers, json={"lists": [VALID_LIST_A, VALID_LIST_B]}
-        )
+        response = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A, VALID_LIST_B]})
 
         assert response.status_code == 201
         assert "lists" in response.json()
@@ -213,14 +210,14 @@ class TestUserListsRouter(BaseTestRouter):
             assert user_list["created_time"]
             assert user_list["updated_time"]
             assert user_list["created_time"] == user_list["updated_time"]
-            assert user_list["creator"] == user_id
+            assert ast.literal_eval(user_list["creator"]) == user_id
 
             # NOTE: if we change the service to allow multiple diff authz versions,
             #       you should NOT remove this, but instead add more tests for the new
             #       version type
             assert user_list["authz"].get("version", {}) == 0
             assert user_list["authz"].get("authz") == (
-                [f"/users/{user_id}/user-data-library/lists/{user_list_id}"]
+                [get_list_by_id_endpoint(user_id["name"], user_id["id"])]
             )
 
             if user_list["name"] == VALID_LIST_A["name"]:
@@ -241,7 +238,7 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_create_no_lists_provided(
-        self, get_token_claims, arborist, endpoint, client
+            self, get_token_claims, arborist, endpoint, client
     ):
         """
         Ensure 400 when no list is provided
@@ -265,7 +262,7 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_create_bad_input_provided(
-        self, get_token_claims, arborist, endpoint, input_body, client
+            self, get_token_claims, arborist, endpoint, input_body, client
     ):
         """
         Ensure 400 with bad input
@@ -286,7 +283,7 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_create_no_body_provided(
-        self, get_token_claims, arborist, endpoint, client
+            self, get_token_claims, arborist, endpoint, client
     ):
         """
         Ensure 422 with no body
@@ -302,7 +299,6 @@ class TestUserListsRouter(BaseTestRouter):
         assert response
         assert response.status_code == 422
         assert response.json().get("detail")
-
 
 # TODO: test db.create_lists raising some error other than unique constraint, ensure 400
 # TODO: test creating a list with non unique name for given user, ensure 400
