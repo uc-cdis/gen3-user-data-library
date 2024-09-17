@@ -122,7 +122,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         # Simulate an unauthorized request but a valid token
         arborist.auth_request.return_value = False
-        get_token_claims.return_value = {"sub": "foo"}
+        get_token_claims.return_value = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         if method == "post":
@@ -168,7 +168,7 @@ class TestUserListsRouter(BaseTestRouter):
             assert user_list["created_time"]
             assert user_list["updated_time"]
             assert user_list["created_time"] == user_list["updated_time"]
-            assert user_list["creator"] == user_id
+            assert ast.literal_eval(user_list["creator"]) == user_id
 
             # NOTE: if we change the service to allow multiple diff authz versions,
             #       you should NOT remove this, but instead add more tests for the new
@@ -192,7 +192,7 @@ class TestUserListsRouter(BaseTestRouter):
                                                endpoint, client):
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = {"name": "foo", "id": 79}
+        user_id = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -237,19 +237,18 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_create_no_lists_provided(
-            self, get_token_claims, arborist, endpoint, client
-    ):
+    async def test_create_no_lists_provided(self, get_token_claims, arborist,
+                                            endpoint, client):
         """
         Ensure 400 when no list is provided
         """
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = "79"
+        user_id = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.post(endpoint, headers=headers, json={"lists": []})
+        response = await client.put(endpoint, headers=headers, json={"lists": []})
 
         assert response
         assert response.status_code == 400
@@ -261,19 +260,18 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_create_bad_input_provided(
-            self, get_token_claims, arborist, endpoint, input_body, client
-    ):
+    async def test_create_bad_input_provided(self, get_token_claims, arborist,
+                                             endpoint, input_body, client):
         """
         Ensure 400 with bad input
         """
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = "79"
+        user_id = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.post(endpoint, headers=headers, json=input_body)
+        response = await client.put(endpoint, headers=headers, json=input_body)
 
         assert response
         assert response.status_code == 400
@@ -282,19 +280,17 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_create_no_body_provided(
-            self, get_token_claims, arborist, endpoint, client
-    ):
+    async def test_create_no_body_provided(self, get_token_claims, arborist, endpoint, client):
         """
         Ensure 422 with no body
         """
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = "79"
+        user_id = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.post(endpoint, headers=headers)
+        response = await client.put(endpoint, headers=headers)
 
         assert response
         assert response.status_code == 422

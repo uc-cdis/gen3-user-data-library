@@ -34,6 +34,7 @@ from jsonschema import ValidationError, validate
 from sqlalchemy import text, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
+from sqlalchemy.orm import make_transient
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import get_user_id, get_lists_endpoint, get_list_by_id_endpoint
@@ -208,15 +209,23 @@ class DataAccessLayer:
         await self.db_session.commit()
         return count
 
-    async def replace_list(self, list_as_orm: UserList):
+    async def replace_list(self, original_list_id, list_as_orm: UserList):
         """
 
+        :param original_list_id:
         :param list_as_orm:
         :return:
         """
-        existing_obj = await self.get_existing_list_or_throw(list_as_orm.id)
-        existing_obj.items.clear()
-        return await self.update_and_persist_list(list_as_orm.id, existing_obj, list_as_orm)
+        existing_obj = await self.get_existing_list_or_throw(original_list_id)
+
+        await self.db_session.delete(existing_obj)
+        await self.db_session.commit()
+
+        make_transient(list_as_orm)
+        list_as_orm.id = None
+        self.db_session.add(list_as_orm)
+        await self.db_session.commit()
+        return list_as_orm
 
     async def add_items_to_list(self, list_id: int, list_as_orm: UserList):
         user_list = await self.get_existing_list_or_throw(list_id)

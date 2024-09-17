@@ -163,7 +163,7 @@ async def upsert_user_lists(
     lists_to_create = list(filter(lambda ul: ul.id not in set_of_existing_ids, list(lists_as_orm.values())))
 
     for list_to_update in lists_to_update:
-        await data_access_layer.replace_list(list_to_update)
+        await data_access_layer.replace_list(list_to_update.id, lists_as_orm[list_to_update.id])
     for list_to_create in lists_to_create:
         await data_access_layer.persist_user_list(list_to_create, user_id)
 
@@ -446,7 +446,7 @@ async def upsert_list_by_id(
         return list_as_orm  # todo bonus: variable name is misleading, is there a better way to do this?
 
     try:
-        outcome = await data_access_layer.replace_list(list_as_orm)
+        outcome = await data_access_layer.replace_list(list_id, list_as_orm)
         response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
         return_status = status.HTTP_200_OK
     except Exception as e:
