@@ -96,7 +96,7 @@ async def create_user_list_instance(user_list: dict, user_id):
         # temporarily set authz without the list ID since we haven't created the list in the db yet
         authz={
             "version": 0,
-            "authz": [get_lists_endpoint(user_id['name'])],
+            "authz": [get_lists_endpoint(user_id)],
         },
         name=name,
         created_time=now,
@@ -143,7 +143,7 @@ class DataAccessLayer:
         # todo: check user_id.id
         authz = {
             "version": 0,
-            "authz": [get_list_by_id_endpoint(user_id["name"], user_id["id"])],
+            "authz": [get_list_by_id_endpoint(user_id, user_list.id)],
         }
         user_list.authz = authz
         return user_list

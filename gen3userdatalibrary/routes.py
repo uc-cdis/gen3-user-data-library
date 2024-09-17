@@ -138,7 +138,7 @@ async def upsert_user_lists(
         # IMPORTANT: This is using the user's unique subject ID
         request.app.state.arborist_client.create_user_if_not_exist(user_id)
 
-        resource = get_user_data_library_endpoint(user_id["name"])
+        resource = get_user_data_library_endpoint(user_id)
 
         try:
             logging.debug("attempting to update arborist resource: {}".format(resource))
@@ -151,7 +151,7 @@ async def upsert_user_lists(
     await authorize_request(
         request=request,
         authz_access_method="create",
-        authz_resources=[get_user_data_library_endpoint(user_id["name"])])
+        authz_resources=[get_user_data_library_endpoint(user_id)])
     lists = data.get("lists")
     if not lists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no lists provided")
@@ -208,7 +208,7 @@ async def read_all_lists(
     await authorize_request(
         request=request,
         authz_access_method="read",
-        authz_resources=[get_user_data_library_endpoint(user_id["name"])])
+        authz_resources=[get_user_data_library_endpoint(user_id)])
     start_time = time.time()
 
     try:
@@ -251,7 +251,7 @@ async def delete_all_lists(request: Request,
     await authorize_request(
         request=request,
         authz_access_method="delete",
-        authz_resources=[get_user_data_library_endpoint(user_id["name"])])
+        authz_resources=[get_user_data_library_endpoint(user_id)])
 
     start_time = time.time()
     user_id = "1"  # todo: derive correct user id from token

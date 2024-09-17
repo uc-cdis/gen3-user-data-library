@@ -12,9 +12,9 @@ from gen3userdatalibrary import config, logging
 get_bearer_token = HTTPBearer(auto_error=False)
 arborist = ArboristClient()
 
-get_user_data_library_endpoint = lambda name: f"/users/{name}/user-data-library"
-get_lists_endpoint = lambda name: f"/users/{name}/user-data-library/lists"
-get_list_by_id_endpoint = lambda name, list_id: f"/users/{name}/user-data-library/lists/{list_id}"
+get_user_data_library_endpoint = lambda user_id: f"/users/{user_id}/user-data-library"
+get_lists_endpoint = lambda user_id: f"/users/{user_id}/user-data-library/lists"
+get_list_by_id_endpoint = lambda user_id, list_id: f"/users/{user_id}/user-data-library/lists/{list_id}"
 
 
 async def authorize_request(

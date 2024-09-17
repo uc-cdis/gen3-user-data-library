@@ -122,7 +122,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         # Simulate an unauthorized request but a valid token
         arborist.auth_request.return_value = False
-        get_token_claims.return_value = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
+        get_token_claims.return_value = 0
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         if method == "post":
@@ -175,7 +175,7 @@ class TestUserListsRouter(BaseTestRouter):
             #       version type
             assert user_list["authz"].get("version", {}) == 0
             assert user_list["authz"].get("authz") == (
-                [get_list_by_id_endpoint(user_id["name"], user_id["id"])])
+                [get_list_by_id_endpoint(user_id, user_list_id)])
 
             if user_list["name"] == VALID_LIST_A["name"]:
                 assert user_list["items"] == VALID_LIST_A["items"]
@@ -192,7 +192,7 @@ class TestUserListsRouter(BaseTestRouter):
                                                endpoint, client):
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
+        user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -217,7 +217,7 @@ class TestUserListsRouter(BaseTestRouter):
             #       version type
             assert user_list["authz"].get("version", {}) == 0
             assert user_list["authz"].get("authz") == (
-                [get_list_by_id_endpoint(user_id["name"], user_id["id"])]
+                [get_list_by_id_endpoint(user_id, user_list_id)]
             )
 
             if user_list["name"] == VALID_LIST_A["name"]:
@@ -244,7 +244,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
+        user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -267,7 +267,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
+        user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -286,7 +286,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = {"name": "foo", "id": 79, "sub": {"name": "foo", "id": 80}}
+        user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
