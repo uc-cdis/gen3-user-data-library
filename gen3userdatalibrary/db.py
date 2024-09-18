@@ -29,7 +29,7 @@ What do we do in this file?
 """
 
 import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Union
 from jsonschema import ValidationError, validate
 from sqlalchemy import text, delete, func, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -165,8 +165,11 @@ class DataAccessLayer:
         query = await self.db_session.execute(select(UserList).order_by(UserList.id))
         return list(query.scalars().all())
 
-    async def get_list(self, list_id: int) -> Optional[UserList]:
-        query = select(UserList).where(UserList.id == list_id)
+    async def get_list(self, identifier: Union[int, Tuple[str, str]], by="id") -> Optional[UserList]:
+        if by == "name":  # assume identifier is (creator, name)
+            query = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_(identifier))
+        else:  # by id
+            query = select(UserList).where(UserList.id == identifier)
         result = await self.db_session.execute(query)
         user_list = result.scalar_one_or_none()
         return user_list
@@ -236,7 +239,6 @@ class DataAccessLayer:
         # todo: test two lists
         if by == "name":  # assume identifier list = [(creator1, name1), ...]
             q = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_(identifier_list))
-            pass
         else:  # assume it's by id
             q = select(UserList).filter(UserList.id.in_(identifier_list))
         query_result = await self.db_session.execute(q)

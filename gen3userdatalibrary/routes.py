@@ -99,7 +99,6 @@ def identify_list_by_creator_and_name(user_list: UserList):
     return frozenset({user_list.creator, user_list.name})
 
 
-
 @root_router.put(
     "/lists/",
     # most of the following stuff helps populate the openapi docs
@@ -408,7 +407,7 @@ async def try_modeling_user_list(user_list) -> Union[UserList, JSONResponse]:
 async def ensure_list_exists_and_can_be_conformed(data_access_layer,
                                                   user_list: dict,
                                                   request) -> Union[UserList, JSONResponse]:
-    list_exists = await data_access_layer.get_list("name". user_list) is not None
+    list_exists = await data_access_layer.get_list(user_list, "name") is not None
     user_id = get_user_id(request=request)
     if not list_exists:
         return await create_list_and_return_response(data_access_layer, user_id, user_list)
