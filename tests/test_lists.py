@@ -122,7 +122,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         # Simulate an unauthorized request but a valid token
         arborist.auth_request.return_value = False
-        get_token_claims.return_value = 0
+        get_token_claims.return_value = {"sub": "foo"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         if method == "post":
@@ -153,7 +153,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = {"name": "example_user", "id": 79}
+        user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -294,6 +294,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.status_code == 422
         assert response.json().get("detail")
 
+# TODO: test creating three new lists and updating two
 # TODO: test db.create_lists raising some error other than unique constraint, ensure 400
 # TODO: test creating a list with non unique name for given user, ensure 400
 # TODO: test creating a list with non unique name for diff user, ensure 200

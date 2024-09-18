@@ -4,15 +4,14 @@ from importlib.metadata import version
 from typing import Any, Dict, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
-from jsonschema.exceptions import ValidationError
 from pydantic import BaseModel
-from sqlalchemy.exc import IntegrityError
 from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import authorize_request, get_user_id, get_user_data_library_endpoint
-from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer, create_user_list_instance
+from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer, create_user_list_instance, \
+    try_conforming_list, identify_list_by_creator_and_name
 from gen3userdatalibrary.models import UserList
 from gen3userdatalibrary.utils import add_user_list_metric
 from fastapi.responses import RedirectResponse
@@ -68,35 +67,6 @@ async def redirect_to_docs():
     :return:
     """
     return RedirectResponse(url="/redoc")
-
-
-async def try_conforming_list(user_id, user_list: dict) -> UserList:
-    """
-    Handler for modeling endpoint data into orm
-    :param user_list:
-    :param user_id: id of the list owner
-    :return: dict that maps id -> user list
-    """
-    try:
-        list_as_orm = await create_user_list_instance(user_id, user_list)
-    except IntegrityError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name")
-    except ValidationError as exc:
-        logging.debug(f"Invalid user-provided data when trying to create lists for user {user_id}.")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided", )
-    except Exception as exc:
-        logging.exception(f"Unknown exception {type(exc)} when trying to create lists for user {user_id}.")
-        logging.debug(f"Details: {exc}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided")
-    return list_as_orm
-
-
-def identify_list_by_creator_and_name(user_list: UserList):
-    return frozenset({user_list.creator, user_list.name})
 
 
 @root_router.put(

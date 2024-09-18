@@ -30,26 +30,58 @@ What do we do in this file?
 
 import datetime
 from typing import Dict, List, Optional, Tuple, Union
+
+from fastapi import HTTPException
 from jsonschema import ValidationError, validate
 from sqlalchemy import text, delete, func, tuple_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import make_transient
+from starlette import status
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import get_user_id, get_lists_endpoint, get_list_by_id_endpoint
+from gen3userdatalibrary.auth import get_lists_endpoint, get_list_by_id_endpoint
 from gen3userdatalibrary.models import (
     ITEMS_JSON_SCHEMA_DRS,
     ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
     ITEMS_JSON_SCHEMA_GENERIC,
     UserList,
 )
-from gen3userdatalibrary.routes import try_conforming_list
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
 # creates AsyncSession instances
 async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
+
+
+async def try_conforming_list(user_id, user_list: dict) -> UserList:
+    """
+    Handler for modeling endpoint data into orm
+    :param user_list:
+    :param user_id: id of the list owner
+    :return: dict that maps id -> user list
+    """
+    try:
+        list_as_orm = await create_user_list_instance(user_id, user_list)
+    except IntegrityError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name")
+    except ValidationError as exc:
+        logging.debug(f"Invalid user-provided data when trying to create lists for user {user_id}.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid list information provided", )
+    except Exception as exc:
+        logging.exception(f"Unknown exception {type(exc)} when trying to create lists for user {user_id}.")
+        logging.debug(f"Details: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid list information provided")
+    return list_as_orm
+
+
+def identify_list_by_creator_and_name(user_list: UserList):
+    return frozenset({user_list.creator, user_list.name})
 
 
 async def create_user_list_instance(user_id, user_list: dict):
