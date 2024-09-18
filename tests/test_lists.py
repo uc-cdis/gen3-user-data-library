@@ -168,7 +168,7 @@ class TestUserListsRouter(BaseTestRouter):
             assert user_list["created_time"]
             assert user_list["updated_time"]
             assert user_list["created_time"] == user_list["updated_time"]
-            assert ast.literal_eval(user_list["creator"]) == user_id
+            assert user_list["creator"] == user_id
 
             # NOTE: if we change the service to allow multiple diff authz versions,
             #       you should NOT remove this, but instead add more tests for the new
@@ -210,15 +210,13 @@ class TestUserListsRouter(BaseTestRouter):
             assert user_list["created_time"]
             assert user_list["updated_time"]
             assert user_list["created_time"] == user_list["updated_time"]
-            assert ast.literal_eval(user_list["creator"]) == user_id
+            assert user_list["creator"] == user_id
 
             # NOTE: if we change the service to allow multiple diff authz versions,
             #       you should NOT remove this, but instead add more tests for the new
             #       version type
             assert user_list["authz"].get("version", {}) == 0
-            assert user_list["authz"].get("authz") == (
-                [get_list_by_id_endpoint(user_id, user_list_id)]
-            )
+            assert user_list["authz"].get("authz") == [get_list_by_id_endpoint(user_id, user_list_id)]
 
             if user_list["name"] == VALID_LIST_A["name"]:
                 assert user_list["items"] == VALID_LIST_A["items"]
