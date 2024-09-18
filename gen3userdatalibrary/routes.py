@@ -1,9 +1,7 @@
 import time
 from datetime import datetime
-from functools import partial
 from importlib.metadata import version
 from typing import Any, Dict, Optional, Union
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
 from jsonschema.exceptions import ValidationError
@@ -72,16 +70,15 @@ async def redirect_to_docs():
     return RedirectResponse(url="/redoc")
 
 
-async def try_creating_lists(data_access_layer, user_id, lists) -> Dict[int, UserList]:
+async def try_conforming_list(user_id, user_list: dict) -> UserList:
     """
     Handler for modeling endpoint data into orm
-    :param data_access_layer: an instance of our DAL
-    :param lists: list of user lists to shape
+    :param user_list:
     :param user_id: id of the list owner
     :return: dict that maps id -> user list
     """
     try:
-        new_user_lists = await data_access_layer.create_user_lists(user_lists=lists)
+        list_as_orm = await create_user_list_instance(user_id, user_list)
     except IntegrityError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name")
     except ValidationError as exc:
@@ -95,7 +92,12 @@ async def try_creating_lists(data_access_layer, user_id, lists) -> Dict[int, Use
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid list information provided")
-    return new_user_lists
+    return list_as_orm
+
+
+def identify_list_by_creator_and_name(user_list: UserList):
+    return frozenset({user_list.creator, user_list.name})
+
 
 
 @root_router.put(
@@ -127,7 +129,7 @@ async def upsert_user_lists(
 
     Args:
         request (Request): FastAPI request (so we can check authorization)
-        data (dict): Body from the POST
+        data (dict): Body from the POST, expects id => list mapping
         data_access_layer (DataAccessLayer): Interface for data manipulations
     """
     user_id = await get_user_id(request=request)
@@ -152,18 +154,21 @@ async def upsert_user_lists(
         request=request,
         authz_access_method="create",
         authz_resources=[get_user_data_library_endpoint(user_id)])
-    lists = data.get("lists")
-    if not lists:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no lists provided")
+    list_of_new_or_updatable_user_lists = data.get("lists")
+    if not list_of_new_or_updatable_user_lists:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
     start_time = time.time()
 
-    lists_as_orm = await try_creating_lists(data_access_layer, user_id, lists)
-    lists_to_update = await data_access_layer.grab_all_lists_that_exist(list(lists_as_orm.keys()))
+    # todo: the name/creator combo should be unique, enforce that in the creation portion
+    new_lists_as_orm = [await try_conforming_list(user_id, user_list)
+                        for user_list in list_of_new_or_updatable_user_lists]
+    unique_list_identifiers = [identify_list_by_creator_and_name(user_list) for user_list in new_lists_as_orm]
+    lists_to_update = await data_access_layer.grab_all_lists_that_exist("name", unique_list_identifiers)
     set_of_existing_ids = set(map(lambda ul: ul.id, lists_to_update))
-    lists_to_create = list(filter(lambda ul: ul.id not in set_of_existing_ids, list(lists_as_orm.values())))
+    lists_to_create = list(filter(lambda ul: ul.id not in set_of_existing_ids, new_lists_as_orm))
 
     for list_to_update in lists_to_update:
-        await data_access_layer.replace_list(list_to_update.id, lists_as_orm[list_to_update.id])
+        await data_access_layer.replace_list(list_to_update.id, new_lists_as_orm[list_to_update.id])
     for list_to_create in lists_to_create:
         await data_access_layer.persist_user_list(list_to_create, user_id)
 
@@ -177,11 +182,12 @@ async def upsert_user_lists(
     response_time_seconds = end_time - start_time
     logging.info(
         f"Gen3 User Data Library Response. Action: {action}. "
-        f"lists={lists}, response={response}, response_time_seconds={response_time_seconds} user_id={user_id}")
+        f"lists={list_of_new_or_updatable_user_lists}, response={response}, "
+        f"response_time_seconds={response_time_seconds} user_id={user_id}")
     add_user_list_metric(
         fastapi_app=request.app,
         action=action,
-        user_lists=lists,
+        user_lists=list_of_new_or_updatable_user_lists,
         response_time_seconds=response_time_seconds,
         user_id=user_id)
     logging.debug(response)
@@ -254,7 +260,7 @@ async def delete_all_lists(request: Request,
         authz_resources=[get_user_data_library_endpoint(user_id)])
 
     start_time = time.time()
-    user_id = "1"  # todo: derive correct user id from token
+    user_id = await get_user_id(request=request)
 
     try:
         number_of_lists_deleted = await data_access_layer.delete_all_lists(user_id)
@@ -380,20 +386,16 @@ async def get_list_by_id(
     return JSONResponse(status_code=return_status, content=response)
 
 
-# todo: put replaces list, patch updates
-async def create_list_and_return_response(request, data_access_layer, user_list):
-    user_id = await get_user_id(request=request)
-    list_info = await try_creating_lists(data_access_layer, user_id, [user_list])
-    list_data = list_info.popitem()
-    assert list_data is not None
-    response = {"status": "OK", "timestamp": time.time(), "created_list": list_data[1].to_dict()}
+async def create_list_and_return_response(data_access_layer, user_id, user_list: dict):
+    await data_access_layer.create_user_list(user_id, user_list)
+    response = {"status": "OK", "timestamp": time.time(), "created_list": user_list}
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
 
 async def try_modeling_user_list(user_list) -> Union[UserList, JSONResponse]:
     try:
         user_id = await get_user_id()
-        list_as_orm = await create_user_list_instance(user_list, user_id)
+        list_as_orm = await create_user_list_instance(user_id, user_list)
     except Exception as e:
         return_status = status.HTTP_400_BAD_REQUEST
         status_text = "UNHEALTHY"
@@ -404,20 +406,19 @@ async def try_modeling_user_list(user_list) -> Union[UserList, JSONResponse]:
 
 
 async def ensure_list_exists_and_can_be_conformed(data_access_layer,
-                                                  list_id,
-                                                  body,
+                                                  user_list: dict,
                                                   request) -> Union[UserList, JSONResponse]:
-    list_exists = await data_access_layer.get_list(list_id) is not None
-    user_list = dict(body.items())
+    list_exists = await data_access_layer.get_list("name". user_list) is not None
+    user_id = get_user_id(request=request)
     if not list_exists:
-        return await create_list_and_return_response(request, data_access_layer, user_list)
+        return await create_list_and_return_response(data_access_layer, user_id, user_list)
     list_as_orm = await try_modeling_user_list(user_list)
     return list_as_orm
 
 
 @root_router.put("/lists/{ID}/")
 @root_router.put("/lists/{ID}", include_in_schema=False)
-async def upsert_list_by_id(
+async def update_list_by_id(
         request: Request,
         list_id: int,
         body: dict,
@@ -435,16 +436,14 @@ async def upsert_list_by_id(
 
     await authorize_request(
         request=request,
-        # todo: what methods can we use?
         authz_access_method="upsert",
         authz_resources=["/gen3_data_library/service_info/status"])
-
-    # todo: decide to keep ids as is, or switch to guids
-    list_as_orm = await ensure_list_exists_and_can_be_conformed(data_access_layer,
-                                                                list_id, body, request)
-    if isinstance(list_as_orm, JSONResponse):
-        return list_as_orm  # todo bonus: variable name is misleading, is there a better way to do this?
-
+    user_list = await data_access_layer.get_list(list_id)
+    if user_list is None:
+        raise HTTPException(status_code=404, detail="List not found")
+    user_id = get_user_id(request=request)
+    # todo: ensure body is correct format
+    list_as_orm = await try_conforming_list(user_id, body)
     try:
         outcome = await data_access_layer.replace_list(list_id, list_as_orm)
         response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
@@ -470,10 +469,12 @@ async def append_items_to_list(
         authz_access_method="upsert",
         authz_resources=["/gen3_data_library/service_info/status"])
     # todo: decide to keep ids as is, or switch to guids
-    list_as_orm = await ensure_list_exists_and_can_be_conformed(data_access_layer,
-                                                                list_id, body, request)
-    if isinstance(list_as_orm, JSONResponse):
-        return list_as_orm  # todo bonus: variable name is misleading, is there a better way to do this?
+    list_exists = await data_access_layer.get_list(list_id) is not None
+    if not list_exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist")
+    user_id = get_user_id(request=request)
+    # todo: check that body is just list content
+    list_as_orm = await try_conforming_list(user_id, body)
 
     try:
         outcome = await data_access_layer.add_items_to_list(list_id, list_as_orm)
@@ -485,7 +486,6 @@ async def append_items_to_list(
         response = {"status": status_text, "timestamp": time.time()}
 
     return JSONResponse(status_code=return_status, content=response)
-
 
 
 @root_router.delete("/lists/{ID}/")

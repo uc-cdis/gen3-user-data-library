@@ -31,7 +31,7 @@ What do we do in this file?
 import datetime
 from typing import Dict, List, Optional
 from jsonschema import ValidationError, validate
-from sqlalchemy import text, delete, func
+from sqlalchemy import text, delete, func, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import make_transient
@@ -44,6 +44,7 @@ from gen3userdatalibrary.models import (
     ITEMS_JSON_SCHEMA_GENERIC,
     UserList,
 )
+from gen3userdatalibrary.routes import try_conforming_list
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
@@ -51,7 +52,7 @@ engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
 
-async def create_user_list_instance(user_list: dict, user_id):
+async def create_user_list_instance(user_id, user_list: dict):
     now = datetime.datetime.now(datetime.timezone.utc)
     name = user_list.get("name", f"Saved List {now}")
     user_list_items = user_list.get("items", {})
@@ -122,9 +123,8 @@ class DataAccessLayer:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    async def create_user_list(self, user_list: dict) -> UserList:
-        user_id = await get_user_id()
-        new_list = await create_user_list_instance(user_list, user_id)
+    async def create_user_list(self, user_id, user_list: dict) -> UserList:
+        new_list = await try_conforming_list(user_id, user_list)
         return await self.persist_user_list(new_list, user_id)
 
     # todo bonus: we should have a way to ensure we are not doing multiple
@@ -148,7 +148,7 @@ class DataAccessLayer:
         user_list.authz = authz
         return user_list
 
-    async def create_user_lists(self, user_lists: List[dict]) -> Dict[int, UserList]:
+    async def create_user_lists(self, user_id, user_lists: List[dict]) -> Dict[int, UserList]:
         """
 
         Note: if any items in any list fail, or any list fails to get created, no lists are created.
@@ -157,7 +157,7 @@ class DataAccessLayer:
 
         # Validate the JSON objects
         for user_list in user_lists:
-            new_list = await self.create_user_list(user_list)
+            new_list = await self.create_user_list(user_id, user_list)
             new_user_lists[new_list.id] = new_list
         return new_user_lists
 
@@ -232,9 +232,13 @@ class DataAccessLayer:
         user_list.items.extend(list_as_orm.items)
         await self.db_session.commit()
 
-    async def grab_all_lists_that_exist(self, list_ids) -> List[UserList]:
-        #todo: test two lists
-        q = select(UserList).filter(UserList.id.in_(list_ids))
+    async def grab_all_lists_that_exist(self, by, identifier_list) -> List[UserList]:
+        # todo: test two lists
+        if by == "name":  # assume identifier list = [(creator1, name1), ...]
+            q = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_(identifier_list))
+            pass
+        else:  # assume it's by id
+            q = select(UserList).filter(UserList.id.in_(identifier_list))
         query_result = await self.db_session.execute(q)
         existing_user_lists = query_result.all()
         from_sequence_to_list = [row[0] for row in existing_user_lists]
