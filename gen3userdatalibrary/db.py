@@ -99,10 +99,7 @@ async def create_user_list_instance(user_id, user_list: dict):
                 raise
         elif item_contents.get("type") == "Gen3GraphQL":
             try:
-                validate(
-                    instance=item_contents,
-                    schema=ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
-                )
+                validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,)
             except ValidationError as e:
                 logging.debug(f"User-provided JSON is invalid: {e.message}")
                 raise
@@ -166,13 +163,13 @@ class DataAccessLayer:
         """
 
         :param user_list:
-        :param user_id: expects dict in the form { name: foo, id: bar } todo: should be obj?
+        :param user_id: user's id
         :return:
         """
         self.db_session.add(user_list)
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()
-        # todo: check user_id.id
+
         authz = {
             "version": 0,
             "authz": [get_list_by_id_endpoint(user_id, user_list.id)],
@@ -199,7 +196,7 @@ class DataAccessLayer:
 
     async def get_list(self, identifier: Union[int, Tuple[str, str]], by="id") -> Optional[UserList]:
         if by == "name":  # assume identifier is (creator, name)
-            query = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_(identifier))
+            query = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_([identifier]))
         else:  # by id
             query = select(UserList).where(UserList.id == identifier)
         result = await self.db_session.execute(query)
@@ -267,7 +264,8 @@ class DataAccessLayer:
         user_list.items.extend(list_as_orm.items)
         await self.db_session.commit()
 
-    async def grab_all_lists_that_exist(self, by, identifier_list) -> List[UserList]:
+    async def grab_all_lists_that_exist(self, by, identifier_list: Union[List[int], List[Tuple[str, str,]]]) \
+            -> List[UserList]:
         # todo: test two lists
         if by == "name":  # assume identifier list = [(creator1, name1), ...]
             q = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_(identifier_list))

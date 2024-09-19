@@ -1,8 +1,7 @@
 from unittest.mock import AsyncMock, patch
-import ast
 import pytest
 
-from gen3userdatalibrary.auth import get_list_by_id_endpoint
+from gen3userdatalibrary.auth import get_list_by_id_endpoint, get_lists_endpoint
 from tests.routes.conftest import BaseTestRouter
 
 from gen3userdatalibrary.main import root_router
@@ -73,6 +72,28 @@ VALID_LIST_B = {
         },
     },
 }
+
+VALID_LIST_C = {
+    "name": "My Saved List 3",
+    "items": {
+        "CF_1": {
+            "name": "Cohort Filter 3",
+            "type": "Gen3GraphQL",
+            "schema_version": "c246d0f",
+            "data": {
+                "query": "query ($filter: JSON) { _aggregation { subject (filter: $filter) "
+                         "{ file_count { histogram { sum } } } } }",
+                "variables": {
+                    "filter": {
+                        "AND": [
+                            {"IN": {"annotated_sex": ["male"]}},
+                            {"IN": {"data_type": ["Aligned Reads"]}},
+                            {"IN": {"data_format": ["CRAM"]}},
+                        ]
+                    }
+                },
+            },
+        }}}
 
 VALID_MULTI_LIST_BODY = {"lists": [VALID_LIST_A, VALID_LIST_B]}
 
@@ -293,6 +314,57 @@ class TestUserListsRouter(BaseTestRouter):
         assert response
         assert response.status_code == 422
         assert response.json().get("detail")
+
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_creating_and_updating_lists(self, get_token_claims, arborist,
+                                               endpoint, client):
+        # Simulate an authorized request and a valid token
+        arborist.auth_request.return_value = True
+        user_id = "79"
+        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        response_1 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A, VALID_LIST_B]})
+        updated_list_a = VALID_LIST_A
+        updated_list_a["items"] = VALID_LIST_C["items"]
+        response_2 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_C, updated_list_a]})
+
+        assert response_2.status_code == 201
+        assert "lists" in response_2.json()
+
+        assert len(response_2.json()["lists"]) == 2
+
+        have_seen_c = False
+        have_seen_update = False
+        for user_list_id, user_list in response_2.json()["lists"].items():
+            assert user_list["version"] == 0
+            assert user_list["created_time"]
+            assert user_list["updated_time"]
+            assert user_list["created_time"] == user_list["updated_time"]
+            assert user_list["creator"] == user_id
+
+            # NOTE: if we change the service to allow multiple diff authz versions,
+            #       you should NOT remove this, but instead add more tests for the new
+            #       version type
+            assert user_list["authz"].get("version", {}) == 0
+
+            if user_list["name"] == VALID_LIST_A["name"]:
+                assert user_list["authz"].get("authz") == [get_lists_endpoint(user_id)]
+                assert user_list["items"] == VALID_LIST_C["items"]
+                if have_seen_update:
+                    pytest.fail("Updated list A found twice, should only have showed up once")
+                have_seen_update = True
+            elif user_list["name"] == VALID_LIST_C["name"]:
+                assert user_list["authz"].get("authz") == [get_list_by_id_endpoint(user_id, user_list_id)]
+                assert user_list["items"] == VALID_LIST_C["items"]
+                if have_seen_c:
+                    pytest.fail("List C found twice, should only have showed up once")
+                have_seen_c = True
+            else:
+                # fail if the list is neither A or B
+                assert False
 
 # TODO: test creating three new lists and updating two
 # TODO: test db.create_lists raising some error other than unique constraint, ensure 400

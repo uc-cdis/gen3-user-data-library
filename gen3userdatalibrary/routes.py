@@ -133,16 +133,18 @@ async def upsert_user_lists(
                         for user_list in list_of_new_or_updatable_user_lists]
     unique_list_identifiers = [identify_list_by_creator_and_name(user_list) for user_list in new_lists_as_orm]
     lists_to_update = await data_access_layer.grab_all_lists_that_exist("name", unique_list_identifiers)
-    set_of_existing_ids = set(map(lambda ul: ul.id, lists_to_update))
-    lists_to_create = list(filter(lambda ul: ul.id not in set_of_existing_ids, new_lists_as_orm))
+    set_of_existing_identifiers = set(map(lambda ul: frozenset({ul.creator, ul.name}), lists_to_update))
+    lists_to_create = list(filter(lambda ul: frozenset({ul.creator, ul.name}) not in set_of_existing_identifiers, new_lists_as_orm))
 
+    updated_lists = []
     for list_to_update in lists_to_update:
-        await data_access_layer.replace_list(list_to_update.id, new_lists_as_orm[list_to_update.id])
+        updated_list = await data_access_layer.replace_list(list_to_update.id, new_lists_as_orm[list_to_update.id])
+        updated_lists.append(updated_list)
     for list_to_create in lists_to_create:
         await data_access_layer.persist_user_list(list_to_create, user_id)
 
     response_user_lists = {}
-    for user_list in (lists_to_create + lists_to_update):
+    for user_list in (lists_to_create + updated_lists):
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
     response = {"lists": response_user_lists}
