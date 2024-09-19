@@ -369,10 +369,63 @@ class TestUserListsRouter(BaseTestRouter):
                 # fail if the list is neither A or B
                 assert False
 
-# TODO: test creating three new lists and updating two
-# TODO: test db.create_lists raising some error other than unique constraint, ensure 400
-# TODO: test creating a list with non unique name for given user, ensure 400
-# TODO: test creating a list with non unique name for diff user, ensure 200
+    async def test_non_unique_constraint_error(self):
+        # TODO: test db.create_lists raising some error other than unique constraint, ensure 400
+        pass
+
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_duplicate_list(self, get_token_claims, arborist, endpoint, client):
+        # TODO: test creating a list with non unique name for given user, ensure 400
+        # todo:
+        arborist.auth_request.return_value = True
+        user_id = "79"
+        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        response_1 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A]})
+        response_2 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A]})
+
+        assert response_2.status_code == 400
+        assert "lists" in response_2.json()
+
+        assert len(response_2.json()["lists"]) == 2
+
+        have_seen_c = False
+        have_seen_update = False
+        for user_list_id, user_list in response_2.json()["lists"].items():
+            assert user_list["version"] == 0
+            assert user_list["created_time"]
+            assert user_list["updated_time"]
+            assert user_list["created_time"] == user_list["updated_time"]
+            assert user_list["creator"] == user_id
+
+            # NOTE: if we change the service to allow multiple diff authz versions,
+            #       you should NOT remove this, but instead add more tests for the new
+            #       version type
+            assert user_list["authz"].get("version", {}) == 0
+
+            if user_list["name"] == VALID_LIST_A["name"]:
+                # todo: currently, when we update lists the authz endpoint becomes `/lists` instead of
+                # `/lists/{ID}`, will this be a problem? If so, we should fix
+                assert user_list["authz"].get("authz") == [get_lists_endpoint(user_id)]
+                assert user_list["items"] == VALID_LIST_C["items"]
+                if have_seen_update:
+                    pytest.fail("Updated list A found twice, should only have showed up once")
+                have_seen_update = True
+            elif user_list["name"] == VALID_LIST_C["name"]:
+                assert user_list["authz"].get("authz") == [get_list_by_id_endpoint(user_id, user_list_id)]
+                assert user_list["items"] == VALID_LIST_C["items"]
+                if have_seen_c:
+                    pytest.fail("List C found twice, should only have showed up once")
+                have_seen_c = True
+            else:
+                # fail if the list is neither A or B
+                assert False
+
+    async def test_same_list_name_different_user(self):
+        # TODO: test creating a list with non unique name for diff user, ensure 200
+        pass
 
 #
 # @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)

@@ -37,6 +37,7 @@ ITEMS_JSON_SCHEMA_DRS = {
     "required": ["dataset_guid", "type"],
 }
 
+BLACKLIST = {"id", "creator", "created_time"}
 
 class UserList(Base):
     __tablename__ = "user_lists"

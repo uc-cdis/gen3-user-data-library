@@ -30,7 +30,7 @@ What do we do in this file?
 
 import datetime
 from typing import Dict, List, Optional, Tuple, Union
-
+from dataclasses import asdict
 from fastapi import HTTPException
 from jsonschema import ValidationError, validate
 from sqlalchemy import text, delete, func, tuple_
@@ -39,6 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.future import select
 from sqlalchemy.orm import make_transient
 from starlette import status
+from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import get_lists_endpoint, get_list_by_id_endpoint
@@ -46,13 +47,17 @@ from gen3userdatalibrary.models import (
     ITEMS_JSON_SCHEMA_DRS,
     ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
     ITEMS_JSON_SCHEMA_GENERIC,
-    UserList,
+    UserList, BLACKLIST,
 )
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
 # creates AsyncSession instances
 async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
+
+
+def remove_keys(d: dict, keys: list):
+    return {k: v for k, v in d.items() if k not in keys}
 
 
 async def try_conforming_list(user_id, user_list: dict) -> UserList:
@@ -131,12 +136,9 @@ async def create_user_list_instance(user_id, user_list: dict):
     return new_list
 
 
-def update_db_record_from_orm_user_list(user_list, list_id, existing_record):
-    for attr in dir(user_list):
-        if not attr.startswith('_') and hasattr(existing_record, attr):
-            setattr(existing_record, attr, getattr(user_list, attr))
-    existing_record.id = list_id
-    return existing_record
+def update_dict(dict_to_update, changes_to_make):
+    dict_to_update.update(changes_to_make)
+    return dict_to_update
 
 
 class DataAccessLayer:
@@ -205,15 +207,16 @@ class DataAccessLayer:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record
 
-    async def update_and_persist_list(
-            self,
-            list_id: int,
-            existing_record_before_update,
-            user_list: UserList) -> UserList:
-        existing_record_after_update = update_db_record_from_orm_user_list(user_list, list_id,
-                                                                           existing_record_before_update)
-        await self.db_session.commit()
-        return existing_record_after_update
+    async def update_and_persist_list(self, user_id, list_to_update: dict, new_list: dict) -> UserList:
+        differences = {k: (list_to_update[k], new_list[k])
+                       for k in list_to_update if list_to_update[k] != new_list[k]}
+        relevant_differences = remove_keys(differences, BLACKLIST)
+        if not relevant_differences:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to update!")
+        changes_to_make = {k: k[1] for k, diff_tuple in relevant_differences.items()}
+        updated_user_list = update_dict(list_to_update, changes_to_make)
+        await self.create_user_list(user_id, updated_user_list)
+        return updated_user_list
 
     async def test_connection(self) -> None:
         await self.db_session.execute(text("SELECT 1;"))
