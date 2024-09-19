@@ -352,6 +352,8 @@ class TestUserListsRouter(BaseTestRouter):
             assert user_list["authz"].get("version", {}) == 0
 
             if user_list["name"] == VALID_LIST_A["name"]:
+                # todo: currently, when we update lists the authz endpoint becomes `/lists` instead of
+                # `/lists/{ID}`, will this be a problem? If so, we should fix
                 assert user_list["authz"].get("authz") == [get_lists_endpoint(user_id)]
                 assert user_list["items"] == VALID_LIST_C["items"]
                 if have_seen_update:
