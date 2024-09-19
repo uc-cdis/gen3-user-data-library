@@ -11,7 +11,7 @@ from starlette.responses import JSONResponse
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import authorize_request, get_user_id, get_user_data_library_endpoint
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer, create_user_list_instance, \
-    try_conforming_list, identify_list_by_creator_and_name
+    try_conforming_list
 from gen3userdatalibrary.models import UserList
 from gen3userdatalibrary.utils import add_user_list_metric
 from fastapi.responses import RedirectResponse
@@ -131,10 +131,10 @@ async def upsert_user_lists(
     # todo: the name/creator combo should be unique, enforce that in the creation portion
     new_lists_as_orm = [await try_conforming_list(user_id, user_list)
                         for user_list in list_of_new_or_updatable_user_lists]
-    unique_list_identifiers = [identify_list_by_creator_and_name(user_list) for user_list in new_lists_as_orm]
+    unique_list_identifiers = [(user_list.creator, user_list.name) for user_list in new_lists_as_orm]
     lists_to_update = await data_access_layer.grab_all_lists_that_exist("name", unique_list_identifiers)
-    set_of_existing_identifiers = set(map(lambda ul: frozenset({ul.creator, ul.name}), lists_to_update))
-    lists_to_create = list(filter(lambda ul: frozenset({ul.creator, ul.name}) not in set_of_existing_identifiers, new_lists_as_orm))
+    set_of_existing_identifiers = set(map(lambda ul: (ul.creator, ul.name), lists_to_update))
+    lists_to_create = list(filter(lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers, new_lists_as_orm))
 
     updated_lists = []
     for list_to_update in lists_to_update:

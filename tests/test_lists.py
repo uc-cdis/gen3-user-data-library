@@ -326,6 +326,7 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
+
         response_1 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A, VALID_LIST_B]})
         updated_list_a = VALID_LIST_A
         updated_list_a["items"] = VALID_LIST_C["items"]

@@ -80,10 +80,6 @@ async def try_conforming_list(user_id, user_list: dict) -> UserList:
     return list_as_orm
 
 
-def identify_list_by_creator_and_name(user_list: UserList):
-    return frozenset({user_list.creator, user_list.name})
-
-
 async def create_user_list_instance(user_id, user_list: dict):
     now = datetime.datetime.now(datetime.timezone.utc)
     name = user_list.get("name", f"Saved List {now}")
@@ -266,7 +262,6 @@ class DataAccessLayer:
 
     async def grab_all_lists_that_exist(self, by, identifier_list: Union[List[int], List[Tuple[str, str,]]]) \
             -> List[UserList]:
-        # todo: test two lists
         if by == "name":  # assume identifier list = [(creator1, name1), ...]
             q = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_(identifier_list))
         else:  # assume it's by id
