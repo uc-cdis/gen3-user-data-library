@@ -37,7 +37,7 @@ ITEMS_JSON_SCHEMA_DRS = {
     "required": ["dataset_guid", "type"],
 }
 
-BLACKLIST = {"id", "creator", "created_time"}
+BLACKLIST = {"id", "creator", "created_time", "authz"}  # todo: would authz ever be updated?
 
 class UserList(Base):
     __tablename__ = "user_lists"

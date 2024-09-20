@@ -128,7 +128,6 @@ async def upsert_user_lists(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
     start_time = time.time()
 
-    # todo: the name/creator combo should be unique, enforce that in the creation portion
     new_lists_as_orm = [await try_conforming_list(user_id, user_list)
                         for user_list in list_of_new_or_updatable_user_lists]
     unique_list_identifiers = {(user_list.creator, user_list.name): user_list
@@ -142,7 +141,7 @@ async def upsert_user_lists(
         identifier = (list_to_update.creator, list_to_update.name)
         new_version_of_list = unique_list_identifiers.get(identifier, None)
         assert new_version_of_list is not None
-        updated_list = await data_access_layer.update_and_persist_list(list_to_update.to_dict(), new_version_of_list.to_dict())
+        updated_list = await data_access_layer.update_and_persist_list(list_to_update, new_version_of_list)
         updated_lists.append(updated_list)
     for list_to_create in lists_to_create:
         await data_access_layer.persist_user_list(list_to_create, user_id)

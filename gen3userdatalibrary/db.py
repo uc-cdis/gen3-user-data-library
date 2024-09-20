@@ -29,8 +29,8 @@ What do we do in this file?
 """
 
 import datetime
+from functools import reduce
 from typing import Dict, List, Optional, Tuple, Union
-from dataclasses import asdict
 from fastapi import HTTPException
 from jsonschema import ValidationError, validate
 from sqlalchemy import text, delete, func, tuple_
@@ -39,7 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.future import select
 from sqlalchemy.orm import make_transient
 from starlette import status
-from starlette.responses import JSONResponse
+from sqlalchemy import inspect
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import get_lists_endpoint, get_list_by_id_endpoint
@@ -136,9 +136,20 @@ async def create_user_list_instance(user_id, user_list: dict):
     return new_list
 
 
-def update_dict(dict_to_update, changes_to_make):
-    dict_to_update.update(changes_to_make)
-    return dict_to_update
+def find_differences(list_to_update, new_list):
+    """Finds differences in attributes between two SQLAlchemy ORM objects of the same type."""
+    mapper = inspect(list_to_update).mapper
+
+    def add_difference(differences, attribute):
+        attr_name = attribute.key
+        value1 = getattr(list_to_update, attr_name)
+        value2 = getattr(new_list, attr_name)
+        if value1 != value2:
+            differences[attr_name] = (value1, value2)
+        return differences
+
+    differences_between_lists = reduce(add_difference, mapper.attrs, {})
+    return differences_between_lists
 
 
 class DataAccessLayer:
@@ -207,16 +218,20 @@ class DataAccessLayer:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record
 
-    async def update_and_persist_list(self, user_id, list_to_update: dict, new_list: dict) -> UserList:
-        differences = {k: (list_to_update[k], new_list[k])
-                       for k in list_to_update if list_to_update[k] != new_list[k]}
+    async def update_and_persist_list(self, list_to_update: UserList, new_list: UserList) -> UserList:
+        differences = find_differences(list_to_update, new_list)
         relevant_differences = remove_keys(differences, BLACKLIST)
-        if not relevant_differences:
+        has_no_relevant_differences = not relevant_differences or (len(relevant_differences) == 1 and
+                                                                   relevant_differences.__contains__("updated_time"))
+        if has_no_relevant_differences:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to update!")
-        changes_to_make = {k: k[1] for k, diff_tuple in relevant_differences.items()}
-        updated_user_list = update_dict(list_to_update, changes_to_make)
-        await self.create_user_list(user_id, updated_user_list)
-        return updated_user_list
+        changes_to_make = {k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()}
+        db_list_to_update = await self.get_existing_list_or_throw(list_to_update.id)
+        for key, value in changes_to_make.items():
+            if hasattr(db_list_to_update, key):
+                setattr(db_list_to_update, key, value)
+        await self.db_session.commit()
+        return db_list_to_update
 
     async def test_connection(self) -> None:
         await self.db_session.execute(text("SELECT 1;"))
