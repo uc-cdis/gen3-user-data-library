@@ -320,17 +320,17 @@ async def get_status(
     return JSONResponse(status_code=return_status, content=response)
 
 
-@root_router.get("/lists/{id}/")
-@root_router.get("/lists/{id}", include_in_schema=False)
+@root_router.get("/lists/{ID}/")
+@root_router.get("/lists/{ID}", include_in_schema=False)
 async def get_list_by_id(
-        list_id: int,
+        ID: int,
         request: Request,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Find list by its id
 
     Args:
-        :param list_id: the id of the list you wish to retrieve
+        :param ID: the id of the list you wish to retrieve
         :param request: FastAPI request (so we can check authorization)
         :param data_access_layer: how we interface with db
 
@@ -342,11 +342,11 @@ async def get_list_by_id(
         authz_access_method="read",
         authz_resources=["/gen3_data_library/service_info/status"])
 
-    return_status = status.HTTP_201_CREATED
+    return_status = status.HTTP_200_OK
     status_text = "OK"
 
     try:
-        user_list = await data_access_layer.get_list(list_id)
+        user_list = await data_access_layer.get_list(ID)
         if user_list is None:
             raise HTTPException(status_code=404, detail="List not found")
         response = {"status": status_text, "timestamp": time.time(), "body": {
