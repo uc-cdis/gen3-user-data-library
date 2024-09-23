@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 from importlib.metadata import version
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 from fastapi import APIRouter, Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
 from pydantic import BaseModel
@@ -60,6 +60,15 @@ class UserListResponseModel(BaseModel):
     lists: Dict[int, UserListModel]
 
 
+class RequestedUserListModel(BaseModel):
+    name: str
+    items: Optional[Dict] = {}  # Nested items
+
+
+class UserListRequestModel(BaseModel):
+    lists: List[RequestedUserListModel]
+
+
 @root_router.get("/", include_in_schema=False)
 async def redirect_to_docs():
     """
@@ -90,16 +99,16 @@ async def redirect_to_docs():
     include_in_schema=False)
 async def upsert_user_lists(
         request: Request,
-        data: dict,
+        requested_lists: UserListRequestModel,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Create a new list with the provided items, or update any lists that already exist
 
 
     Args:
-        request (Request): FastAPI request (so we can check authorization)
-        data (dict): Body from the POST, expects id => list mapping
-        data_access_layer (DataAccessLayer): Interface for data manipulations
+        :param request: (Request) FastAPI request (so we can check authorization)
+        :param requested_lists: Body from the POST, expects list of entities
+        :param data_access_layer: (DataAccessLayer): Interface for data manipulations
     """
     user_id = await get_user_id(request=request)
 
@@ -123,7 +132,7 @@ async def upsert_user_lists(
         request=request,
         authz_access_method="create",
         authz_resources=[get_user_data_library_endpoint(user_id)])
-    list_of_new_or_updatable_user_lists = data.get("lists")
+    list_of_new_or_updatable_user_lists = list(map(lambda req_obj: req_obj.__dict__, requested_lists.lists))
     if not list_of_new_or_updatable_user_lists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
     start_time = time.time()
@@ -397,17 +406,17 @@ async def ensure_list_exists_and_can_be_conformed(data_access_layer,
 @root_router.put("/lists/{ID}", include_in_schema=False)
 async def update_list_by_id(
         request: Request,
-        list_id: int,
-        body: dict,
+        ID: int,
+        info_to_update_with: RequestedUserListModel,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Create a new list if it does not exist with the provided content OR updates a list with the
         provided content if a list already exists.
 
-    :param list_id: the id of the list you wish to retrieve
+    :param ID: the id of the list you wish to retrieve
     :param request: FastAPI request (so we can check authorization)
     :param data_access_layer: how we interface with db
-    :param body: content to change list
+    :param info_to_update_with: content to change list
     :return: JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
 
@@ -415,14 +424,13 @@ async def update_list_by_id(
         request=request,
         authz_access_method="upsert",
         authz_resources=["/gen3_data_library/service_info/status"])
-    user_list = await data_access_layer.get_list(list_id)
+    user_list = await data_access_layer.get_list(ID)
     if user_list is None:
         raise HTTPException(status_code=404, detail="List not found")
     user_id = get_user_id(request=request)
-    # todo: ensure body is correct format
-    list_as_orm = await try_conforming_list(user_id, body)
+    list_as_orm = await try_conforming_list(user_id, info_to_update_with.__dict__)
     try:
-        outcome = await data_access_layer.replace_list(list_id, list_as_orm)
+        outcome = await data_access_layer.replace_list(ID, list_as_orm)
         response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
         return_status = status.HTTP_200_OK
     except Exception as e:
