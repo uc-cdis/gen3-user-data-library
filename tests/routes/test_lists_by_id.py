@@ -27,6 +27,7 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_getting_id_success(self, get_token_claims, arborist,
                                       endpoint, user_list, client, session):
         """
+        If I create a list, I should be able to access it without issue if I have the correct auth
 
         :param endpoint:
         :param user_list:
@@ -38,8 +39,27 @@ class TestUserListsRouter(BaseTestRouter):
         response = await client.get(endpoint, headers=headers)
         assert response.status_code == 200
 
-    async def test_getting_id_failure(self):
-        pass
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @pytest.mark.parametrize("endpoint", ["/lists/2", "/lists/2"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_getting_id_failure(self, get_token_claims, arborist,
+                                      endpoint, user_list, client, session):
+        """
+        Ensure asking for a list with unused id returns 404
+
+        :param get_token_claims:
+        :param arborist:
+        :param endpoint:
+        :param user_list:
+        :param client:
+        :param session:
+        :return:
+        """
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        response = await client.get(endpoint, headers=headers)
+        assert response.status_code == 404
 
     async def test_updating_by_id_success(self):
         pass
