@@ -273,10 +273,11 @@ class DataAccessLayer:
         await self.db_session.commit()
         return list_as_orm
 
-    async def add_items_to_list(self, list_id: int, list_as_orm: UserList):
+    async def add_items_to_list(self, list_id: int, item_data: dict):
         user_list = await self.get_existing_list_or_throw(list_id)
-        user_list.items.extend(list_as_orm.items)
+        user_list.items.update(item_data)
         await self.db_session.commit()
+        return user_list
 
     async def grab_all_lists_that_exist(self, by, identifier_list: Union[List[int], List[Tuple[str, str,]]]) \
             -> List[UserList]:

@@ -445,7 +445,7 @@ async def update_list_by_id(
 @root_router.patch("/lists/{ID}/", include_in_schema=False)
 async def append_items_to_list(
         request: Request,
-        list_id: int,
+        ID: int,
         body: dict,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     await authorize_request(
@@ -454,15 +454,12 @@ async def append_items_to_list(
         authz_access_method="upsert",
         authz_resources=["/gen3_data_library/service_info/status"])
     # todo: decide to keep ids as is, or switch to guids
-    list_exists = await data_access_layer.get_list(list_id) is not None
+    list_exists = await data_access_layer.get_list(ID) is not None
     if not list_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist")
-    user_id = get_user_id(request=request)
-    # todo: check that body is just list content
-    list_as_orm = await try_conforming_list(user_id, body)
 
     try:
-        outcome = await data_access_layer.add_items_to_list(list_id, list_as_orm)
+        outcome = await data_access_layer.add_items_to_list(ID, body)
         response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
         return_status = status.HTTP_200_OK
     except Exception as e:

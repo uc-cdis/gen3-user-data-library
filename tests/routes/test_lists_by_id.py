@@ -43,7 +43,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.status_code == 200
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", ["/lists/2", "/lists/2"])
+    @pytest.mark.parametrize("endpoint", ["/lists/2"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_getting_id_failure(self, get_token_claims, arborist,
@@ -65,7 +65,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.status_code == 404
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", ["/lists/1", "/lists/1"])
+    @pytest.mark.parametrize("endpoint", ["/lists/1"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_updating_by_id_success(self, get_token_claims, arborist,
@@ -112,14 +112,71 @@ class TestUserListsRouter(BaseTestRouter):
         assert updated_list["items"].get("CF_2", None) is not None
         assert updated_list["items"].get('drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65', None) is not None
 
-    async def test_updating_by_id_failures(self):
+    @pytest.mark.parametrize("endpoint", ["/lists/1"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_updating_by_id_failures(self, get_token_claims, arborist,
+                                           endpoint, user_list, client, session):
+        # todo: test trying to update list belonging to diff user, update list that does not exist
+        # todo: test invalid kind of update (bad data) e.g. try deleting id
+        # todo: test missing fields?
         pass
 
-    async def test_appending_by_id_success(self):
-        # todo: what kind of data is coming into a patch?
-        pass
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @pytest.mark.parametrize("endpoint", ["/lists/1"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_appending_by_id_success(self, get_token_claims, arborist,
+                                           endpoint, user_list, client, session):
+        """
+        Test we can append to a specific list correctly
 
-    async def test_appending_by_id_failures(self):
+        :param get_token_claims:
+        :param arborist:
+        :param endpoint:
+        :param user_list:
+        :param client:
+        :param session:
+        :return:
+        """
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        body = {
+            "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65": {
+                "dataset_guid": "phs000001.v1.p1.c1",
+                "type": "GA4GH_DRS"
+            },
+            "CF_2": {
+                "name": "Cohort Filter 1",
+                "type": "Gen3GraphQL",
+                "schema_version": "c246d0f",
+                "data": {
+                    "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
+                histogram { sum } } } } }""",
+                    "variables": {"filter": {
+                        "AND": [{"IN": {"annotated_sex": ["male"]}}, {"IN": {"data_type": ["Aligned Reads"]}},
+                                {"IN": {"data_format": ["CRAM"]}}, {"IN": {"race": ["[\"hispanic\"]"]}}]}}}
+            }
+        }
+
+        response = await client.patch("/lists/1", headers=headers, json=body)
+        updated_list = response.json().get("updated_list", None)
+        items = updated_list.get("items", None)
+        assert response.status_code == 200
+        assert items is not None
+        assert items.get("CF_1", None) is not None
+        assert items.get("CF_2", None) is not None
+        assert items.get('drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a64', None) is not None
+        assert items.get('drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65', None) is not None
+
+    @pytest.mark.parametrize("endpoint", ["/lists/1"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_appending_by_id_failures(self, get_token_claims, arborist,
+                                            endpoint, user_list, client, session):
+        # todo: test trying to update list belonging to diff user, update list that does not exist
+        # todo: test invalid kind of update (bad data) e.g. try deleting id
+        # todo: test missing or no fields?
         pass
 
     @pytest.mark.parametrize("endpoint", ["/lists/1"])
@@ -135,7 +192,7 @@ class TestUserListsRouter(BaseTestRouter):
         :param endpoint:
         :param client:
         :param session:
-        :return:
+
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
