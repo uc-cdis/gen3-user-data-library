@@ -329,8 +329,8 @@ async def get_status(
     return JSONResponse(status_code=return_status, content=response)
 
 
-@root_router.get("/lists/{ID}/")
-@root_router.get("/lists/{ID}", include_in_schema=False)
+@root_router.get("/lists/{ID}")
+@root_router.get("/lists/{ID}/", include_in_schema=False)
 async def get_list_by_id(
         ID: int,
         request: Request,
@@ -402,8 +402,8 @@ async def ensure_list_exists_and_can_be_conformed(data_access_layer,
     return list_as_orm
 
 
-@root_router.put("/lists/{ID}/")
-@root_router.put("/lists/{ID}", include_in_schema=False)
+@root_router.put("/lists/{ID}")
+@root_router.put("/lists/{ID}/", include_in_schema=False)
 async def update_list_by_id(
         request: Request,
         ID: int,
@@ -441,8 +441,8 @@ async def update_list_by_id(
     return JSONResponse(status_code=return_status, content=response)
 
 
-@root_router.patch("/lists/{ID}/")
-@root_router.patch("/lists/{ID}", include_in_schema=False)
+@root_router.patch("/lists/{ID}")
+@root_router.patch("/lists/{ID}/", include_in_schema=False)
 async def append_items_to_list(
         request: Request,
         list_id: int,
@@ -473,10 +473,10 @@ async def append_items_to_list(
     return JSONResponse(status_code=return_status, content=response)
 
 
-@root_router.delete("/lists/{ID}/")
-@root_router.delete("/lists/{ID}", include_in_schema=False)
+@root_router.delete("/lists/{ID}")
+@root_router.delete("/lists/{ID}/", include_in_schema=False)
 async def delete_list_by_id(
-        list_id: int,
+        ID: int,
         request: Request,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
@@ -492,11 +492,15 @@ async def delete_list_by_id(
         authz_access_method="create",
         authz_resources=["/gen3_data_library/service_info/status"])
 
-    return_status = status.HTTP_201_CREATED
+    return_status = status.HTTP_200_OK
     status_text = "OK"
 
     try:
-        list_deleted = await data_access_layer.delete_list(list_id)
+        user_list = await data_access_layer.get_list(ID)
+        if user_list is None:
+            response = {"status": status_text, "timestamp": time.time(), "list_deleted": False}
+            return JSONResponse(status_code=404, content=response)
+        list_deleted = await data_access_layer.delete_list(ID)
     except Exception as e:
         return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
         status_text = "UNHEALTHY"

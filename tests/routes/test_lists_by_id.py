@@ -13,6 +13,7 @@ async def create_basic_list(arborist, get_token_claims, client, user_list, heade
     get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
     response = await client.put("/lists", headers=headers, json={"lists": [user_list]})
     assert response.status_code == 201
+    return response
 
 
 @pytest.mark.asyncio
@@ -20,7 +21,7 @@ class TestUserListsRouter(BaseTestRouter):
     router = root_router
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", ["/lists/1", "/lists/1"])
+    @pytest.mark.parametrize("endpoint", ["/lists/1"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_getting_id_success(self, get_token_claims, arborist,
@@ -28,14 +29,17 @@ class TestUserListsRouter(BaseTestRouter):
         """
         If I create a list, I should be able to access it without issue if I have the correct auth
 
-        :param endpoint:
-        :param user_list:
-        :param client:
-        :return:
+        :param endpoint: route we want to hit
+        :param user_list: user list object we're working with
+        :param client: route handler
+        :param get_token_claims: ?
+        :param arborist: ?
+        :param session: ?
+
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        response = await client.get(endpoint, headers=headers)
+        response = await client.get("/lists", headers=headers)
         assert response.status_code == 200
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
@@ -112,13 +116,64 @@ class TestUserListsRouter(BaseTestRouter):
         pass
 
     async def test_appending_by_id_success(self):
+        # todo: what kind of data is coming into a patch?
         pass
 
     async def test_appending_by_id_failures(self):
         pass
 
-    async def test_deleting_by_id_success(self):
-        pass
+    @pytest.mark.parametrize("endpoint", ["/lists/1"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_deleting_by_id_success(self, get_token_claims, arborist,
+                                          endpoint, client, session):
+        """
+        Test that we can't get data after it has been deleted
 
-    async def test_deleting_by_id_failures(self):
-        pass
+        :param get_token_claims:
+        :param arborist:
+        :param endpoint:
+        :param client:
+        :param session:
+        :return:
+        """
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
+        sanity_get_check = await client.get("lists/1", headers=headers)
+        assert sanity_get_check.status_code == 200
+        first_delete = await client.delete("/lists/1", headers=headers)
+        first_get_outcome = await client.get("lists/1", headers=headers)
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        second_delete = await client.delete("/lists/2", headers=headers)
+        second_get_outcome = await client.get("list/1", headers=headers)
+        assert first_delete.status_code == 200
+        assert first_get_outcome.status_code == 404
+        assert second_delete.status_code == 200
+        assert second_get_outcome.status_code == 404
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @pytest.mark.parametrize("endpoint", ["/lists/1"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_deleting_by_id_failures(self, get_token_claims, arborist,
+                                           endpoint, user_list, client, session):
+        """
+        Test unsuccessful deletes behave correctly
+
+        :param get_token_claims:
+        :param arborist:
+        :param endpoint:
+        :param user_list:
+        :param client:
+        :param session:
+
+        """
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        first_delete_attempt_1 = await client.delete("/lists/1", headers=headers)
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
+        first_delete_attempt_2 = await client.delete("/lists/1", headers=headers)
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        second_delete_attempt_1 = await client.delete("/lists/1", headers=headers)
+        assert first_delete_attempt_1.status_code == 404
+        assert first_delete_attempt_2.status_code == 200
+        assert second_delete_attempt_1.status_code == 404
