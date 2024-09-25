@@ -260,8 +260,6 @@ class TestUserListsRouter(BaseTestRouter):
             assert user_list["authz"].get("version", {}) == 0
 
             if user_list["name"] == VALID_LIST_A["name"]:
-                # todo: currently, when we update lists the authz endpoint becomes `/lists` instead of
-                # `/lists/{ID}`, will this be a problem? If so, we should fix
                 assert user_list["created_time"] != user_list["updated_time"]
                 assert user_list["authz"].get("authz") == [get_list_by_id_endpoint(user_id, user_list_id)]
                 assert user_list["items"] == VALID_LIST_C["items"]
@@ -276,7 +274,7 @@ class TestUserListsRouter(BaseTestRouter):
                     pytest.fail("List C found twice, should only have showed up once")
                 have_seen_c = True
             else:
-                # fail if the list is neither A or B
+                # fail if the list is neither A nor B
                 assert False
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
@@ -284,22 +282,19 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_duplicate_list(self, get_token_claims, arborist, endpoint, client):
         """
-        test creating a list with non unique name for given user, ensure 400
+        Test creating a list with non-unique name for given user, ensure 400
 
         :param get_token_claims: for token
         :param arborist: for successful auth
         :param endpoint: which route to hit
         :param client: router
-        :return: pass/fail based on assert
         """
-
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response_1 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A]})
         response_2 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A]})
-
         assert response_2.status_code == 400
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
@@ -310,14 +305,12 @@ class TestUserListsRouter(BaseTestRouter):
         Test db.create_lists raising some error other than unique constraint, ensure 400
         todo: ask for clarity
         """
-        arborist.auth_request.return_value = True
-        user_id = "79"
-        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
-
-        headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A]})
         assert NotImplemented
-
+        # arborist.auth_request.return_value = True
+        # user_id = "79"
+        # get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+        # headers = {"Authorization": "Bearer ofa.valid.token"}
+        # response = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A]})
         # assert response.status_code == 400
         # assert response.json()["detail"] == "Invalid list information provided"
 
@@ -332,7 +325,6 @@ class TestUserListsRouter(BaseTestRouter):
         :param arborist: for successful auth
         :param endpoint: which route to hit
         :param client: router
-        :return: pass/fail based on assert
         """
         arborist.auth_request.return_value = True
         user_id = "79"

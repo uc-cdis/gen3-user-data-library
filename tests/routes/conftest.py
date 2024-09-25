@@ -11,6 +11,7 @@ class BaseTestRouter:
     @pytest_asyncio.fixture(scope="function")
     async def client(self, session):
         app = get_app()
+        # todo: these properties are not defined?
         app.include_router(self.router)
         app.dependency_overrides[get_data_access_layer] = lambda: DataAccessLayer(
             session
