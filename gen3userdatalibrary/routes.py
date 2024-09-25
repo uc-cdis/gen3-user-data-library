@@ -65,10 +65,6 @@ class RequestedUserListModel(BaseModel):
     items: Optional[Dict] = {}  # Nested items
 
 
-class UserListRequestModel(BaseModel):
-    lists: List[RequestedUserListModel]
-
-
 @root_router.get("/", include_in_schema=False)
 async def redirect_to_docs():
     """
@@ -79,7 +75,7 @@ async def redirect_to_docs():
 
 
 @root_router.put(
-    "/lists/",
+    "/lists",
     # most of the following stuff helps populate the openapi docs
     response_model=UserListResponseModel,
     status_code=status.HTTP_201_CREATED,
@@ -95,11 +91,11 @@ async def redirect_to_docs():
             "description": "Bad request, unable to create list",
         }})
 @root_router.put(
-    "/lists",
+    "/lists/",
     include_in_schema=False)
 async def upsert_user_lists(
         request: Request,
-        requested_lists: UserListRequestModel,
+        requested_lists: dict,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Create a new list with the provided items, or update any lists that already exist
@@ -132,13 +128,12 @@ async def upsert_user_lists(
         request=request,
         authz_access_method="create",
         authz_resources=[get_user_data_library_endpoint(user_id)])
-    list_of_new_or_updatable_user_lists = list(map(lambda req_obj: req_obj.__dict__, requested_lists.lists))
-    if not list_of_new_or_updatable_user_lists:
+    if not requested_lists.get("lists", None):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
     start_time = time.time()
 
     new_lists_as_orm = [await try_conforming_list(user_id, user_list)
-                        for user_list in list_of_new_or_updatable_user_lists]
+                        for user_list in requested_lists.get("lists", {})]
     unique_list_identifiers = {(user_list.creator, user_list.name): user_list
                                for user_list in new_lists_as_orm}
     lists_to_update = await data_access_layer.grab_all_lists_that_exist("name", list(unique_list_identifiers.keys()))
@@ -165,12 +160,12 @@ async def upsert_user_lists(
     response_time_seconds = end_time - start_time
     logging.info(
         f"Gen3 User Data Library Response. Action: {action}. "
-        f"lists={list_of_new_or_updatable_user_lists}, response={response}, "
+        f"lists={requested_lists}, response={response}, "
         f"response_time_seconds={response_time_seconds} user_id={user_id}")
     add_user_list_metric(
         fastapi_app=request.app,
         action=action,
-        user_lists=list_of_new_or_updatable_user_lists,
+        user_lists=[requested_lists],
         response_time_seconds=response_time_seconds,
         user_id=user_id)
     logging.debug(response)
@@ -448,7 +443,7 @@ async def append_items_to_list(
         ID: int,
         body: dict,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
-    await authorize_request(
+    outcome = await authorize_request(
         request=request,
         # todo: what methods can we use?
         authz_access_method="upsert",
