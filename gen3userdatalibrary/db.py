@@ -63,9 +63,10 @@ def remove_keys(d: dict, keys: list):
 async def try_conforming_list(user_id, user_list: dict) -> UserList:
     """
     Handler for modeling endpoint data into orm
-    :param user_list:
+
+    :param user_list: dictionary representation of user list object
     :param user_id: id of the list owner
-    :return: dict that maps id -> user list
+    :return: user list orm
     """
     try:
         list_as_orm = await create_user_list_instance(user_id, user_list)
@@ -86,6 +87,13 @@ async def try_conforming_list(user_id, user_list: dict) -> UserList:
 
 
 async def create_user_list_instance(user_id, user_list: dict):
+    """
+    Creates a user list orm given the user's id and a dictionary representation.
+    Tests the type
+    Assumes user list is in the correct structure
+    """
+    # next todo: is there a way to move this out reasonably?
+    assert user_id is not None, "User must have an ID!"
     now = datetime.datetime.now(datetime.timezone.utc)
     name = user_list.get("name", f"Saved List {now}")
     user_list_items = user_list.get("items", {})
@@ -106,21 +114,13 @@ async def create_user_list_instance(user_id, user_list: dict):
                 raise
         else:
             try:
-                validate(
-                    instance=item_contents,
-                    schema=ITEMS_JSON_SCHEMA_GENERIC,
-                )
+                validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_GENERIC)
             except ValidationError as e:
                 logging.debug(f"User-provided JSON is invalid: {e.message}")
                 raise
 
-            logging.warning(
-                "User-provided JSON is an unknown type. Creating anyway..."
-            )
+            logging.warning("User-provided JSON is an unknown type. Creating anyway...")
 
-    if user_id is None:
-        # TODO make this a reasonable error type
-        raise Exception()
     new_list = UserList(
         version=0,
         creator=str(user_id),
@@ -161,10 +161,6 @@ class DataAccessLayer:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    async def create_user_list(self, user_id, user_list: dict) -> UserList:
-        new_list = await try_conforming_list(user_id, user_list)
-        return await self.persist_user_list(new_list, user_id)
-
     # todo bonus: we should have a way to ensure we are not doing multiple
     # updates to the db. ideally, each endpoint should query the db once.
     # less than ideally, it only writes to the db once
@@ -185,19 +181,6 @@ class DataAccessLayer:
         }
         user_list.authz = authz
         return user_list
-
-    async def create_user_lists(self, user_id, user_lists: List[dict]) -> Dict[int, UserList]:
-        """
-
-        Note: if any items in any list fail, or any list fails to get created, no lists are created.
-        """
-        new_user_lists = {}
-
-        # Validate the JSON objects
-        for user_list in user_lists:
-            new_list = await self.create_user_list(user_id, user_list)
-            new_user_lists[new_list.id] = new_list
-        return new_user_lists
 
     async def get_all_lists(self) -> List[UserList]:
         query = await self.db_session.execute(select(UserList).order_by(UserList.id))

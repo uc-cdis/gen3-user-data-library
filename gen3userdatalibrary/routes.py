@@ -367,12 +367,6 @@ async def get_list_by_id(
     return JSONResponse(status_code=return_status, content=response)
 
 
-async def create_list_and_return_response(data_access_layer, user_id, user_list: dict):
-    await data_access_layer.create_user_list(user_id, user_list)
-    response = {"status": "OK", "timestamp": time.time(), "created_list": user_list}
-    return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
-
-
 async def try_modeling_user_list(user_list) -> Union[UserList, JSONResponse]:
     try:
         user_id = await get_user_id()
@@ -383,17 +377,6 @@ async def try_modeling_user_list(user_list) -> Union[UserList, JSONResponse]:
         response = {"status": status_text, "timestamp": time.time(),
                     "error": "malformed list, could not update"}
         return JSONResponse(status_code=return_status, content=response)
-    return list_as_orm
-
-
-async def ensure_list_exists_and_can_be_conformed(data_access_layer,
-                                                  user_list: dict,
-                                                  request) -> Union[UserList, JSONResponse]:
-    list_exists = await data_access_layer.get_list(user_list, "name") is not None
-    user_id = get_user_id(request=request)
-    if not list_exists:
-        return await create_list_and_return_response(data_access_layer, user_id, user_list)
-    list_as_orm = await try_modeling_user_list(user_list)
     return list_as_orm
 
 
