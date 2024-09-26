@@ -341,3 +341,28 @@ class TestUserListsRouter(BaseTestRouter):
         response_2 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A]})
         assert response_2.status_code == 201
         assert "lists" in response_2.json()
+
+    async def test_reading_lists_success(self):
+        pass
+
+    async def test_reading_lists_failures(self):
+        pass
+
+    async def test_creating_lists_success(self):
+        pass
+
+    async def test_creating_lists_failures(self):
+        pass
+
+    async def test_updating_lists_success(self):
+        pass
+
+    async def test_updating_lists_failures(self):
+        pass
+
+    async def test_deleting_lists_success(self):
+        pass
+
+    async def test_deleting_lists_failures(self):
+        pass
+
