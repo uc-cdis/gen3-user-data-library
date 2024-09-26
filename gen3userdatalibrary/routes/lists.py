@@ -9,7 +9,7 @@ from gen3userdatalibrary.models.user_list import UserListResponseModel
 from gen3userdatalibrary.routes.basic import root_router
 from gen3userdatalibrary.services.auth import get_user_id, authorize_request, get_user_data_library_endpoint
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.helpers import try_conforming_list
+from gen3userdatalibrary.services.helpers import try_conforming_list, derive_changes_to_make
 from gen3userdatalibrary.utils import add_user_list_metric
 
 
@@ -128,10 +128,11 @@ async def upsert_user_lists(
         identifier = (list_to_update.creator, list_to_update.name)
         new_version_of_list = unique_list_identifiers.get(identifier, None)
         assert new_version_of_list is not None
-        updated_list = await data_access_layer.update_and_persist_list(list_to_update, new_version_of_list)
+        changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
+        updated_list = await data_access_layer.update_and_persist_list(list_to_update.id, changes_to_make)
         updated_lists.append(updated_list)
     for list_to_create in lists_to_create:
-        await data_access_layer.persist_user_list(list_to_create, user_id)
+        await data_access_layer.persist_user_list(user_id, list_to_create)
 
     response_user_lists = {}
     for user_list in (lists_to_create + updated_lists):

@@ -8,9 +8,21 @@ from starlette import status
 from gen3userdatalibrary.config import logging
 from gen3userdatalibrary.models.items_schema import (ITEMS_JSON_SCHEMA_DRS,
                                                      ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
-                                                     ITEMS_JSON_SCHEMA_GENERIC)
+                                                     ITEMS_JSON_SCHEMA_GENERIC, BLACKLIST)
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_lists_endpoint
+from gen3userdatalibrary.utils import find_differences, remove_keys
+
+
+def derive_changes_to_make(list_to_update, new_list):
+    differences = find_differences(list_to_update, new_list)
+    relevant_differences = remove_keys(differences, BLACKLIST)
+    has_no_relevant_differences = not relevant_differences or (len(relevant_differences) == 1 and
+                                                               relevant_differences.__contains__("updated_time"))
+    if has_no_relevant_differences:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to update!")
+    changes_to_make = {k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()}
+    return changes_to_make
 
 
 async def try_conforming_list(user_id, user_list: dict) -> UserList:

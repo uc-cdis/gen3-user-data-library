@@ -29,18 +29,14 @@ What do we do in this file?
 """
 
 from typing import List, Optional, Tuple, Union
-from fastapi import HTTPException
 from sqlalchemy import text, delete, func, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import make_transient
-from starlette import status
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
-from gen3userdatalibrary.models.items_schema import BLACKLIST
-from gen3userdatalibrary.utils import remove_keys, find_differences
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
@@ -60,12 +56,9 @@ class DataAccessLayer:
     # todo bonus: we should have a way to ensure we are not doing multiple
     # updates to the db. ideally, each endpoint should query the db once.
     # less than ideally, it only writes to the db once
-    async def persist_user_list(self, user_list: UserList, user_id):
+    async def persist_user_list(self, user_id, user_list: UserList):
         """
-
-        :param user_list:
-        :param user_id: user's id
-        :return:
+        Save user list to db as well as update authz
         """
         self.db_session.add(user_list)
         # correct authz with id, but flush to get the autoincrement id
@@ -79,10 +72,16 @@ class DataAccessLayer:
         return user_list
 
     async def get_all_lists(self) -> List[UserList]:
+        """
+        Return all known lists
+        """
         query = await self.db_session.execute(select(UserList).order_by(UserList.id))
         return list(query.scalars().all())
 
     async def get_list(self, identifier: Union[int, Tuple[str, str]], by="id") -> Optional[UserList]:
+        """
+        Get a list by either unique id or unique (creator, name) combo
+        """
         if by == "name":  # assume identifier is (creator, name)
             query = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_([identifier]))
         else:  # by id
@@ -92,20 +91,21 @@ class DataAccessLayer:
         return user_list
 
     async def get_existing_list_or_throw(self, list_id: int) -> UserList:
+        """
+        List SHOULD exist, so throw if it doesn't
+        """
         existing_record = await self.get_list(list_id)
         if existing_record is None:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record
 
-    async def update_and_persist_list(self, list_to_update: UserList, new_list: UserList) -> UserList:
-        differences = find_differences(list_to_update, new_list)
-        relevant_differences = remove_keys(differences, BLACKLIST)
-        has_no_relevant_differences = not relevant_differences or (len(relevant_differences) == 1 and
-                                                                   relevant_differences.__contains__("updated_time"))
-        if has_no_relevant_differences:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to update!")
-        changes_to_make = {k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()}
-        db_list_to_update = await self.get_existing_list_or_throw(list_to_update.id)
+    async def update_and_persist_list(self, list_to_update_id, changes_to_make) -> UserList:
+        """
+        Given an id and list of changes to make, it'll update the list orm with those changes.
+        IMPORTANT! Does not check that the attributes are safe to change.
+        Refer to the BLACKLIST variable in items_schema.py for unsafe properties
+        """
+        db_list_to_update = await self.get_existing_list_or_throw(list_to_update_id)
         for key, value in changes_to_make.items():
             if hasattr(db_list_to_update, key):
                 setattr(db_list_to_update, key, value)
@@ -116,6 +116,10 @@ class DataAccessLayer:
         await self.db_session.execute(text("SELECT 1;"))
 
     async def delete_all_lists(self, sub_id: str):
+        # todo: do we test this?
+        """
+        Delete all lists for a given list creator, return how many lists were deleted
+        """
         query = select(func.count()).select_from(UserList).where(UserList.creator == sub_id)
         query.execution_options(synchronize_session="fetch")
         result = await self.db_session.execute(query)
@@ -125,6 +129,9 @@ class DataAccessLayer:
         return count
 
     async def delete_list(self, list_id: int):
+        """
+        Delete a specific list given its ID, give back how many we deleted
+        """
         count_query = select(func.count()).select_from(UserList).where(UserList.id == list_id)
         count_result = await self.db_session.execute(count_query)
         count = count_result.scalar()
@@ -136,10 +143,7 @@ class DataAccessLayer:
 
     async def replace_list(self, original_list_id, list_as_orm: UserList):
         """
-
-        :param original_list_id:
-        :param list_as_orm:
-        :return:
+        Delete the original list, replace it with the new one!
         """
         existing_obj = await self.get_existing_list_or_throw(original_list_id)
 
@@ -153,6 +157,9 @@ class DataAccessLayer:
         return list_as_orm
 
     async def add_items_to_list(self, list_id: int, item_data: dict):
+        """
+        Gets existing list and adds items to the items property
+        """
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.update(item_data)
         await self.db_session.commit()
@@ -160,6 +167,9 @@ class DataAccessLayer:
 
     async def grab_all_lists_that_exist(self, by, identifier_list: Union[List[int], List[Tuple[str, str,]]]) \
             -> List[UserList]:
+        """
+        Get all lists that match the identifier list, whether that be the ids or creator/name combo
+        """
         if by == "name":  # assume identifier list = [(creator1, name1), ...]
             q = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_(identifier_list))
         else:  # assume it's by id
