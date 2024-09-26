@@ -6,16 +6,17 @@ from sqlalchemy import inspect
 from gen3userdatalibrary import logging
 
 
-def find_differences(list_to_update, new_list):
+def find_differences(object_to_update: object, new_object: object):
     """
-    Finds differences in attributes between two SQLAlchemy ORM objects of the same type.
+    Finds differences in attributes between two objects
+    NOTE: Objects must be of the same type!
     """
-    mapper = inspect(list_to_update).mapper
+    mapper = inspect(object_to_update).mapper
 
     def add_difference(differences, attribute):
         attr_name = attribute.key
-        value1 = getattr(list_to_update, attr_name)
-        value2 = getattr(new_list, attr_name)
+        value1 = getattr(object_to_update, attr_name)
+        value2 = getattr(new_object, attr_name)
         if value1 != value2:
             differences[attr_name] = (value1, value2)
         return differences

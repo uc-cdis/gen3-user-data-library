@@ -14,7 +14,11 @@ from gen3userdatalibrary.services.auth import get_lists_endpoint
 from gen3userdatalibrary.utils import find_differences, remove_keys
 
 
-def derive_changes_to_make(list_to_update, new_list):
+def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
+    """
+    Given an old list and new list, gets the changes in the new list to be added
+    to the old list
+    """
     differences = find_differences(list_to_update, new_list)
     relevant_differences = remove_keys(differences, BLACKLIST)
     has_no_relevant_differences = not relevant_differences or (len(relevant_differences) == 1 and
@@ -27,11 +31,9 @@ def derive_changes_to_make(list_to_update, new_list):
 
 async def try_conforming_list(user_id, user_list: dict) -> UserList:
     """
-    Handler for modeling endpoint data into orm
-
-    :param user_list: dictionary representation of user list object
-    :param user_id: id of the list owner
-    :return: user list orm
+    Handler for modeling endpoint data into a user list orm
+    user_id: list creator's id
+    user_list: dict representation of the user's list
     """
     try:
         list_as_orm = await create_user_list_instance(user_id, user_list)
@@ -51,7 +53,7 @@ async def try_conforming_list(user_id, user_list: dict) -> UserList:
     return list_as_orm
 
 
-def validate_user_list_item(item_contents):
+def validate_user_list_item(item_contents: dict):
     """
     Ensures that the item component of a user list has the correct setup for type property
 
