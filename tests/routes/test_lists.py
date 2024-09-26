@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
+from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
 
 from gen3userdatalibrary.main import root_router
@@ -342,7 +343,26 @@ class TestUserListsRouter(BaseTestRouter):
         assert response_2.status_code == 201
         assert "lists" in response_2.json()
 
-    async def test_reading_lists_success(self):
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
+    @pytest.mark.parametrize("method", ["put", "get", "delete"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_reading_lists_success(self, get_token_claims, arborist,
+                                         method, user_list, endpoint, client):
+        """
+        Test accessing the endpoint when unauthorized
+        """
+        # todo: finish /lists tests
+        # Simulate an unauthorized request but a valid token
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "foo"}
+
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        await create_basic_list()
+        await create_basic_list()
+        response = await client.get(endpoint, headers=headers)
+
         pass
 
     async def test_reading_lists_failures(self):
@@ -365,4 +385,3 @@ class TestUserListsRouter(BaseTestRouter):
 
     async def test_deleting_lists_failures(self):
         pass
-
