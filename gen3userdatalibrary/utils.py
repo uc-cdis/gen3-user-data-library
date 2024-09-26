@@ -1,6 +1,27 @@
+from functools import reduce
 from typing import Any, Dict, List
 from fastapi import FastAPI
+from sqlalchemy import inspect
+
 from gen3userdatalibrary import logging
+
+
+def find_differences(list_to_update, new_list):
+    """
+    Finds differences in attributes between two SQLAlchemy ORM objects of the same type.
+    """
+    mapper = inspect(list_to_update).mapper
+
+    def add_difference(differences, attribute):
+        attr_name = attribute.key
+        value1 = getattr(list_to_update, attr_name)
+        value2 = getattr(new_list, attr_name)
+        if value1 != value2:
+            differences[attr_name] = (value1, value2)
+        return differences
+
+    differences_between_lists = reduce(add_difference, mapper.attrs, {})
+    return differences_between_lists
 
 
 def remove_keys(d: dict, keys: list):

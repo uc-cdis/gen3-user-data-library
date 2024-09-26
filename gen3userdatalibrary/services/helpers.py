@@ -1,8 +1,16 @@
 import datetime
-from functools import reduce
+
+from fastapi import HTTPException
 from jsonschema import ValidationError, validate
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import inspect
+from starlette import status
+
+from gen3userdatalibrary.config import logging
+from gen3userdatalibrary.models.items_schema import (ITEMS_JSON_SCHEMA_DRS,
+                                                     ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
+                                                     ITEMS_JSON_SCHEMA_GENERIC)
+from gen3userdatalibrary.models.user_list import UserList
+from gen3userdatalibrary.services.auth import get_lists_endpoint
 
 
 async def try_conforming_list(user_id, user_list: dict) -> UserList:
@@ -64,8 +72,8 @@ async def create_user_list_instance(user_id, user_list: dict):
     Creates a user list orm given the user's id and a dictionary representation.
     Tests the type
     Assumes user list is in the correct structure
+
     """
-    # next todo: is there a way to move this out reasonably?
     assert user_id is not None, "User must have an ID!"
     now = datetime.datetime.now(datetime.timezone.utc)
     name = user_list.get("name", f"Saved List {now}")
@@ -87,20 +95,3 @@ async def create_user_list_instance(user_id, user_list: dict):
         items=user_list_items)
     return new_list
 
-
-def find_differences(list_to_update, new_list):
-    """
-    Finds differences in attributes between two SQLAlchemy ORM objects of the same type.
-    """
-    mapper = inspect(list_to_update).mapper
-
-    def add_difference(differences, attribute):
-        attr_name = attribute.key
-        value1 = getattr(list_to_update, attr_name)
-        value2 = getattr(new_list, attr_name)
-        if value1 != value2:
-            differences[attr_name] = (value1, value2)
-        return differences
-
-    differences_between_lists = reduce(add_difference, mapper.attrs, {})
-    return differences_between_lists

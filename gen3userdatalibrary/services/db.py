@@ -37,15 +37,15 @@ from sqlalchemy.orm import make_transient
 from starlette import status
 
 from gen3userdatalibrary import config
+from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
 from gen3userdatalibrary.models.items_schema import BLACKLIST
+from gen3userdatalibrary.utils import remove_keys, find_differences
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
 # creates AsyncSession instances
 async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
-
-
 
 
 class DataAccessLayer:

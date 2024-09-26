@@ -17,7 +17,8 @@ API_USER_LIST_COUNTER = {
 
 API_USER_LIST_ITEM_COUNTER = {
     "name": "gen3_data_library_user_api_list_items",
-    "description": "API requests for modifying Items within Gen3 User Data Library User Lists. This includes all CRUD actions.",
+    "description": "API requests for modifying Items within Gen3 User Data Library User Lists. This includes all CRUD "
+                   "actions.",
 }
 
 

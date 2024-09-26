@@ -1,9 +1,30 @@
 import datetime
-from typing import Dict
+from typing import Dict, Any, Optional
+
+from pydantic import BaseModel
 from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
+
+
+class UserListModel(BaseModel):
+    version: int
+    creator: str
+    authz: Dict[str, Any]
+    name: str
+    created_time: datetime
+    updated_time: datetime
+    items: Optional[Dict[str, Any]] = None
+
+
+class UserListResponseModel(BaseModel):
+    lists: Dict[int, UserListModel]
+
+
+class RequestedUserListModel(BaseModel):
+    name: str
+    items: Optional[Dict] = {}  # Nested items
 
 
 class UserList(Base):
