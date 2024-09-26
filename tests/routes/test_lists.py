@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, patch
 import pytest
 
-from gen3userdatalibrary.auth import get_list_by_id_endpoint
+from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
 from tests.routes.conftest import BaseTestRouter
 
 from gen3userdatalibrary.main import root_router

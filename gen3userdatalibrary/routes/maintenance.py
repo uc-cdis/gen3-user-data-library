@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 from importlib.metadata import version
-from typing import Any, Dict, Optional, Union, List
+from typing import Any, Dict, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
 from pydantic import BaseModel
@@ -9,10 +9,10 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import authorize_request, get_user_id, get_user_data_library_endpoint
-from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer, create_user_list_instance, \
+from gen3userdatalibrary.services.auth import authorize_request, get_user_id, get_user_data_library_endpoint
+from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer, create_user_list_instance, \
     try_conforming_list
-from gen3userdatalibrary.models import UserList
+from gen3userdatalibrary.models.items_schema import UserList
 from gen3userdatalibrary.utils import add_user_list_metric
 from fastapi.responses import RedirectResponse
 

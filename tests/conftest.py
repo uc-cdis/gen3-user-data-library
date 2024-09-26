@@ -25,7 +25,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from gen3userdatalibrary import config
-from gen3userdatalibrary.models import Base
+from gen3userdatalibrary.models.items_schema import Base
 
 
 @pytest.fixture(scope="session", autouse=True)

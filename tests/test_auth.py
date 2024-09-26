@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from tests.routes.conftest import BaseTestRouter
 from gen3userdatalibrary import config
-from gen3userdatalibrary.auth import _get_token
+from gen3userdatalibrary.services.auth import _get_token
 from gen3userdatalibrary.main import root_router
 
 @pytest.mark.asyncio

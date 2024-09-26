@@ -28,27 +28,17 @@ What do we do in this file?
     - This is what gets injected into endpoint code using FastAPI's dep injections
 """
 
-import datetime
-from functools import reduce
-from typing import Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 from fastapi import HTTPException
-from jsonschema import ValidationError, validate
 from sqlalchemy import text, delete, func, tuple_
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import make_transient
 from starlette import status
-from sqlalchemy import inspect
 
-from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import get_lists_endpoint, get_list_by_id_endpoint
-from gen3userdatalibrary.models import (
-    ITEMS_JSON_SCHEMA_DRS,
-    ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
-    ITEMS_JSON_SCHEMA_GENERIC,
-    UserList, BLACKLIST,
-)
+from gen3userdatalibrary import config
+from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
+from gen3userdatalibrary.models.items_schema import BLACKLIST
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
@@ -56,100 +46,6 @@ engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
 
-def remove_keys(d: dict, keys: list):
-    return {k: v for k, v in d.items() if k not in keys}
-
-
-async def try_conforming_list(user_id, user_list: dict) -> UserList:
-    """
-    Handler for modeling endpoint data into orm
-
-    :param user_list: dictionary representation of user list object
-    :param user_id: id of the list owner
-    :return: user list orm
-    """
-    try:
-        list_as_orm = await create_user_list_instance(user_id, user_list)
-    except IntegrityError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name")
-    except ValidationError as exc:
-        logging.debug(f"Invalid user-provided data when trying to create lists for user {user_id}.")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided", )
-    except Exception as exc:
-        logging.exception(f"Unknown exception {type(exc)} when trying to create lists for user {user_id}.")
-        logging.debug(f"Details: {exc}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided")
-    return list_as_orm
-
-
-async def create_user_list_instance(user_id, user_list: dict):
-    """
-    Creates a user list orm given the user's id and a dictionary representation.
-    Tests the type
-    Assumes user list is in the correct structure
-    """
-    # next todo: is there a way to move this out reasonably?
-    assert user_id is not None, "User must have an ID!"
-    now = datetime.datetime.now(datetime.timezone.utc)
-    name = user_list.get("name", f"Saved List {now}")
-    user_list_items = user_list.get("items", {})
-
-    for _, item_contents in user_list_items.items():
-        # TODO THIS NEEDS TO BE CFG
-        if item_contents.get("type") == "GA4GH_DRS":
-            try:
-                validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_DRS)
-            except ValidationError as e:
-                logging.debug(f"User-provided JSON is invalid: {e.message}")
-                raise
-        elif item_contents.get("type") == "Gen3GraphQL":
-            try:
-                validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,)
-            except ValidationError as e:
-                logging.debug(f"User-provided JSON is invalid: {e.message}")
-                raise
-        else:
-            try:
-                validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_GENERIC)
-            except ValidationError as e:
-                logging.debug(f"User-provided JSON is invalid: {e.message}")
-                raise
-
-            logging.warning("User-provided JSON is an unknown type. Creating anyway...")
-
-    new_list = UserList(
-        version=0,
-        creator=str(user_id),
-        # temporarily set authz without the list ID since we haven't created the list in the db yet
-        authz={
-            "version": 0,
-            "authz": [get_lists_endpoint(user_id)],
-        },
-        name=name,
-        created_time=now,
-        updated_time=now,
-        items=user_list_items)
-    return new_list
-
-
-def find_differences(list_to_update, new_list):
-    """Finds differences in attributes between two SQLAlchemy ORM objects of the same type."""
-    mapper = inspect(list_to_update).mapper
-
-    def add_difference(differences, attribute):
-        attr_name = attribute.key
-        value1 = getattr(list_to_update, attr_name)
-        value2 = getattr(new_list, attr_name)
-        if value1 != value2:
-            differences[attr_name] = (value1, value2)
-        return differences
-
-    differences_between_lists = reduce(add_difference, mapper.attrs, {})
-    return differences_between_lists
 
 
 class DataAccessLayer:

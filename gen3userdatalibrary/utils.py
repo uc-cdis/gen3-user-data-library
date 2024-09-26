@@ -1,16 +1,18 @@
 from typing import Any, Dict, List
-
 from fastapi import FastAPI
-
 from gen3userdatalibrary import logging
 
 
+def remove_keys(d: dict, keys: list):
+    return {k: v for k, v in d.items() if k not in keys}
+
+
 def add_user_list_metric(
-    fastapi_app: FastAPI,
-    action: str,
-    user_lists: List[Dict[str, Any]],
-    response_time_seconds: float,
-    user_id: str) -> None:
+        fastapi_app: FastAPI,
+        action: str,
+        user_lists: List[Dict[str, Any]],
+        response_time_seconds: float,
+        user_id: str) -> None:
     """
     Add a metric to the Metrics() instance on the specified FastAPI app for managing user lists.
 
@@ -23,26 +25,24 @@ def add_user_list_metric(
         response_time_seconds (float): The response time in seconds for the action performed
         user_id (str): The identifier of the user associated with the action
     """
+    # todo: state property does not exist?
     if not getattr(fastapi_app.state, "metrics", None):
         return
 
     for user_list in user_lists:
         fastapi_app.state.metrics.add_user_list_counter(
-            action=action, user_id=user_id, response_time_seconds=response_time_seconds
-        )
+            action=action, user_id=user_id, response_time_seconds=response_time_seconds)
         for item_id, item in user_list.get("items", {}).items():
             fastapi_app.state.metrics.add_user_list_item_counter(
                 action=action,
                 user_id=user_id,
                 type=item.get("type", "Unknown"),
                 schema_version=item.get("schema_version", "Unknown"),
-                response_time_seconds=response_time_seconds,
-            )
+                response_time_seconds=response_time_seconds,)
 
 
 def get_from_cfg_metadata(
-    field: str, metadata: Dict[str, Any], default: Any, type_: Any
-) -> Any:
+        field: str, metadata: Dict[str, Any], default: Any, type_: Any) -> Any:
     """
     Return `field` from `metadata` dict (or `default` if not available)
     and cast it to `type_`. If we cannot cast `default`, return as-is.
@@ -50,9 +50,9 @@ def get_from_cfg_metadata(
     Args:
         field (str): the desired metadata field (e.g. key) to retrieve
         metadata (dict): dictionary with key values
-        default (?): Any value to set if `field` is not available.
+        default (Any): Any value to set if `field` is not available.
                      MUST be of type `type_`
-        type_ (?): any type, used to cast the `field` to the preferred type
+        type_ (Any): any type, used to cast the `field` to the preferred type
 
     Returns:
         type_: the value from metadata (either casted `field` for `default`)

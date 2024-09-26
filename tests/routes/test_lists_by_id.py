@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from gen3userdatalibrary.routes import root_router
+from gen3userdatalibrary.routes.maintenance import root_router
 from tests.routes.conftest import BaseTestRouter
 from tests.routes.data import VALID_LIST_A, VALID_LIST_B, VALID_REPLACEMENT_LIST
 

@@ -7,9 +7,9 @@ from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.db import get_data_access_layer
-from gen3userdatalibrary.metrics import Metrics
-from gen3userdatalibrary.routes import root_router
+from gen3userdatalibrary.services.db import get_data_access_layer
+from gen3userdatalibrary.models.metrics import Metrics
+from gen3userdatalibrary.routes.maintenance import root_router
 
 
 @asynccontextmanager
