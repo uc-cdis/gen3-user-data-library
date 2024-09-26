@@ -55,19 +55,6 @@ async def get_list_by_id(
     return JSONResponse(status_code=return_status, content=response)
 
 
-async def try_modeling_user_list(user_list) -> Union[UserList, JSONResponse]:
-    try:
-        user_id = await get_user_id()
-        list_as_orm = await create_user_list_instance(user_id, user_list)
-    except Exception as e:
-        return_status = status.HTTP_400_BAD_REQUEST
-        status_text = "UNHEALTHY"
-        response = {"status": status_text, "timestamp": time.time(),
-                    "error": "malformed list, could not update"}
-        return JSONResponse(status_code=return_status, content=response)
-    return list_as_orm
-
-
 @root_router.put("/lists/{ID}")
 @root_router.put("/lists/{ID}/", include_in_schema=False)
 async def update_list_by_id(
@@ -79,13 +66,13 @@ async def update_list_by_id(
     Create a new list if it does not exist with the provided content OR updates a list with the
         provided content if a list already exists.
 
-    :param ID: the id of the list you wish to retrieve
-    :param request: FastAPI request (so we can check authorization)
-    :param data_access_layer: how we interface with db
-    :param info_to_update_with: content to change list
-    :return: JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
+    Args:
+        :param ID: the id of the list you wish to retrieve
+        :param request: FastAPI request (so we can check authorization)
+        :param data_access_layer: how we interface with db
+        :param info_to_update_with: content to change list
+        :return: JSONResponse: json response with info about the request outcome
     """
-
     await authorize_request(
         request=request,
         authz_access_method="upsert",
@@ -114,7 +101,17 @@ async def append_items_to_list(
         ID: int,
         body: dict,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
-    outcome = await authorize_request(
+    """
+    Adds a list of provided items to an existing list
+
+    Args:
+        :param ID: the id of the list you wish to retrieve
+        :param request: FastAPI request (so we can check authorization)
+        :param data_access_layer: how we interface with db
+        :param body: the items to be appended
+        :return: JSONResponse: json response with info about the request outcome
+    """
+    await authorize_request(
         request=request,
         # todo: what methods can we use?
         authz_access_method="upsert",
@@ -145,10 +142,11 @@ async def delete_list_by_id(
     """
     Delete a list under the given id
 
-    :param list_id: the id of the list you wish to retrieve
-    :param request: FastAPI request (so we can check authorization)
-    :param data_access_layer: how we interface with db
-    :return: JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
+    Args:
+        :param ID: the id of the list you wish to retrieve
+        :param request: FastAPI request (so we can check authorization)
+        :param data_access_layer: how we interface with db
+        :return: JSONResponse: json response with info about the request outcome
     """
     await authorize_request(
         request=request,

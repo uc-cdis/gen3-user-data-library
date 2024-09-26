@@ -83,7 +83,6 @@ async def upsert_user_lists(
     """
     Create a new list with the provided items, or update any lists that already exist
 
-
     Args:
         :param request: (Request) FastAPI request (so we can check authorization)
         :param requested_lists: Body from the POST, expects list of entities
@@ -169,6 +168,7 @@ async def delete_all_lists(request: Request,
         :param request: FastAPI request (so we can check authorization)
         :param data_access_layer: how we interface with db
     """
+    # todo: check this is tested
     user_id = await get_user_id(request=request)
 
     # dynamically create user policy
