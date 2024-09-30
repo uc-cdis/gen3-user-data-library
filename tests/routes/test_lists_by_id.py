@@ -28,7 +28,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        response = await client.get("/lists", headers=headers)
+        response = await client.get(endpoint, headers=headers)
         assert response.status_code == 200
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
