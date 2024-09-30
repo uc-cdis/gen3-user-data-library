@@ -14,7 +14,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists/1"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_getting_id_success(self, get_token_claims, arborist, endpoint, user_list, client):
         """
@@ -33,7 +33,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists/2"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_getting_id_failure(self, get_token_claims, arborist, endpoint, user_list, client):
         """
@@ -46,7 +46,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists/1"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_updating_by_id_success(self, get_token_claims, arborist, endpoint, user_list, client):
         """
@@ -65,7 +65,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists/1"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_updating_by_id_failures(self, get_token_claims, arborist, endpoint, user_list, client):
         """
@@ -79,7 +79,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.status_code == 404
 
     @pytest.mark.parametrize("endpoint", ["/lists/1"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_appending_by_id_success(self, get_token_claims, arborist, endpoint, client):
         """
@@ -186,7 +186,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists/1"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_appending_by_id_failures(self, get_token_claims, arborist, endpoint, user_list, client):
         """
@@ -217,7 +217,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.status_code == 404
 
     @pytest.mark.parametrize("endpoint", ["/lists/1"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_deleting_by_id_success(self, get_token_claims, arborist, endpoint, client):
         """
@@ -240,7 +240,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists/1"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_deleting_by_id_failures(self, get_token_claims, arborist, endpoint, user_list, client):
         """

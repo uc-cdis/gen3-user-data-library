@@ -32,7 +32,7 @@ class TestAuthRouter(BaseTestRouter):
         assert response.json().get("detail")
 
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     async def test_version_unauthorized(self, arborist, endpoint, client):
         """
         Test accessing the endpoint when authorized
@@ -67,7 +67,7 @@ class TestAuthRouter(BaseTestRouter):
         assert response.json().get("detail")
 
     @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     async def test_status_unauthorized(self, arborist, endpoint, client):
         """
         Test accessing the endpoint when authorized

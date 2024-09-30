@@ -30,7 +30,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     async def test_lists_invalid_token(self, arborist, endpoint, user_list, client):
         """
         Test accessing the endpoint when the token provided is invalid
@@ -48,7 +48,7 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @pytest.mark.parametrize("method", ["put", "get", "delete"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_lists_unauthorized(self, get_token_claims, arborist,
                                              method, user_list, endpoint, client):
@@ -83,7 +83,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_single_valid_list(self, get_token_claims, arborist,
                                             endpoint, user_list, client, session):
@@ -124,7 +124,7 @@ class TestUserListsRouter(BaseTestRouter):
                 assert False
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_multiple_valid_lists(self, get_token_claims, arborist,
                                                endpoint, client):
@@ -171,7 +171,7 @@ class TestUserListsRouter(BaseTestRouter):
                 assert False
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_list_non_unique_name_diff_user(self, get_token_claims, arborist, client, endpoint):
         """
@@ -199,7 +199,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert "lists" in response_2.json()
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_no_lists_provided(self, get_token_claims, arborist,
                                             endpoint, client):
@@ -222,7 +222,7 @@ class TestUserListsRouter(BaseTestRouter):
         "input_body", [{}, {"foo": "bar"}, {"foo": {"foo": {"foo": "bar"}}}]
     )
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_bad_input_provided(self, get_token_claims, arborist,
                                              endpoint, input_body, client):
@@ -242,7 +242,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.json().get("detail")
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_no_body_provided(self, get_token_claims, arborist, endpoint, client):
         """
@@ -261,7 +261,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.json().get("detail")
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_duplicate_list(self, get_token_claims, arborist, endpoint, client):
         """
@@ -281,7 +281,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert response_2.status_code == 400
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_db_create_lists_other_error(self, get_token_claims, arborist, client, endpoint):
         """
@@ -301,7 +301,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     # region Read Lists
 
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_reading_lists_success(self, get_token_claims, arborist, client):
         """
@@ -317,7 +317,7 @@ class TestUserListsRouter(BaseTestRouter):
         response_2 = await client.get("/lists", headers=headers)
         pass
 
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_reading_for_non_existent_user_fails(self, get_token_claims, arborist, client):
         # todo: how to test non-existent user?
@@ -335,7 +335,7 @@ class TestUserListsRouter(BaseTestRouter):
     # region Update Lists
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_creating_and_updating_lists(self, get_token_claims, arborist,
                                                endpoint, client):
@@ -388,7 +388,7 @@ class TestUserListsRouter(BaseTestRouter):
                 assert False
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_updating_two_lists_twice(self, get_token_claims, arborist,
                                             endpoint, client):
@@ -405,7 +405,7 @@ class TestUserListsRouter(BaseTestRouter):
 
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_update_ignores_items_on_blacklist(self, get_token_claims, arborist,
                                             endpoint, client):
@@ -435,7 +435,7 @@ class TestUserListsRouter(BaseTestRouter):
 
     # region Delete Lists
 
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_deleting_lists_success(self, get_token_claims, arborist, client):
         arborist.auth_request.return_value = True
@@ -447,7 +447,7 @@ class TestUserListsRouter(BaseTestRouter):
         response_2 = await client.delete("/lists", headers=headers)
         response_3 = await client.get("/lists", headers=headers)
 
-    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_deleting_lists_failures(self, get_token_claims, arborist, client):
         # try to delete for wrong user
