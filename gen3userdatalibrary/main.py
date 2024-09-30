@@ -9,7 +9,7 @@ from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.services.db import get_data_access_layer
 from gen3userdatalibrary.models.metrics import Metrics
-from gen3userdatalibrary.routes.basic import root_router
+from gen3userdatalibrary.routes import route_aggregator
 
 
 @asynccontextmanager
@@ -83,7 +83,7 @@ def get_app() -> fastapi.FastAPI:
         root_path=config.URL_PREFIX,
         lifespan=lifespan,
     )
-    fastapi_app.include_router(root_router)
+    fastapi_app.include_router(route_aggregator)
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:

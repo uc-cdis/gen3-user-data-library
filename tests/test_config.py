@@ -1,12 +1,12 @@
 import pytest
 from tests.routes.conftest import BaseTestRouter
-from gen3userdatalibrary.main import root_router
+from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.utils import get_from_cfg_metadata
 
 
 @pytest.mark.asyncio
 class TestConfigRouter(BaseTestRouter):
-    router = root_router
+    router = route_aggregator
 
     async def test_metadata_cfg_util(self):
         """

@@ -1,20 +1,22 @@
 import time
+from pickle import FALSE
 
 from starlette import status
 from starlette.responses import JSONResponse
-from fastapi import Request, Depends, HTTPException
+from fastapi import Request, Depends, HTTPException, APIRouter
 from gen3authz.client.arborist.errors import ArboristError
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.models.user_list import UserListResponseModel
-from gen3userdatalibrary.routes.basic import root_router
 from gen3userdatalibrary.services.auth import get_user_id, authorize_request, get_user_data_library_endpoint
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers import try_conforming_list, derive_changes_to_make
 from gen3userdatalibrary.utils import add_user_list_metric
 
+lists_router = APIRouter()
 
-@root_router.get("/lists/")
-@root_router.get("/lists", include_in_schema=False, )
+
+@lists_router.get("/", include_in_schema=False)
+@lists_router.get("")
 async def read_all_lists(
         request: Request,
         data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
@@ -57,8 +59,8 @@ async def read_all_lists(
     return JSONResponse(status_code=status.HTTP_200_OK, content=response)
 
 
-@root_router.put(
-    "/lists",
+@lists_router.put(
+    "",
     # most of the following stuff helps populate the openapi docs
     response_model=UserListResponseModel,
     status_code=status.HTTP_201_CREATED,
@@ -73,9 +75,7 @@ async def read_all_lists(
         status.HTTP_400_BAD_REQUEST: {
             "description": "Bad request, unable to create list",
         }})
-@root_router.put(
-    "/lists/",
-    include_in_schema=False)
+@lists_router.put("/", include_in_schema=False)
 async def upsert_user_lists(
         request: Request,
         requested_lists: dict,
@@ -157,8 +157,8 @@ async def upsert_user_lists(
 
 # todo: remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}}
 
-@root_router.delete("/lists/")
-@root_router.delete("/lists", include_in_schema=False)
+@lists_router.delete("")
+@lists_router.get("/", include_in_schema=False)
 async def delete_all_lists(request: Request,
                            data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """

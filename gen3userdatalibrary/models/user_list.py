@@ -1,7 +1,7 @@
 import datetime
 from typing import Dict, Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import declarative_base
 
@@ -16,6 +16,7 @@ class UserListModel(BaseModel):
     created_time: datetime
     updated_time: datetime
     items: Optional[Dict[str, Any]] = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class UserListResponseModel(BaseModel):

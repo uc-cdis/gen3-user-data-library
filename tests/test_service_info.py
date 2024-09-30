@@ -1,17 +1,17 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from tests.routes.conftest import BaseTestRouter
 
-from gen3userdatalibrary.main import root_router
+from gen3userdatalibrary.routes import route_aggregator
+from tests.routes.conftest import BaseTestRouter
 
 
 @pytest.mark.asyncio
 class TestAuthRouter(BaseTestRouter):
-    router = root_router
+    router = route_aggregator
 
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/"])
-    @patch("gen3userdatalibrary.routes.authorize_request")
+    @patch("gen3userdatalibrary.services.auth.authorize_request")
     async def test_version(self, _, endpoint, client):
         """
         Test that the version endpoint returns a non-empty version
@@ -32,7 +32,7 @@ class TestAuthRouter(BaseTestRouter):
         assert response.json().get("detail")
 
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/"])
-    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
     async def test_version_unauthorized(self, arborist, endpoint, client):
         """
         Test accessing the endpoint when authorized
@@ -46,7 +46,7 @@ class TestAuthRouter(BaseTestRouter):
         assert response.json().get("detail")
 
     @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
-    @patch("gen3userdatalibrary.routes.authorize_request")
+    @patch("gen3userdatalibrary.services.auth.authorize_request")
     async def test_status(self, _, endpoint, client):
         """
         Test that the status endpoint returns a non-empty status
@@ -67,7 +67,7 @@ class TestAuthRouter(BaseTestRouter):
         assert response.json().get("detail")
 
     @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
-    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth", new_callable=AsyncMock)
     async def test_status_unauthorized(self, arborist, endpoint, client):
         """
         Test accessing the endpoint when authorized

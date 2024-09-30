@@ -1,19 +1,18 @@
 import time
-from typing import Union
 
 from starlette import status
 from starlette.responses import JSONResponse
-
-from gen3userdatalibrary.models.user_list import UserList, RequestedUserListModel
-from gen3userdatalibrary.routes.basic import root_router
+from gen3userdatalibrary.models.user_list import RequestedUserListModel
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.helpers import try_conforming_list, create_user_list_instance
-from fastapi import Request, Depends, HTTPException
+from gen3userdatalibrary.services.helpers import try_conforming_list
+from fastapi import Request, Depends, HTTPException, APIRouter
+
+lists_by_id_router = APIRouter()
 
 
-@root_router.get("/lists/{ID}")
-@root_router.get("/lists/{ID}/", include_in_schema=False)
+@lists_by_id_router.get("/{ID}")
+@lists_by_id_router.get("/{ID}/", include_in_schema=False)
 async def get_list_by_id(
         ID: int,
         request: Request,
@@ -55,8 +54,8 @@ async def get_list_by_id(
     return JSONResponse(status_code=return_status, content=response)
 
 
-@root_router.put("/lists/{ID}")
-@root_router.put("/lists/{ID}/", include_in_schema=False)
+@lists_by_id_router.put("/{ID}")
+@lists_by_id_router.put("/{ID}/", include_in_schema=False)
 async def update_list_by_id(
         request: Request,
         ID: int,
@@ -94,8 +93,8 @@ async def update_list_by_id(
     return JSONResponse(status_code=return_status, content=response)
 
 
-@root_router.patch("/lists/{ID}")
-@root_router.patch("/lists/{ID}/", include_in_schema=False)
+@lists_by_id_router.patch("/{ID}")
+@lists_by_id_router.patch("/{ID}/", include_in_schema=False)
 async def append_items_to_list(
         request: Request,
         ID: int,
@@ -133,8 +132,8 @@ async def append_items_to_list(
     return JSONResponse(status_code=return_status, content=response)
 
 
-@root_router.delete("/lists/{ID}")
-@root_router.delete("/lists/{ID}/", include_in_schema=False)
+@lists_by_id_router.delete("/{ID}")
+@lists_by_id_router.delete("/{ID}/", include_in_schema=False)
 async def delete_list_by_id(
         ID: int,
         request: Request,
