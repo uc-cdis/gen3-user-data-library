@@ -158,7 +158,7 @@ async def upsert_user_lists(
 # todo: remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}}
 
 @lists_router.delete("")
-@lists_router.get("/", include_in_schema=False)
+@lists_router.delete("/", include_in_schema=False)
 async def delete_all_lists(request: Request,
                            data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
