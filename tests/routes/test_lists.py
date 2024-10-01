@@ -1,3 +1,4 @@
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -307,15 +308,18 @@ class TestUserListsRouter(BaseTestRouter):
         """
         Test accessing the endpoint when unauthorized
         """
-        # todo: test
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response_1 = await client.get("/lists", headers=headers)
+        # todo: should we 404 if user exists but no lists?
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
         response_2 = await client.get("/lists", headers=headers)
-        pass
+        resp_as_string = response_2.content.decode('utf-8')
+        content_as_dict = json.loads(resp_as_string)
+        lists = content_as_dict.get("lists", None)
+        assert lists is not None and set(lists.keys()) == {'1', '2'}
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
