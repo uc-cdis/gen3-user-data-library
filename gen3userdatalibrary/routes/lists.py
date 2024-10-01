@@ -1,5 +1,4 @@
 import time
-from pickle import FALSE
 
 from starlette import status
 from starlette.responses import JSONResponse
@@ -87,6 +86,7 @@ async def upsert_user_lists(
         :param request: (Request) FastAPI request (so we can check authorization)
         :param requested_lists: Body from the POST, expects list of entities
         :param data_access_layer: (DataAccessLayer): Interface for data manipulations
+    #todo: write docs about shape of create and update
     """
     user_id = await get_user_id(request=request)
 
@@ -110,12 +110,13 @@ async def upsert_user_lists(
         request=request,
         authz_access_method="create",
         authz_resources=[get_user_data_library_endpoint(user_id)])
-    if not requested_lists.get("lists", None):
+    user_lists = requested_lists.get("lists", {})
+    if not user_lists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
     start_time = time.time()
 
     new_lists_as_orm = [await try_conforming_list(user_id, user_list)
-                        for user_list in requested_lists.get("lists", {})]
+                        for user_list in user_lists]
     unique_list_identifiers = {(user_list.creator, user_list.name): user_list
                                for user_list in new_lists_as_orm}
     lists_to_update = await data_access_layer.grab_all_lists_that_exist("name", list(unique_list_identifiers.keys()))

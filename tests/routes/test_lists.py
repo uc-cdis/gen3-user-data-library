@@ -328,11 +328,12 @@ class TestUserListsRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.get("/lists", headers=headers)
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        response_1 = await client.get("/lists", headers=headers)
+        get_token_claims.return_value = {"sub": "bar"}
+        # todo: 404 if empty list?
         response_2 = await client.get("/lists", headers=headers)
-        pass
 
     # endregion
 
@@ -404,9 +405,14 @@ class TestUserListsRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         user_id = "80"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
-        # response_1 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_C, updated_list_a]})
-        # response_2 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_C, updated_list_a]})
-
+        updated_list_a = VALID_LIST_A
+        updated_list_a["items"] = VALID_LIST_C["items"]
+        updated_list_b = VALID_LIST_B
+        updated_list_b["items"] = VALID_LIST_C["items"]
+        response_2 = await client.put(endpoint, headers=headers, json={"lists": [updated_list_a, updated_list_b]})
+        updated_lists = json.loads(response_2.text).get("lists", {})
+        has_cf_3 = lambda d: d["items"].get("CF_3", None) is not None
+        assert [has_cf_3(user_list) for user_list in list(updated_lists.values())]
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)

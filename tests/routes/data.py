@@ -69,7 +69,7 @@ VALID_LIST_B = {
 VALID_LIST_C = {
     "name": "My Saved List 3",
     "items": {
-        "CF_1": {
+        "CF_3": {
             "name": "Cohort Filter 3",
             "type": "Gen3GraphQL",
             "schema_version": "c246d0f",
