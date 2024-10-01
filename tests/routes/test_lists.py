@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -417,18 +418,21 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_update_ignores_items_on_blacklist(self, get_token_claims, arborist,
-                                            endpoint, client):
+    async def test_update_ignores_items_on_blacklist(self, get_token_claims, arborist, endpoint, client):
+        assert NotImplemented
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
         arborist.auth_request.return_value = True
-        user_id = "80"
-        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
-        # response_1 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_C, updated_list_a]})
-        # response_2 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_C, updated_list_a]})
-
-        pass
+        alt_list_a = {"name": VALID_LIST_A["name"], "authz": {"left": "right"},
+                      "created_time": json.dumps(datetime.now().isoformat()),
+                      "updated_time": json.dumps(datetime.now().isoformat()),
+                      "fake_prop": "aaa"}
+        # TODO: what would we want to update other than items?
+        # if nothing, then we should change the update to throw if no items are provided in the raw variable
+        # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
+        # with pytest.raises(TypeError):
+            # todo: if user provides fake props, should we ignore and update anyway or throw?
+            # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
 
     async def test_updating_lists_failures(self):
         # no list exist, invalid update body,

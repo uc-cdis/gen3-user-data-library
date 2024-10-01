@@ -110,13 +110,13 @@ async def upsert_user_lists(
         request=request,
         authz_access_method="create",
         authz_resources=[get_user_data_library_endpoint(user_id)])
-    user_lists = requested_lists.get("lists", {})
-    if not user_lists:
+    raw_lists = requested_lists.get("lists", {})
+    if not raw_lists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
     start_time = time.time()
 
     new_lists_as_orm = [await try_conforming_list(user_id, user_list)
-                        for user_list in user_lists]
+                        for user_list in raw_lists]
     unique_list_identifiers = {(user_list.creator, user_list.name): user_list
                                for user_list in new_lists_as_orm}
     lists_to_update = await data_access_layer.grab_all_lists_that_exist("name", list(unique_list_identifiers.keys()))
