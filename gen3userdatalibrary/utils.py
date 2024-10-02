@@ -37,7 +37,8 @@ def find_differences(object_to_update: object, new_object: object):
     return differences_between_lists
 
 
-def remove_keys(d: dict, keys: list):
+def remove_keys(d: dict, keys: set):
+    """ Given a dictionary d and set of keys k, remove all k in d """
     return {k: v for k, v in d.items() if k not in keys}
 
 
