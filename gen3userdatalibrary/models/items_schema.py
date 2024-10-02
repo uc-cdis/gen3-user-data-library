@@ -1,4 +1,4 @@
-
+SCHEMA_TYPES = {"GA4GH_DRS", "Gen3GraphQL"}
 
 ITEMS_JSON_SCHEMA_GENERIC = {
     "type": "object",
@@ -30,4 +30,11 @@ ITEMS_JSON_SCHEMA_DRS = {
     "required": ["dataset_guid", "type"],
 }
 
+# refactor: move to new, non-schema file if this file gets too large
 BLACKLIST = {"id", "creator", "created_time", "authz"}  # todo: would authz ever be updated?
+
+SCHEMA_RELATIONSHIPS = {
+    "GA4GH_DRS": ITEMS_JSON_SCHEMA_DRS,
+    "Gen3GraphQL": ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
+    None: ITEMS_JSON_SCHEMA_GENERIC
+}

@@ -8,9 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette import status
 
 from gen3userdatalibrary.config import logging
-from gen3userdatalibrary.models.items_schema import (ITEMS_JSON_SCHEMA_DRS,
-                                                     ITEMS_JSON_SCHEMA_GEN3_GRAPHQL,
-                                                     ITEMS_JSON_SCHEMA_GENERIC, BLACKLIST)
+from gen3userdatalibrary.models.items_schema import BLACKLIST, SCHEMA_RELATIONSHIPS
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_lists_endpoint
 from gen3userdatalibrary.utils import find_differences, remove_keys, add_to_dict_set
@@ -41,7 +39,7 @@ async def try_conforming_list(user_id, user_list: dict) -> UserList:
         list_as_orm = await create_user_list_instance(user_id, user_list)
     except IntegrityError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name")
-    except ValidationError as exc:
+    except ValidationError:
         logging.debug(f"Invalid user-provided data when trying to create lists for user {user_id}.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -61,25 +59,10 @@ def validate_user_list_item(item_contents: dict):
 
     """
     # TODO THIS NEEDS TO BE CFG
-    if item_contents.get("type") == "GA4GH_DRS":
-        try:
-            validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_DRS)
-        except ValidationError as e:
-            logging.debug(f"User-provided JSON is invalid: {e.message}")
-            raise
-    elif item_contents.get("type") == "Gen3GraphQL":
-        try:
-            validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_GEN3_GRAPHQL, )
-        except ValidationError as e:
-            logging.debug(f"User-provided JSON is invalid: {e.message}")
-            raise
-    else:
-        try:
-            validate(instance=item_contents, schema=ITEMS_JSON_SCHEMA_GENERIC)
-        except ValidationError as e:
-            logging.debug(f"User-provided JSON is invalid: {e.message}")
-            raise
-
+    content_type = item_contents.get("type", None)
+    matching_schema = SCHEMA_RELATIONSHIPS[content_type]
+    validate(instance=item_contents, schema=matching_schema)
+    if content_type is None:
         logging.warning("User-provided JSON is an unknown type. Creating anyway...")
 
 

@@ -28,8 +28,7 @@ async def lifespan(app: FastAPI):
     # startup
     app.state.metrics = Metrics(
         enabled=config.ENABLE_PROMETHEUS_METRICS,
-        prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
-    )
+        prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR)
 
     app.state.arborist_client = ArboristClient(arborist_base_url=config.ARBORIST_URL)
 
