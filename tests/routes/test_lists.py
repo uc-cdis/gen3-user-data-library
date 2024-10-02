@@ -1,6 +1,6 @@
 import json
-from datetime import datetime
 from unittest.mock import AsyncMock, patch
+from venv import create
 
 import pytest
 
@@ -303,6 +303,9 @@ class TestUserListsRouter(BaseTestRouter):
 
     # region Read Lists
 
+    # todo: verify reading lists return id => lists mapping
+    # todo: verify lists are under correct user
+
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_reading_lists_success(self, get_token_claims, arborist, client):
@@ -420,30 +423,52 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_update_ignores_items_on_blacklist(self, get_token_claims, arborist, endpoint, client):
         assert NotImplemented
-        headers = {"Authorization": "Bearer ofa.valid.token"}
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        arborist.auth_request.return_value = True
-        alt_list_a = {"name": VALID_LIST_A["name"], "authz": {"left": "right"},
-                      "created_time": json.dumps(datetime.now().isoformat()),
-                      "updated_time": json.dumps(datetime.now().isoformat()),
-                      "fake_prop": "aaa"}
+        # headers = {"Authorization": "Bearer ofa.valid.token"}
+        # await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
+        # arborist.auth_request.return_value = True
+        # alt_list_a = {"name": VALID_LIST_A["name"], "authz": {"left": "right"},
+        #               "created_time": json.dumps(datetime.now().isoformat()),
+        #               "updated_time": json.dumps(datetime.now().isoformat()),
+        #               "fake_prop": "aaa"}
         # TODO: what would we want to update other than items?
         # if nothing, then we should change the update to throw if no items are provided in the raw variable
+
+        # todo: move the fake prop to its own test
         # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
         # with pytest.raises(TypeError):
             # todo: if user provides fake props, should we ignore and update anyway or throw?
             # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
 
-    async def test_updating_lists_failures(self):
-        # no list exist, invalid update body,
-        # todo: ask alex about handling list belinging to diff user (auth err i assume)
-        pass
+    @pytest.mark.parametrize("endpoint", ["/lists"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_updating_lists_failures(self, get_token_claims, arborist, endpoint, client):
+        # todo: can't test whether a list exists to update?
+        # todo: ask alex about handling list belonging to diff user (auth err i assume)
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
+        invalid_list = {"name": "foo", "itmes": {"aaa": "eee"}}
+
+        # todo: if use passes invalid data, should we make default list or throw?
+        # response = await client.put("/lists", headers=headers, json={"lists": [invalid_list]})
+        assert NotImplemented
 
     async def test_updating_malicious_request_fails(self):
+        # todo: what sorts of malicious requests could someone try to make?
+        # name or items is a sql injection? ask security/devs for more ideas
         pass
 
-    async def test_update_contents_wrong_type_fails(self):
-        pass
+    @pytest.mark.parametrize("endpoint", ["/lists"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_update_contents_wrong_type_fails(self, get_token_claims, arborist, endpoint, client):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
+        invalid_items = {"name": "foo", "items": {"this is a set not a dict"}}
+        with pytest.raises(TypeError):
+            response = await client.put("/lists", headers=headers, json={"lists": [invalid_items]})
 
     # endregion
 
@@ -460,6 +485,9 @@ class TestUserListsRouter(BaseTestRouter):
         response_1 = await client.get("/lists", headers=headers)
         response_2 = await client.delete("/lists", headers=headers)
         response_3 = await client.get("/lists", headers=headers)
+        # todo: if no lists should we return 404?
+        list_content = json.loads(response_3.text).get("lists", None)
+        assert list_content == {}
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
@@ -470,10 +498,13 @@ class TestUserListsRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "2")
+
         response_1 = await client.get("/lists", headers=headers)
-        # get_token_claims.return_value = {"sub": "89", "otherstuff": "foobar"}
-        response_1 = await client.get("/lists", headers=headers)
-        response_2 = await client.delete("/lists", headers=headers)
-        response_3 = await client.get("/lists", headers=headers)
+        get_token_claims.return_value = {"sub": "89", "otherstuff": "foobar"}
+        response_2 = await client.get("/lists", headers=headers)
+        response_3 = await client.delete("/lists", headers=headers)
+        response_4 = await client.get("/lists", headers=headers)
+        pass
 
     # endregion
