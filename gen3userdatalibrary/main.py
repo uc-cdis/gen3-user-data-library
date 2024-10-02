@@ -34,29 +34,22 @@ async def lifespan(app: FastAPI):
     app.state.arborist_client = ArboristClient(arborist_base_url=config.ARBORIST_URL)
 
     try:
-        logging.debug(
-            "Startup database connection test initiating. Attempting a simple query..."
-        )
+        logging.debug("Startup database connection test initiating. Attempting a simple query...")
         async for data_access_layer in get_data_access_layer():
             await data_access_layer.test_connection()
             logging.debug("Startup database connection test PASSED.")
     except Exception as exc:
-        logging.exception(
-            "Startup database connection test FAILED. Unable to connect to the configured database."
-        )
+        logging.exception("Startup database connection test FAILED. Unable to connect to the configured database.")
         logging.debug(exc)
         raise
 
     if not config.DEBUG_SKIP_AUTH:
         try:
-            logging.debug(
-                "Startup policy engine (Arborist) connection test initiating..."
-            )
+            logging.debug("Startup policy engine (Arborist) connection test initiating...")
             assert app.state.arborist_client.healthy()
         except Exception as exc:
             logging.exception(
-                "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
-            )
+                "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine.")
             logging.debug(exc)
             raise
 
