@@ -1,5 +1,7 @@
 import datetime
+from functools import reduce
 
+from collections import defaultdict
 from fastapi import HTTPException
 from jsonschema import ValidationError, validate
 from sqlalchemy.exc import IntegrityError
@@ -11,7 +13,7 @@ from gen3userdatalibrary.models.items_schema import (ITEMS_JSON_SCHEMA_DRS,
                                                      ITEMS_JSON_SCHEMA_GENERIC, BLACKLIST)
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_lists_endpoint
-from gen3userdatalibrary.utils import find_differences, remove_keys
+from gen3userdatalibrary.utils import find_differences, remove_keys, add_to_dict_set
 
 
 def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
@@ -109,3 +111,9 @@ async def create_user_list_instance(user_id, user_list: dict):
         items=user_list_items)
     return new_list
 
+
+def map_creator_to_list_ids(lists: dict):
+    add_id_to_creator = lambda mapping, id_list_pair: add_to_dict_set(mapping,
+                                                                             id_list_pair[1]["creator"],
+                                                                             id_list_pair[0])
+    return reduce(add_id_to_creator, lists.items(), defaultdict(set))

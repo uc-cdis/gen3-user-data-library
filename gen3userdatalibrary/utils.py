@@ -1,9 +1,21 @@
 from functools import reduce
 from typing import Any, Dict, List
+
 from fastapi import FastAPI
 from sqlalchemy import inspect
 
 from gen3userdatalibrary import logging
+
+
+def add_to_dict_set(dict_list, key, value):
+    """ If I want to add to a default dict set, I want to append and then return the list """
+    dict_list[key].add(value)
+    return dict_list
+
+
+def map_values(mutator, keys_to_old_values: Dict):
+    """ Quick way to update dict values while preserving relationship """
+    return {key: mutator(value) for key, value in keys_to_old_values.items()}
 
 
 def find_differences(object_to_update: object, new_object: object):

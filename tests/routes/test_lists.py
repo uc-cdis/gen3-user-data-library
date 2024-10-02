@@ -1,9 +1,9 @@
 import json
 from unittest.mock import AsyncMock, patch
-from venv import create
 
 import pytest
 
+from gen3userdatalibrary.services import helpers
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
 from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
@@ -310,7 +310,7 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_reading_lists_success(self, get_token_claims, arborist, client):
         """
-        Test accessing the endpoint when unauthorized
+        Test I'm able to get back all lists for a user
         """
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
@@ -319,11 +319,17 @@ class TestUserListsRouter(BaseTestRouter):
         # todo: should we 404 if user exists but no lists?
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers, "2")
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "2")
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "3")
         response_2 = await client.get("/lists", headers=headers)
         resp_as_string = response_2.content.decode('utf-8')
         content_as_dict = json.loads(resp_as_string)
         lists = content_as_dict.get("lists", None)
-        assert lists is not None and set(lists.keys()) == {'1', '2'}
+        creator_to_list_ids = helpers.map_creator_to_list_ids(lists)
+        assert (creator_to_list_ids["1"] == {"1", "2"} and
+                creator_to_list_ids["2"] == {"3", "4"} and
+                creator_to_list_ids["3"] == {"5"})
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
@@ -493,7 +499,8 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_deleting_lists_failures(self, get_token_claims, arborist, client):
         # try to delete for wrong user
-        # todo: test
+        # todo: test deleting for wrong user fails?
+        # what should we do if a user X has no lists but requests a delete?
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
@@ -505,6 +512,5 @@ class TestUserListsRouter(BaseTestRouter):
         response_2 = await client.get("/lists", headers=headers)
         response_3 = await client.delete("/lists", headers=headers)
         response_4 = await client.get("/lists", headers=headers)
-        pass
 
     # endregion
