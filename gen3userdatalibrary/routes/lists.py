@@ -7,6 +7,7 @@ from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.models.user_list import UserListResponseModel
+from gen3userdatalibrary.services import helpers
 from gen3userdatalibrary.services.auth import get_user_id, authorize_request, get_user_data_library_endpoint
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers import try_conforming_list, derive_changes_to_make
@@ -27,7 +28,7 @@ async def read_all_lists(request: Request,
         :param data_access_layer: how we interface with db
     """
     user_id = await get_user_id(request=request)
-
+    # todo: automatically auth request instead of typing it out in each endpoint?
     # dynamically create user policy
     await authorize_request(request=request, authz_access_method="read",
                             authz_resources=[get_user_data_library_endpoint(user_id)])
@@ -39,15 +40,11 @@ async def read_all_lists(request: Request,
         logging.exception(f"Unknown exception {type(exc)} when trying to fetch lists.")
         logging.debug(f"Details: {exc}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid list information provided")
-    response_user_lists = {}
-    for user_list in new_user_lists:
-        response_user_lists[user_list.id] = user_list.to_dict()
-        del response_user_lists[user_list.id]["id"]
+    response_user_lists = helpers.map_list_id_to_list_dict(new_user_lists)
     response = {"lists": response_user_lists}
     end_time = time.time()
-    action = "READ"
     response_time_seconds = end_time - start_time
-    logging.info(f"Gen3 User Data Library Response. Action: {action}. "
+    logging.info(f"Gen3 User Data Library Response. Action: READ. "
                  f"response={response}, response_time_seconds={response_time_seconds} user_id={user_id}")
     logging.debug(response)
     return JSONResponse(status_code=status.HTTP_200_OK, content=response)
@@ -77,6 +74,8 @@ async def upsert_user_lists(request: Request, requested_lists: dict,
     #todo: write docs about shape of create and update
     """
     user_id = await get_user_id(request=request)
+
+    # todo: cleanup endpoints
 
     # TODO dynamically create user policy, ROUGH UNTESTED VERSION: need to verify
     if not config.DEBUG_SKIP_AUTH:
