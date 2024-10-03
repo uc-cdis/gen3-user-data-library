@@ -29,6 +29,7 @@ What do we do in this file?
 """
 
 from typing import List, Optional, Tuple, Union
+
 from sqlalchemy import text, delete, func, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
@@ -54,8 +55,7 @@ class DataAccessLayer:
         self.db_session = db_session
 
     # todo bonus: we should have a way to ensure we are not doing multiple
-    # updates to the db. ideally, each endpoint should query the db once.
-    # less than ideally, it only writes to the db once
+    # updates to the db. ideally, each endpoint writes to the db once
     async def persist_user_list(self, user_id, user_list: UserList):
         """
         Save user list to db as well as update authz
@@ -64,10 +64,7 @@ class DataAccessLayer:
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()
 
-        authz = {
-            "version": 0,
-            "authz": [get_list_by_id_endpoint(user_id, user_list.id)],
-        }
+        authz = {"version": 0, "authz": [get_list_by_id_endpoint(user_id, user_list.id)], }
         user_list.authz = authz
         return user_list
 
@@ -75,6 +72,7 @@ class DataAccessLayer:
         """
         Return all known lists
         """
+        # todo: it should be all lists for a given user right?
         query = await self.db_session.execute(select(UserList).order_by(UserList.id))
         return list(query.scalars().all())
 
@@ -106,9 +104,9 @@ class DataAccessLayer:
         Refer to the BLACKLIST variable in items_schema.py for unsafe properties
         """
         db_list_to_update = await self.get_existing_list_or_throw(list_to_update_id)
-        for key, value in changes_to_make.items():
-            if hasattr(db_list_to_update, key):
-                setattr(db_list_to_update, key, value)
+        changes_that_can_be_made = list(filter(lambda kvp: hasattr(db_list_to_update, kvp[0]), changes_to_make.items()))
+        for key, value in changes_that_can_be_made:
+            setattr(db_list_to_update, key, value)
         await self.db_session.commit()
         return db_list_to_update
 
@@ -116,7 +114,6 @@ class DataAccessLayer:
         await self.db_session.execute(text("SELECT 1;"))
 
     async def delete_all_lists(self, sub_id: str):
-        # todo: do we test this?
         """
         Delete all lists for a given list creator, return how many lists were deleted
         """
@@ -130,7 +127,7 @@ class DataAccessLayer:
 
     async def delete_list(self, list_id: int):
         """
-        Delete a specific list given its ID, give back how many we deleted
+        Delete a specific list given its ID
         """
         count_query = select(func.count()).select_from(UserList).where(UserList.id == list_id)
         count_result = await self.db_session.execute(count_query)
@@ -159,6 +156,7 @@ class DataAccessLayer:
     async def add_items_to_list(self, list_id: int, item_data: dict):
         """
         Gets existing list and adds items to the items property
+        # todo: does sqlalchemy validate anything passed into items?
         """
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.update(item_data)

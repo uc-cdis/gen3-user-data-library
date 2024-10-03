@@ -1,11 +1,13 @@
 import time
 from importlib.metadata import version
+
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse
 from starlette import status
 from starlette.responses import JSONResponse
+
 from gen3userdatalibrary.services.auth import authorize_request
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from fastapi.responses import RedirectResponse
 
 basic_router = APIRouter()
 
@@ -31,11 +33,8 @@ async def get_version(request: Request) -> dict:
     Returns:
         dict: {"version": "1.0.0"} the version
     """
-    await authorize_request(
-        request=request,
-        authz_access_method="read",
-        authz_resources=["/gen3_data_library/service_info/version"],
-    )
+    await authorize_request(request=request, authz_access_method="read",
+                            authz_resources=["/gen3_data_library/service_info/version"], )
 
     service_version = version("gen3userdatalibrary")
 
@@ -44,9 +43,8 @@ async def get_version(request: Request) -> dict:
 
 @basic_router.get("/_status/")
 @basic_router.get("/_status", include_in_schema=False)
-async def get_status(
-        request: Request,
-        data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
+async def get_status(request: Request,
+                     data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Return the status of the running service
 
@@ -57,10 +55,8 @@ async def get_status(
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    await authorize_request(
-        request=request,
-        authz_access_method="read",
-        authz_resources=["/gen3_data_library/service_info/status"])
+    await authorize_request(request=request, authz_access_method="read",
+                            authz_resources=["/gen3_data_library/service_info/status"])
 
     return_status = status.HTTP_201_CREATED
     status_text = "OK"

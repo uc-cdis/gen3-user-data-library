@@ -1,26 +1,18 @@
 from unittest.mock import AsyncMock, patch
+
 import pytest
 
-from tests.routes.conftest import BaseTestRouter
 from gen3userdatalibrary import config
-from gen3userdatalibrary.services.auth import _get_token
 from gen3userdatalibrary.main import route_aggregator
+from gen3userdatalibrary.services.auth import _get_token
+from tests.routes.conftest import BaseTestRouter
+
 
 @pytest.mark.asyncio
 class TestAuthRouter(BaseTestRouter):
     router = route_aggregator
 
-    @pytest.mark.parametrize(
-        "endpoint",
-        [
-            "/lists",
-            "/lists/",
-            "/_version",
-            "/_version/",
-            "/_status",
-            "/_status/",
-        ],
-    )
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/", "/_version", "/_version/", "/_status", "/_status/", ], )
     async def test_debug_skip_auth_gets(self, monkeypatch, client, endpoint):
         """
         Test that DEBUG_SKIP_AUTH configuration allows access to endpoints without auth

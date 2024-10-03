@@ -1,7 +1,7 @@
 import datetime
+from collections import defaultdict
 from functools import reduce
 
-from collections import defaultdict
 from fastapi import HTTPException
 from jsonschema import ValidationError, validate
 from sqlalchemy.exc import IntegrityError
@@ -21,8 +21,8 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
     """
     differences = find_differences(list_to_update, new_list)
     relevant_differences = remove_keys(differences, BLACKLIST)
-    has_no_relevant_differences = not relevant_differences or (len(relevant_differences) == 1 and
-                                                               relevant_differences.__contains__("updated_time"))
+    has_no_relevant_differences = not relevant_differences or (
+            len(relevant_differences) == 1 and relevant_differences.__contains__("updated_time"))
     if has_no_relevant_differences:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to update!")
     changes_to_make = {k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()}
@@ -41,15 +41,11 @@ async def try_conforming_list(user_id, user_list: dict) -> UserList:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name")
     except ValidationError:
         logging.debug(f"Invalid user-provided data when trying to create lists for user {user_id}.")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid list information provided")
     except Exception as exc:
         logging.exception(f"Unknown exception {type(exc)} when trying to create lists for user {user_id}.")
         logging.debug(f"Details: {exc}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid list information provided")
     return list_as_orm
 
 
@@ -76,27 +72,18 @@ async def create_user_list_instance(user_id, user_list: dict):
     assert user_id is not None, "User must have an ID!"
     now = datetime.datetime.now(datetime.timezone.utc)
     name = user_list.get("name", f"Saved List {now}")
-    user_list_items = user_list.get("items", {})
+    user_list_items = user_list.get("items", {})  # todo: what if they don't have any items?
+    for item in user_list_items.values():
+        validate_user_list_item(item)
 
-    all(validate_user_list_item(item) for item in user_list_items.values())
-
-    new_list = UserList(
-        version=0,
-        creator=str(user_id),
-        # temporarily set authz without the list ID since we haven't created the list in the db yet
-        authz={
-            "version": 0,
-            "authz": [get_lists_endpoint(user_id)],
-        },
-        name=name,
-        created_time=now,
-        updated_time=now,
-        items=user_list_items)
+    new_list = UserList(version=0, creator=str(user_id),
+                        # temporarily set authz without the list ID since we haven't created the list in the db yet
+                        authz={"version": 0, "authz": [get_lists_endpoint(user_id)]}, name=name, created_time=now,
+                        updated_time=now, items=user_list_items)
     return new_list
 
 
 def map_creator_to_list_ids(lists: dict):
-    add_id_to_creator = lambda mapping, id_list_pair: add_to_dict_set(mapping,
-                                                                             id_list_pair[1]["creator"],
-                                                                             id_list_pair[0])
+    add_id_to_creator = lambda mapping, id_list_pair: add_to_dict_set(mapping, id_list_pair[1]["creator"],
+                                                                      id_list_pair[0])
     return reduce(add_id_to_creator, lists.items(), defaultdict(set))

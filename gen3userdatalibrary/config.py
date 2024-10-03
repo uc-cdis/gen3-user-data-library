@@ -20,17 +20,12 @@ if DEBUG:
 if VERBOSE_LLM_LOGS:
     logging.info(f"VERBOSE_LLM_LOGS is {VERBOSE_LLM_LOGS}")
 if DEBUG_SKIP_AUTH:
-    logging.warning(
-        f"DEBUG_SKIP_AUTH is {DEBUG_SKIP_AUTH}. Authorization will be SKIPPED if no token is provided. "
-        "FOR NON-PRODUCTION USE ONLY!! USE WITH CAUTION!!"
-    )
+    logging.warning(f"DEBUG_SKIP_AUTH is {DEBUG_SKIP_AUTH}. Authorization will be SKIPPED if no token is provided. "
+                    "FOR NON-PRODUCTION USE ONLY!! USE WITH CAUTION!!")
 
 # postgresql://username:password@hostname:port/database_name
-DB_CONNECTION_STRING = config(
-    "DB_CONNECTION_STRING",
-    cast=Secret,
-    default="postgresql+asyncpg://postgres:postgres@localhost:5432/testgen3datalibrary",
-)
+DB_CONNECTION_STRING = config("DB_CONNECTION_STRING", cast=Secret,
+                              default="postgresql+asyncpg://postgres:postgres@localhost:5432/testgen3datalibrary", )
 
 URL_PREFIX = config("URL_PREFIX", default=None)
 
@@ -42,9 +37,7 @@ URL_PREFIX = config("URL_PREFIX", default=None)
 # IMPORTANT: This enables a /metrics endpoint which is OPEN TO ALL TRAFFIC, unless controlled upstream
 ENABLE_PROMETHEUS_METRICS = config("ENABLE_PROMETHEUS_METRICS", default=False)
 
-PROMETHEUS_MULTIPROC_DIR = config(
-    "PROMETHEUS_MULTIPROC_DIR", default="/var/tmp/prometheus_metrics"
-)
+PROMETHEUS_MULTIPROC_DIR = config("PROMETHEUS_MULTIPROC_DIR", default="/var/tmp/prometheus_metrics")
 
 # Location of the policy engine service, Arborist
 # Defaults to the default service name in k8s magic DNS setup

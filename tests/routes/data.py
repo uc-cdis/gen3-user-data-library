@@ -1,4 +1,3 @@
-
 VALID_LIST_A = {
     "name": "My Saved List 1",
     "items": {
@@ -110,4 +109,3 @@ VALID_REPLACEMENT_LIST = {
 }
 
 VALID_MULTI_LIST_BODY = {"lists": [VALID_LIST_A, VALID_LIST_B]}
-
