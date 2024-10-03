@@ -16,7 +16,6 @@ basic_router = APIRouter()
 async def redirect_to_docs():
     """
     Redirects to the API docs if they hit the base endpoint.
-    :return:
     """
     return RedirectResponse(url="/redoc")
 
@@ -35,9 +34,7 @@ async def get_version(request: Request) -> dict:
     """
     await authorize_request(request=request, authz_access_method="read",
                             authz_resources=["/gen3_data_library/service_info/version"], )
-
     service_version = version("gen3userdatalibrary")
-
     return {"version": service_version}
 
 
