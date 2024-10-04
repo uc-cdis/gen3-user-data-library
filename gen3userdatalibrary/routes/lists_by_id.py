@@ -72,6 +72,7 @@ async def update_list_by_id(request: Request, ID: int, info_to_update_with: Requ
         raise HTTPException(status_code=404, detail="List not found")
     user_id = get_user_id(request=request)
     list_as_orm = await try_conforming_list(user_id, info_to_update_with.__dict__)
+    # todo: refactor error handling in this and append items
     try:
         outcome = await data_access_layer.replace_list(ID, list_as_orm)
         response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
@@ -80,7 +81,6 @@ async def update_list_by_id(request: Request, ID: int, info_to_update_with: Requ
         return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
         status_text = "UNHEALTHY"
         response = {"status": status_text, "timestamp": time.time()}
-
     return JSONResponse(status_code=return_status, content=response)
 
 
@@ -132,10 +132,8 @@ async def delete_list_by_id(ID: int, request: Request,
     """
     await authorize_request(request=request, authz_access_method="create",
                             authz_resources=["/gen3_data_library/service_info/status"])
-
     return_status = status.HTTP_200_OK
     status_text = "OK"
-
     try:
         user_list = await data_access_layer.get_list(ID)
         if user_list is None:
@@ -146,7 +144,5 @@ async def delete_list_by_id(ID: int, request: Request,
         return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
         status_text = "UNHEALTHY"
         list_deleted = 0
-
     response = {"status": status_text, "timestamp": time.time(), "list_deleted": bool(list_deleted)}
-
     return JSONResponse(status_code=return_status, content=response)
