@@ -344,11 +344,9 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_creating_and_updating_lists(self, get_token_claims, arborist, endpoint, client):
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
-        user_id = "79"
+        user_id = "fsemr"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
-
         headers = {"Authorization": "Bearer ofa.valid.token"}
-
         response_1 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A, VALID_LIST_B]})
         updated_list_a = VALID_LIST_A
         updated_list_a["items"] = VALID_LIST_C["items"]
@@ -400,7 +398,7 @@ class TestUserListsRouter(BaseTestRouter):
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
         arborist.auth_request.return_value = True
-        user_id = "80"
+        user_id = "qqqqqq"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         updated_list_a = VALID_LIST_A
         updated_list_a["items"] = VALID_LIST_C["items"]
@@ -429,8 +427,8 @@ class TestUserListsRouter(BaseTestRouter):
         # todo: move the fake prop to its own test
         # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
         # with pytest.raises(TypeError):
-            # todo: if user provides fake props, should we ignore and update anyway or throw?
-            # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
+        # todo: if user provides fake props, should we ignore and update anyway or throw?
+        # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)

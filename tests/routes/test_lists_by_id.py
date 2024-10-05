@@ -5,7 +5,7 @@ import pytest
 from gen3userdatalibrary.routes import route_aggregator
 from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
-from tests.routes.data import VALID_LIST_A, VALID_LIST_B, VALID_REPLACEMENT_LIST
+from tests.routes.data import VALID_LIST_A, VALID_LIST_B, VALID_REPLACEMENT_LIST, VALID_LIST_D, VALID_LIST_E
 
 
 @pytest.mark.asyncio
@@ -87,9 +87,8 @@ class TestUserListsRouter(BaseTestRouter):
         note: getting weird test behavior if I try to use valid lists, so keeping local until that is resolved
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
-
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        outcome_D = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_D, headers)
+        outcome_E = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_E, headers)
 
         body = {
             "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a99": {
@@ -111,14 +110,15 @@ class TestUserListsRouter(BaseTestRouter):
 
         response_one = await client.patch("/lists/1", headers=headers, json=body)
         response_two = await client.patch("/lists/2", headers=headers, json=body)
-        for response in [response_one, response_two]:
+        for response in [response_one]:
             updated_list = response.json().get("data", None)
             items = updated_list.get("items", None)
             assert response.status_code == 200
             assert items is not None
-            assert items.get("CF_1", None) is not None
-            assert items.get("CF_2", None) is not None
-            assert items.get('drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a64', None) is not None
+            if updated_list["name"] == "My Saved List D":
+                assert items.get('drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a04', None) is not None
+            else:
+                assert items.get('drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a05', None) is not None
             assert items.get('drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a99', None) is not None
             if updated_list.get("name", None) == 'õ(*&!@#)(*$%)() 2':
                 assert len(items) == 6

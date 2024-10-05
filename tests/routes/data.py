@@ -87,6 +87,28 @@ VALID_LIST_C = {
             },
         }}}
 
+VALID_LIST_D = {
+    "name": "My Saved List D",
+    "items": {
+        "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a04": {
+            "dataset_guid": "phs000001.v1.p1.c1",
+            "type": "GA4GH_DRS",
+        }
+    },
+}
+
+
+VALID_LIST_E = {
+    "name": "My Saved List E",
+    "items": {
+        "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a05": {
+            "dataset_guid": "phs000001.v1.p1.c1",
+            "type": "GA4GH_DRS",
+        }
+    },
+}
+
+
 VALID_REPLACEMENT_LIST = {
     "name": "example 2",
     "items": {
