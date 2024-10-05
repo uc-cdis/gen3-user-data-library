@@ -1,4 +1,5 @@
 import datetime
+import time
 from collections import defaultdict
 from functools import reduce
 from typing import List
@@ -7,12 +8,30 @@ from fastapi import HTTPException
 from jsonschema import ValidationError, validate
 from sqlalchemy.exc import IntegrityError
 from starlette import status
+from starlette.responses import JSONResponse
 
 from gen3userdatalibrary.config import logging
 from gen3userdatalibrary.models.items_schema import BLACKLIST, SCHEMA_RELATIONSHIPS
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_lists_endpoint
 from gen3userdatalibrary.utils import find_differences, remove_keys, add_to_dict_set
+
+
+def build_generic_500_response():
+    return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+    status_text = "UNHEALTHY"
+    response = {"status": status_text, "timestamp": time.time()}
+    return JSONResponse(status_code=return_status, content=response)
+
+
+async def make_db_request_or_return_500(primed_db_query, fail_handler=build_generic_500_response):
+    # todo: look up better way to do error handling in fastapi
+    try:
+        outcome = await primed_db_query()
+        return True, outcome
+    except Exception as e:
+        outcome = fail_handler()
+        return False, outcome
 
 
 async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: dict, user_id):

@@ -7,7 +7,7 @@ from starlette.responses import JSONResponse
 from gen3userdatalibrary.models.user_list import RequestedUserListModel
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.helpers import try_conforming_list
+from gen3userdatalibrary.services.helpers import try_conforming_list, make_db_request_or_return_500
 
 lists_by_id_router = APIRouter()
 
@@ -105,16 +105,14 @@ async def append_items_to_list(request: Request, ID: int, body: dict,
     if not list_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist")
 
-    try:
-        outcome = await data_access_layer.add_items_to_list(ID, body)
-        response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
+    succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.add_items_to_list(ID, body))
+    if succeeded:
+        resp_content = {"status": "OK", "timestamp": time.time(), "data": data.to_dict()}
         return_status = status.HTTP_200_OK
-    except Exception as e:
-        return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
-        status_text = "UNHEALTHY"
-        response = {"status": status_text, "timestamp": time.time()}
-
-    return JSONResponse(status_code=return_status, content=response)
+        response = JSONResponse(status_code=return_status, content=resp_content)
+    else:
+        response = data
+    return response
 
 
 @lists_by_id_router.delete("/{ID}")
@@ -134,15 +132,16 @@ async def delete_list_by_id(ID: int, request: Request,
                             authz_resources=["/gen3_data_library/service_info/status"])
     return_status = status.HTTP_200_OK
     status_text = "OK"
-    try:
-        user_list = await data_access_layer.get_list(ID)
-        if user_list is None:
-            response = {"status": status_text, "timestamp": time.time(), "list_deleted": False}
-            return JSONResponse(status_code=404, content=response)
-        list_deleted = await data_access_layer.delete_list(ID)
-    except Exception as e:
-        return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
-        status_text = "UNHEALTHY"
-        list_deleted = 0
-    response = {"status": status_text, "timestamp": time.time(), "list_deleted": bool(list_deleted)}
+    succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.get_list(ID))
+    if not succeeded:
+        return data
+    elif data is None:
+        response = {"status": status_text, "timestamp": time.time(), "list_deleted": False}
+        return JSONResponse(status_code=404, content=response)
+
+    succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.delete_list(ID))
+    if succeeded:
+        response = {"status": status_text, "timestamp": time.time(), "list_deleted": bool(data)}
+    else:
+        response = data
     return JSONResponse(status_code=return_status, content=response)
