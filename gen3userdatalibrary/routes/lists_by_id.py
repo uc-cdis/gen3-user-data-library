@@ -31,23 +31,17 @@ async def get_list_by_id(ID: int, request: Request,
                             authz_resources=["/gen3_data_library/service_info/status"])
     status_text = "OK"
 
-    try:
-        user_list = await data_access_layer.get_list(ID)
-        if user_list is None:
-            raise HTTPException(status_code=404, detail="List not found")
-        return_status = status.HTTP_200_OK
-        response = {"status": status_text, "timestamp": time.time(),
-                    "body": {"lists": {user_list.id: user_list.to_dict()}}}
-    except HTTPException as e:
-        return_status = status.HTTP_404_NOT_FOUND
-        content = {"status": e.status_code, "timestamp": time.time()}
-        response = {"status": e.status_code, "content": content}
-    except Exception as e:
-        return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
-        status_text = "UNHEALTHY"
-        response = {"status": status_text, "timestamp": time.time()}
-
-    return JSONResponse(status_code=return_status, content=response)
+    succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.get_list(ID))
+    if not succeeded:
+        response = data
+    elif data is None:
+        resp_content = {"status": "NOT FOUND", "timestamp": time.time()}
+        response = JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=resp_content)
+    else:
+        resp_content = {"status": status_text, "timestamp": time.time(),
+                        "body": {"lists": {data.id: data.to_dict()}}}
+        response = JSONResponse(status_code=status.HTTP_200_OK, content=resp_content)
+    return response
 
 
 @lists_by_id_router.put("/{ID}")
@@ -72,16 +66,14 @@ async def update_list_by_id(request: Request, ID: int, info_to_update_with: Requ
         raise HTTPException(status_code=404, detail="List not found")
     user_id = get_user_id(request=request)
     list_as_orm = await try_conforming_list(user_id, info_to_update_with.__dict__)
-    # todo: refactor error handling in this and append items
-    try:
-        outcome = await data_access_layer.replace_list(ID, list_as_orm)
-        response = {"status": "OK", "timestamp": time.time(), "updated_list": outcome.to_dict()}
+    succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.replace_list(ID, list_as_orm))
+    if not succeeded:
+        response = data
+    else:
+        resp_content = {"status": "OK", "timestamp": time.time(), "updated_list": data.to_dict()}
         return_status = status.HTTP_200_OK
-    except Exception as e:
-        return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
-        status_text = "UNHEALTHY"
-        response = {"status": status_text, "timestamp": time.time()}
-    return JSONResponse(status_code=return_status, content=response)
+        response = JSONResponse(status_code=return_status, content=resp_content)
+    return response
 
 
 @lists_by_id_router.patch("/{ID}")
@@ -130,18 +122,17 @@ async def delete_list_by_id(ID: int, request: Request,
     """
     await authorize_request(request=request, authz_access_method="create",
                             authz_resources=["/gen3_data_library/service_info/status"])
-    return_status = status.HTTP_200_OK
-    status_text = "OK"
     succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.get_list(ID))
     if not succeeded:
         return data
     elif data is None:
-        response = {"status": status_text, "timestamp": time.time(), "list_deleted": False}
+        response = {"status": "NOT FOUND", "timestamp": time.time(), "list_deleted": False}
         return JSONResponse(status_code=404, content=response)
 
     succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.delete_list(ID))
     if succeeded:
-        response = {"status": status_text, "timestamp": time.time(), "list_deleted": bool(data)}
+        resp_content = {"status": "OK", "timestamp": time.time(), "list_deleted": bool(data)}
+        response = JSONResponse(status_code=200, content=resp_content)
     else:
         response = data
-    return JSONResponse(status_code=return_status, content=response)
+    return response
