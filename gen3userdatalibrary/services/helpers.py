@@ -105,8 +105,10 @@ def validate_user_list_item(item_contents: dict):
     # TODO THIS NEEDS TO BE CFG
     content_type = item_contents.get("type", None)
     matching_schema = SCHEMA_RELATIONSHIPS[content_type]
+    # todo: test this whole function
     validate(instance=item_contents, schema=matching_schema)
     if content_type is None:
+        # todo (addressed): should be required. so throw if not?
         logging.warning("User-provided JSON is an unknown type. Creating anyway...")
 
 

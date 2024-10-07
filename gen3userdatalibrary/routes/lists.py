@@ -109,7 +109,15 @@ async def upsert_user_lists(request: Request, requested_lists: dict,
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
 
-# todo: remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}}
+# todo (addressed): remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}}
+# lib for arborist requests. when a user makes a req, ensure an auth check goes to authz for
+# the records they're trying to modify
+# create will always work if they haven't hit limit
+# for modify, get authz from the record
+# make a request for record to arborist with sub id and id, check if they have write access
+# need to check if they have read access
+# filtering db based on the user in the first place, but may one day share with others
+# make sure requests is done efficently
 
 @lists_router.delete("")
 @lists_router.delete("/", include_in_schema=False)

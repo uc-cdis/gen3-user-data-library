@@ -90,8 +90,20 @@ async def append_items_to_list(request: Request, ID: int, body: dict,
         :param body: the items to be appended
         :return: JSONResponse: json response with info about the request outcome
     """
-    await authorize_request(request=request,  # todo: what methods can we use?
-                            authz_access_method="upsert", authz_resources=["/gen3_data_library/service_info/status"])
+    await authorize_request(request=request,
+                            # todo (addressed): what methods can we use? add note to confluence
+                            # alex: just has to match what's in arborist
+                            # all lowercase crud operations
+                            # look in user.yaml file, define arborist resources
+                            # access for api level stuff
+                            # update, read,
+                            # policy is role on authz resource
+                            # role is combo of this method + service making call
+                            # arborist knows what methods you're allowed to use
+                            # up to service to know which ones they're trying to use
+                            # use update for create or update
+                            authz_access_method="update",
+                            authz_resources=["/gen3_data_library/service_info/status"])
     # todo: decide to keep ids as is, or switch to guids
     list_exists = await data_access_layer.get_list(ID) is not None
     if not list_exists:

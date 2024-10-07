@@ -23,8 +23,8 @@ class TestUserListsRouter(BaseTestRouter):
         :param endpoint: route we want to hit
         :param user_list: user list sample object
         :param client: route handler
-        :param get_token_claims: todo: define
-        :param arborist: todo: define
+        :param get_token_claims: a general handler for authenticating a user's token
+        :param arborist: async instance of our access control policy engine
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(arborist, get_token_claims, client, user_list, headers)
@@ -74,7 +74,10 @@ class TestUserListsRouter(BaseTestRouter):
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        # todo: is there anything we should be worried about users trying to append? e.g. malicious or bad data?
+        # todo: double check with alex that our current "straight to db" is not sus
+        # todo: limit max number of items
+        # todo: (addressed) refer to schema relationships (use .env)
+        #   throw exception if invalid items format
         response = await client.put("/lists/2", headers=headers, json=VALID_REPLACEMENT_LIST)
         assert response.status_code == 404
 
