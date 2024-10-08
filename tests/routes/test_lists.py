@@ -299,8 +299,8 @@ class TestUserListsRouter(BaseTestRouter):
 
     # region Read Lists
 
-    # todo: verify reading lists return id => lists mapping
-    # todo: verify lists are under correct user
+    # todo (myself): verify reading lists return id => lists mapping
+    # todo (myself): verify lists are under correct user
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
@@ -458,10 +458,6 @@ class TestUserListsRouter(BaseTestRouter):
         # response = await client.put("/lists", headers=headers, json={"lists": [invalid_list]})
         assert NotImplemented
 
-    async def test_updating_malicious_request_fails(self):
-        # todo: what sorts of malicious requests could someone try to make?
-        # name or items is a sql injection? ask security/devs for more ideas
-        pass
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
