@@ -1,6 +1,9 @@
 import cdislogging
+from fastapi import Path
 from starlette.config import Config
 from starlette.datastructures import Secret
+
+from gen3userdatalibrary.utils import read_json_if_exists
 
 config = Config(".env")
 if not config.file_values:
@@ -42,3 +45,7 @@ PROMETHEUS_MULTIPROC_DIR = config("PROMETHEUS_MULTIPROC_DIR", default="/var/tmp/
 # Location of the policy engine service, Arborist
 # Defaults to the default service name in k8s magic DNS setup
 ARBORIST_URL = config("ARBORIST_URL", default="http://arborist-service")
+
+ITEM_SCHEMAS = read_json_if_exists(Path("./item_schemas.json"))
+if ITEM_SCHEMAS is None:
+    raise OSError("No item schema json file found!")

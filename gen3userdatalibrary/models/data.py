@@ -1,0 +1,2 @@
+
+WHITELIST = {"items", "name"}

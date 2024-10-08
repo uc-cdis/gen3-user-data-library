@@ -1,3 +1,5 @@
+import json
+import os
 from functools import reduce
 from typing import Any, Dict, List
 
@@ -5,6 +7,20 @@ from fastapi import FastAPI
 from sqlalchemy import inspect
 
 from gen3userdatalibrary import logging
+
+
+def read_json_if_exists(file_path):
+    """Reads a JSON file if it exists and returns the data; returns None if the file does not exist."""
+    if os.path.isfile(file_path):
+        with open(file_path, 'r') as json_file:
+            try:
+                return json.load(json_file)
+            except json.JSONDecodeError:
+                print("Error: Failed to decode JSON.")
+                return None
+    else:
+        print("File does not exist.")
+        return None
 
 
 def add_to_dict_set(dict_list, key, value):

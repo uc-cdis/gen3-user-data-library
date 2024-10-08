@@ -11,7 +11,7 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary.config import logging
-from gen3userdatalibrary.models.items_schema import BLACKLIST, SCHEMA_RELATIONSHIPS
+from gen3userdatalibrary.models.data import BLACKLIST, SCHEMA_RELATIONSHIPS
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_lists_endpoint
 from gen3userdatalibrary.utils import find_differences, remove_keys, add_to_dict_set
