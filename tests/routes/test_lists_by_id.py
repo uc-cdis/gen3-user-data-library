@@ -74,9 +74,12 @@ class TestUserListsRouter(BaseTestRouter):
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        # todo: double check with alex that our current "straight to db" is not sus
-        # todo: limit max number of items
-        # todo: (addressed) refer to schema relationships (use .env)
+        # todo (myself): limit max number of items
+        # should be in configuration
+        # don't ever remove?
+        # if they set limit to 10, but then limit to 5, don't set down but just don't let add more
+        # 100 lists, 1000 items per lists
+        # todo (addressed): refer to schema relationships (use .env)
         #   throw exception if invalid items format
         response = await client.put("/lists/2", headers=headers, json=VALID_REPLACEMENT_LIST)
         assert response.status_code == 404
@@ -154,7 +157,9 @@ class TestUserListsRouter(BaseTestRouter):
                                 {"IN": {"data_format": ["CRAM"]}}, {"IN": {"race": ["[\"hispanic\"]"]}}]}}}
             }
         }
-        # todo: is there anything we should be worried about users trying to append? e.g. malicious or bad data?
+        # todo (addressed): is there anything we should be worried about users trying to append?
+        #  e.g. malicious or bad data? -> no, we should be safe
+        # NOTE: what about bad links?
         response = await client.patch("/lists/2", headers=headers, json=body)
         assert response.status_code == 404
 

@@ -25,7 +25,7 @@ def build_generic_500_response():
 
 
 async def make_db_request_or_return_500(primed_db_query, fail_handler=build_generic_500_response):
-    # todo: look up better way to do error handling in fastapi
+    # todo (myself): look up better way to do error handling in fastapi
     try:
         outcome = await primed_db_query()
         return True, outcome
@@ -102,10 +102,12 @@ def validate_user_list_item(item_contents: dict):
     Ensures that the item component of a user list has the correct setup for type property
 
     """
-    # TODO THIS NEEDS TO BE CFG
+    # TODO (myself): THIS NEEDS TO BE refactored into config
+    # configure which types are allowed in a given instance
+    # schema to validate can be static global config
     content_type = item_contents.get("type", None)
     matching_schema = SCHEMA_RELATIONSHIPS[content_type]
-    # todo: test this whole function
+    # todo (myself): test this whole function
     validate(instance=item_contents, schema=matching_schema)
     if content_type is None:
         # todo (addressed): should be required. so throw if not?
@@ -122,7 +124,11 @@ async def create_user_list_instance(user_id, user_list: dict):
     assert user_id is not None, "User must have an ID!"
     now = datetime.datetime.now(datetime.timezone.utc)
     name = user_list.get("name", f"Saved List {now}")
-    user_list_items = user_list.get("items", {})  # todo: what if they don't have any items?
+    user_list_items = user_list.get("items", {})  # todo (addressed?): what if they don't have any items?
+    # todo (myself): create items, update items, or append items
+    # append: 200 or 400? -> 400
+    # update: 200
+    # create: 200
     for item in user_list_items.values():
         validate_user_list_item(item)
 

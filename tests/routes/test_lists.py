@@ -277,7 +277,13 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_db_create_lists_other_error(self, get_token_claims, arborist, client, endpoint):
         """
         Test db.create_lists raising some error other than unique constraint, ensure 400
-        todo: ask for clarity
+        todo (myself): ask for clarity
+        unique constraint: test creating two lists same name and creator, should 400
+        malformed body
+        empty should be 200
+        test all auth for relevant endpoint
+        test lowest level calls 500
+
         """
         assert NotImplemented
         # arborist.auth_request.return_value = True
@@ -306,7 +312,7 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response_1 = await client.get("/lists", headers=headers)
-        # todo: should we 404 if user exists but no lists?
+        # todo (addressed): should we 404 if user exists but no lists? no, just return empty result
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers, "2")
@@ -323,7 +329,8 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_reading_for_non_existent_user_fails(self, get_token_claims, arborist, client):
-        # todo: how to test non-existent user?
+        # todo (addressed): how to test non-existent user?
+        # if they have token they exist, if they don't they're auth
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -331,7 +338,7 @@ class TestUserListsRouter(BaseTestRouter):
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
         response_1 = await client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "bar"}
-        # todo: 404 if empty list?
+        # todo (addressed): 404 if empty list? no, 200
         response_2 = await client.get("/lists", headers=headers)
 
     # endregion
@@ -421,27 +428,33 @@ class TestUserListsRouter(BaseTestRouter):
         #               "created_time": json.dumps(datetime.now().isoformat()),
         #               "updated_time": json.dumps(datetime.now().isoformat()),
         #               "fake_prop": "aaa"}
-        # TODO: what would we want to update other than items?
+        # TODO (addressed): what would we want to update other than items?
+        #  test that when we update, updated time gets changed. and created time does not
         # if nothing, then we should change the update to throw if no items are provided in the raw variable
 
-        # todo: move the fake prop to its own test
+        # todo (myself): move the fake prop to its own test
         # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
         # with pytest.raises(TypeError):
-        # todo: if user provides fake props, should we ignore and update anyway or throw?
+        # todo (addressed): if user provides fake props, should we ignore and update anyway or throw?
+        # error out if they put invalid props in items
+        # error out if body has additional fields, gave us more data than we wanted
+
         # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_updating_lists_failures(self, get_token_claims, arborist, endpoint, client):
-        # todo: can't test whether a list exists to update?
-        # todo: ask alex about handling list belonging to diff user (auth err i assume)
+        # todo (addressed): can't test whether a list exists to update? that's fine
+        # todo (addressed): ask alex about handling list belonging to diff user (auth err i assume)
+        # it's handled in the auth portion
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         invalid_list = {"name": "foo", "itmes": {"aaa": "eee"}}
 
-        # todo: if use passes invalid data, should we make default list or throw?
+        # todo (addressed): if use passes invalid data, should we make default list or throw?
+        # throw, don't create
         # response = await client.put("/lists", headers=headers, json={"lists": [invalid_list]})
         assert NotImplemented
 
@@ -476,7 +489,7 @@ class TestUserListsRouter(BaseTestRouter):
         response_1 = await client.get("/lists", headers=headers)
         response_2 = await client.delete("/lists", headers=headers)
         response_3 = await client.get("/lists", headers=headers)
-        # todo: if no lists should we return 404?
+        # todo (addressed): if no lists should we return 404? yes
         list_content = json.loads(response_3.text).get("lists", None)
         assert list_content == {}
 
@@ -484,7 +497,9 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_deleting_lists_failures(self, get_token_claims, arborist, client):
         # try to delete for wrong user
-        # todo: test deleting for wrong user fails?
+        # todo (addressed): test deleting for wrong user fails?
+        # auth out
+
         # what should we do if a user X has no lists but requests a delete?
         assert NotImplemented
         # arborist.auth_request.return_value = True

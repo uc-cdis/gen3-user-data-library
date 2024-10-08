@@ -72,7 +72,9 @@ class DataAccessLayer:
         """
         Return all known lists
         """
-        # todo: it should be all lists for a given user right?
+        # todo (addressed): bring in user id, should only be all lists by user
+        # how to quickly get lists not owned by user (implement later, maybe make custom table)
+
         query = await self.db_session.execute(select(UserList).order_by(UserList.id))
         return list(query.scalars().all())
 
@@ -156,7 +158,7 @@ class DataAccessLayer:
     async def add_items_to_list(self, list_id: int, item_data: dict):
         """
         Gets existing list and adds items to the items property
-        # todo: does sqlalchemy validate anything passed into items?
+        # yes, it has automatic sql injection protection
         """
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.update(item_data)

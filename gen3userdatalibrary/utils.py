@@ -56,7 +56,7 @@ def add_user_list_metric(fastapi_app: FastAPI, action: str, user_lists: List[Dic
         response_time_seconds (float): The response time in seconds for the action performed
         user_id (str): The identifier of the user associated with the action
     """
-    # todo: state property does not exist?
+    # todo (look into more): state property does not exist?
     if not getattr(fastapi_app.state, "metrics", None):
         return
 

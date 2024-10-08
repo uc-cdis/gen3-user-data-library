@@ -27,7 +27,7 @@ async def read_all_lists(request: Request,
         :param data_access_layer: how we interface with db
     """
     user_id = await get_user_id(request=request)
-    # todo: automatically auth request instead of typing it out in each endpoint?
+    # todo (myself): automatically auth request instead of typing it out in each endpoint?
     # dynamically create user policy
     await authorize_request(request=request, authz_access_method="read",
                             authz_resources=[get_user_data_library_endpoint(user_id)])
@@ -70,7 +70,7 @@ async def upsert_user_lists(request: Request, requested_lists: dict,
         :param request: (Request) FastAPI request (so we can check authorization)
         :param requested_lists: Body from the POST, expects list of entities
         :param data_access_layer: (DataAccessLayer): Interface for data manipulations
-    #todo: write docs about shape of create and update
+    #todo (myself): write docs about shape of create and update
     """
     user_id = await get_user_id(request=request)
 
@@ -87,7 +87,8 @@ async def upsert_user_lists(request: Request, requested_lists: dict,
             request.app.state.arborist_client.update_resource("/", resource, merge=True)
         except ArboristError as e:
             logging.error(
-                e)  # keep going; maybe just some conflicts from things existing already  # TODO: Unsure if this is
+                e)  # keep going; maybe just some conflicts from things existing already
+            # TODO: Unsure if this is
             # safe, we might need to actually error here?
     await authorize_request(request=request, authz_access_method="create",
                             authz_resources=[get_user_data_library_endpoint(user_id)])

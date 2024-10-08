@@ -104,7 +104,7 @@ async def append_items_to_list(request: Request, ID: int, body: dict,
                             # use update for create or update
                             authz_access_method="update",
                             authz_resources=["/gen3_data_library/service_info/status"])
-    # todo: decide to keep ids as is, or switch to guids
+    # todo (addressed): switch to guids, uuid4
     list_exists = await data_access_layer.get_list(ID) is not None
     if not list_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist")
