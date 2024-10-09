@@ -69,9 +69,9 @@ async def upsert_user_lists(request: Request,
 
     Args:
         :param request: (Request) FastAPI request (so we can check authorization)
+            {"lists": [RequestedUserListModel]}
         :param requested_lists: Body from the POST, expects list of entities
         :param data_access_layer: (DataAccessLayer): Interface for data manipulations
-    #todo (myself): write docs about shape of create and update
     """
     user_id = await get_user_id(request=request)
 

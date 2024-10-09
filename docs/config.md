@@ -31,3 +31,44 @@ Defines the maximum number of items a user can have for a given list.
 
 NOTE: If a user has N number of items and the configuration is set to N - M, the user
 will maintain N number of items, but they will be unable to add more.
+
+## ITEM_SCHEMAS
+
+Holds a dictionary of schema type => schema properties. When list requests come 
+into this api, our validation will ensure that the "items" component of an 
+update request conforms to the schema defined in a `items_schemas.json` file that
+should be in a `config` directory at the top level. The specific schema
+to conform to is defined by the item's type. If you provide a schema with 
+the name `"None"` (matching Python's null use case), that schema will be used
+as the default for any schemas who do not have a matching type.
+Example: 
+```json
+{
+  "GA4GH_DRS": {
+    "type": "object",
+    "properties": {
+      "dataset_guid": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "dataset_guid",
+      "type"
+    ]
+  },
+  "None": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "type"
+    ]
+  }
+}
+```
