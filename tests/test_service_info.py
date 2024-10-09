@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from gen3userdatalibrary.routes import route_aggregator
-from tests.routes.conftest import BaseTestRouter
+from tests.routes.configs_for_test_routes import BaseTestRouter
 
 
 @pytest.mark.asyncio

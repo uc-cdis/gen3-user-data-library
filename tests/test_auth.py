@@ -5,7 +5,7 @@ import pytest
 from gen3userdatalibrary import config
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.services.auth import _get_token
-from tests.routes.conftest import BaseTestRouter
+from tests.routes.configs_for_test_routes import BaseTestRouter
 
 
 @pytest.mark.asyncio
