@@ -4,7 +4,7 @@ from cdispyutils.metrics import BaseMetrics
 
 from gen3userdatalibrary import config
 
-# TODO (?): meant to track overall number of user lists over time, can increase/decrease as they get created/deleted
+# TODO?: meant to track overall number of user lists over time, can increase/decrease as they get created/deleted
 TOTAL_USER_LIST_GAUGE = {"name": "gen3_data_library_user_lists", "description": "Gen3 User Data Library User Lists", }
 
 API_USER_LIST_COUNTER = {"name": "gen3_data_library_api_user_lists",

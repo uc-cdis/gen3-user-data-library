@@ -48,10 +48,10 @@ ARBORIST_URL = config("ARBORIST_URL", default="http://arborist-service")
 
 logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")
 
-# todo: creating list should check this
+# todo (me): creating list should check this
 MAX_LISTS = config("MAX_LISTS", cast=int, default=100)
 
-# todo: all endpoints that update items should check this
+# todo (me): all endpoints that update items should check this
 MAX_LIST_ITEMS = config("MAX_LIST_ITEMS", cast=int, default=1000)
 
 

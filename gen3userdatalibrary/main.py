@@ -5,6 +5,7 @@ import fastapi
 from fastapi import FastAPI
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
+from starlette.middleware import Middleware
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.models.metrics import Metrics
@@ -70,6 +71,7 @@ def get_app() -> fastapi.FastAPI:
     fastapi_app = FastAPI(title="Gen3 User Data Library Service", version=version("gen3userdatalibrary"),
                           debug=config.DEBUG, root_path=config.URL_PREFIX, lifespan=lifespan, )
     fastapi_app.include_router(route_aggregator)
+    fastapi_app.add_middleware([Middleware(AuthMiddleware)])
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:
