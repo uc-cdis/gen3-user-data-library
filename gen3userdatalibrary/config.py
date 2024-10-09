@@ -1,9 +1,9 @@
+import os
+from json import JSONDecodeError, load
+
 import cdislogging
-from fastapi import Path
 from starlette.config import Config
 from starlette.datastructures import Secret
-
-from gen3userdatalibrary.utils import read_json_if_exists
 
 config = Config(".env")
 if not config.file_values:
@@ -46,6 +46,24 @@ PROMETHEUS_MULTIPROC_DIR = config("PROMETHEUS_MULTIPROC_DIR", default="/var/tmp/
 # Defaults to the default service name in k8s magic DNS setup
 ARBORIST_URL = config("ARBORIST_URL", default="http://arborist-service")
 
-ITEM_SCHEMAS = read_json_if_exists(Path("./item_schemas.json"))
+logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")
+
+
+def read_json_if_exists(file_path):
+    """Reads a JSON file if it exists and returns the data; returns None if the file does not exist."""
+    if not os.path.isfile(file_path):
+        logging.error("File does not exist.")
+        return None
+    with open(file_path, 'r') as json_file:
+        try:
+            return load(json_file)
+        except JSONDecodeError:
+            logging.error("Error: Failed to decode JSON.")
+            return None
+
+
+ITEM_SCHEMAS = read_json_if_exists("./../config/item_schemas.json")
 if ITEM_SCHEMAS is None:
     raise OSError("No item schema json file found!")
+if 'None' in ITEM_SCHEMAS:
+    ITEM_SCHEMAS[None] = ITEM_SCHEMAS["None"]

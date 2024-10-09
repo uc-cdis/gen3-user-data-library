@@ -61,7 +61,8 @@ async def read_all_lists(request: Request,
                                                                  "description": "Bad request, unable to create list",
                                                              }})
 @lists_router.put("/", include_in_schema=False)
-async def upsert_user_lists(request: Request, requested_lists: dict,
+async def upsert_user_lists(request: Request,
+                            requested_lists: dict,
                             data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Create a new list with the provided items, or update any lists that already exist

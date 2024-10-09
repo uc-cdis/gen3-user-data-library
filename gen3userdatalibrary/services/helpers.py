@@ -2,7 +2,6 @@ import datetime
 import time
 from collections import defaultdict
 from functools import reduce
-from typing import List
 
 from fastapi import HTTPException
 from jsonschema import ValidationError, validate
@@ -10,11 +9,11 @@ from sqlalchemy.exc import IntegrityError
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary.config import logging
-from gen3userdatalibrary.models.data import BLACKLIST, SCHEMA_RELATIONSHIPS
+from gen3userdatalibrary.config import logging, ITEM_SCHEMAS
+from gen3userdatalibrary.models.data import WHITELIST
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_lists_endpoint
-from gen3userdatalibrary.utils import find_differences, remove_keys, add_to_dict_set
+from gen3userdatalibrary.utils import find_differences, add_to_dict_set
 
 
 def build_generic_500_response():
@@ -62,19 +61,26 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: dict,
     return response_user_lists
 
 
+def filter_keys(filter_func, differences):
+    return {k: v
+            for k, v in differences.items()
+            if filter_func(k, v)}
+
+
 def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
     """
     Given an old list and new list, gets the changes in the new list to be added
     to the old list
     """
-    differences = find_differences(list_to_update, new_list)
-    relevant_differences = remove_keys(differences, BLACKLIST)
-    has_no_relevant_differences = not relevant_differences or (
-            len(relevant_differences) == 1 and relevant_differences.__contains__("updated_time"))
+    properties_to_old_new_difference = find_differences(list_to_update, new_list)
+    relevant_differences = filter_keys(lambda k, _: k in WHITELIST,
+                                       properties_to_old_new_difference)
+    has_no_relevant_differences = not relevant_differences or (len(relevant_differences) == 1 and
+                                                               relevant_differences.__contains__("updated_time"))
     if has_no_relevant_differences:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to update!")
-    changes_to_make = {k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()}
-    return changes_to_make
+    property_to_change_to_make = {k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()}
+    return property_to_change_to_make
 
 
 async def try_conforming_list(user_id, user_list: dict) -> UserList:
@@ -100,18 +106,16 @@ async def try_conforming_list(user_id, user_list: dict) -> UserList:
 def validate_user_list_item(item_contents: dict):
     """
     Ensures that the item component of a user list has the correct setup for type property
-
     """
-    # TODO (myself): THIS NEEDS TO BE refactored into config
-    # configure which types are allowed in a given instance
-    # schema to validate can be static global config
-    content_type = item_contents.get("type", None)
-    matching_schema = SCHEMA_RELATIONSHIPS[content_type]
     # todo (myself): test this whole function
-    validate(instance=item_contents, schema=matching_schema)
+    content_type = item_contents.get("type", None)
     if content_type is None:
-        # todo (addressed): should be required. so throw if not?
-        logging.warning("User-provided JSON is an unknown type. Creating anyway...")
+        logging.warning("No content type provided!")
+    matching_schema = ITEM_SCHEMAS.get(content_type, None)
+    if matching_schema is None:
+        logging.error("No matching schema for type, aborting!")
+        raise HTTPException(status_code=400, detail="No matching schema identified for items, aborting!")
+    validate(instance=item_contents, schema=matching_schema)
 
 
 async def create_user_list_instance(user_id, user_list: dict):
