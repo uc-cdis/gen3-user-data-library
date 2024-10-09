@@ -30,6 +30,7 @@ What do we do in this file?
 
 from typing import List, Optional, Tuple, Union
 
+from fastapi import HTTPException
 from sqlalchemy import text, delete, func, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
@@ -54,12 +55,18 @@ class DataAccessLayer:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    # todo bonus: we should have a way to ensure we are not doing multiple
-    # updates to the db. ideally, each endpoint writes to the db once
+    def ensure_user_has_not_reached_max_lists(self, creator_id):
+        new_list = UserList.id is None
+        if new_list:
+            lists_so_far = self.get_list_count_for_creator(creator_id)
+            if lists_so_far >= config.MAX_LISTS:
+                raise HTTPException(status_code=500, detail="Max number of lists reached!")
+
     async def persist_user_list(self, user_id, user_list: UserList):
         """
         Save user list to db as well as update authz
         """
+        self.ensure_user_has_not_reached_max_lists(user_list.creator)
         self.db_session.add(user_list)
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()
@@ -68,7 +75,7 @@ class DataAccessLayer:
         user_list.authz = authz
         return user_list
 
-    async def get_all_lists(self) -> List[UserList]:
+    async def get_all_lists(self, creator_id) -> List[UserList]:
         """
         Return all known lists
         """
@@ -103,7 +110,7 @@ class DataAccessLayer:
         """
         Given an id and list of changes to make, it'll update the list orm with those changes.
         IMPORTANT! Does not check that the attributes are safe to change.
-        Refer to the BLACKLIST variable in items_schema.py for unsafe properties
+        Refer to the WHITELIST variable in data.py for unsafe properties
         """
         db_list_to_update = await self.get_existing_list_or_throw(list_to_update_id)
         changes_that_can_be_made = list(filter(lambda kvp: hasattr(db_list_to_update, kvp[0]), changes_to_make.items()))
@@ -115,15 +122,20 @@ class DataAccessLayer:
     async def test_connection(self) -> None:
         await self.db_session.execute(text("SELECT 1;"))
 
+    async def get_list_count_for_creator(self, creator_id):
+        query = select(func.count()).select_from(UserList).where(UserList.creator == creator_id)
+        result = await self.db_session.execute(query)
+        count = result.scalar()
+        return count
+
     async def delete_all_lists(self, sub_id: str):
         """
         Delete all lists for a given list creator, return how many lists were deleted
         """
-        query = select(func.count()).select_from(UserList).where(UserList.creator == sub_id)
+        count = self.get_list_count_for_creator(sub_id)
+        query = delete(UserList).where(UserList.creator == sub_id)
         query.execution_options(synchronize_session="fetch")
-        result = await self.db_session.execute(query)
-        count = result.scalar()
-        await self.db_session.execute(delete(UserList).where(UserList.creator == sub_id))
+        await self.db_session.execute(query)
         await self.db_session.commit()
         return count
 
@@ -145,7 +157,7 @@ class DataAccessLayer:
         Delete the original list, replace it with the new one!
         """
         existing_obj = await self.get_existing_list_or_throw(original_list_id)
-
+        self.ensure_user_has_not_reached_max_lists(existing_obj.creator)
         await self.db_session.delete(existing_obj)
         await self.db_session.commit()
 

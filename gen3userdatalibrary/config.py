@@ -48,6 +48,12 @@ ARBORIST_URL = config("ARBORIST_URL", default="http://arborist-service")
 
 logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")
 
+# todo: creating list should check this
+MAX_LISTS = config("MAX_LISTS", cast=int, default=100)
+
+# todo: all endpoints that update items should check this
+MAX_LIST_ITEMS = config("MAX_LIST_ITEMS", cast=int, default=1000)
+
 
 def read_json_if_exists(file_path):
     """Reads a JSON file if it exists and returns the data; returns None if the file does not exist."""

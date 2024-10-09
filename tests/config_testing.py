@@ -1,13 +1,40 @@
 import pytest
 
+from unittest.mock import AsyncMock, patch
+
+from gen3userdatalibrary import config
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.utils import get_from_cfg_metadata
+from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
+from tests.routes.data import VALID_LIST_A
 
 
 @pytest.mark.asyncio
 class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize("endpoint", ["/lists/1"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_max_limits(self, get_token_claims, arborist, endpoint, user_list, client):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        config.MAX_LISTS = 1
+        config.MAX_LIST_ITEMS = 1
+        resp1 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        config.MAX_LIST_ITEMS = 2
+        assert resp1.status_code == 400
+        resp2 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        resp3 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        assert resp3.status_code == 400
+
+        # assert response.status_code == 404
+        assert NotImplemented
+
+    async def test_item_schema_validation(self):
+
+        assert NotImplemented
 
     async def test_metadata_cfg_util(self):
         """
