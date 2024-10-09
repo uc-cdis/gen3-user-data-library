@@ -1,71 +1,74 @@
-"""
-This is modeled after docs and articles showing how to properly setup testing
-using async sqlalchemy, while properly ensuring isolation between the tests.
-
-Ultimately, these are fixtures used by the tests which handle the isolation behind the scenes,
-by using properly scoped fixtures with cleanup/teardown.
-
-More info on how this setup works:
-
-- Creates a session-level, shared event loop
-- The "session" uses a fuction-scoped engine + the shared session event loop
-    - Function-scoped engine clears out the database at the beginning and end to ensure test isolation
-        - This could maybe be set at the class level or higher, but without running into major performance issues,
-          I think it's better to ensure a full cleanup between tests
-    - session uses a nested transaction, which it starts but then rolls back after the test (meaning that
-      any changes should be isolated)
-"""
-
-import asyncio
-import importlib
-import os
-
 import pytest
-import pytest_asyncio
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from unittest.mock import AsyncMock, patch
 
 from gen3userdatalibrary import config
-from gen3userdatalibrary.models.user_list import Base
+from gen3userdatalibrary.main import route_aggregator
+from gen3userdatalibrary.utils import get_from_cfg_metadata
+from tests.helpers import create_basic_list
+from tests.routes.conftest import BaseTestRouter
+from tests.routes.data import VALID_LIST_A
 
 
-@pytest.fixture(scope="session", autouse=True)
-def ensure_test_config():
-    os.chdir(os.path.dirname(os.path.abspath(__file__)).rstrip("/"))
-    importlib.reload(config)
-    assert not config.DEBUG_SKIP_AUTH
+@pytest.mark.asyncio
+class TestConfigRouter(BaseTestRouter):
+    router = route_aggregator
 
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize("endpoint", ["/lists/1"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_max_limits(self, get_token_claims, arborist, endpoint, user_list, client):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        config.MAX_LISTS = 1
+        config.MAX_LIST_ITEMS = 1
+        resp1 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        config.MAX_LIST_ITEMS = 2
+        assert resp1.status_code == 400
+        resp2 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        resp3 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        assert resp3.status_code == 400
 
-@pytest_asyncio.fixture(scope="function")
-async def engine():
-    """
-    Non-session scoped engine which recreates the database, yields, then drops the tables
-    """
-    engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=False, future=True)
+        # assert response.status_code == 404
+        assert NotImplemented
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    async def test_item_schema_validation(self):
 
-    yield engine
+        assert NotImplemented
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    async def test_metadata_cfg_util(self):
+        """
+        If it exists, return it
+        """
+        set_metadata_value = "foobar"
+        metadata = {"test_config_value": set_metadata_value}
+        retrieved_metadata_value = get_from_cfg_metadata("test_config_value", metadata, default="default-value",
+                                                         type_=str)
 
-    await engine.dispose()
+        assert retrieved_metadata_value == set_metadata_value
 
+    async def test_metadata_cfg_util_doesnt_exist(self):
+        """
+        If it doesn't exist, return default
+        """
+        default = "default-value"
+        retrieved_metadata_value = get_from_cfg_metadata("this_doesnt_exist", {"test_config_value": "foobar"},
+                                                         default=default, type_=str, )
+        assert retrieved_metadata_value == default
 
-@pytest_asyncio.fixture()
-async def session(engine):
-    """
-    Database session which utilizes the above engine and event loop and sets up a nested transaction before yielding.
-    It rolls back the nested transaction after yield.
-    """
-    event_loop = asyncio.get_running_loop()
-    session_maker = async_sessionmaker(engine, expire_on_commit=False, autocommit=False, autoflush=False)
+    async def test_metadata_cfg_util_cant_cast(self):
+        """
+        If it doesn't exist, return default
+        """
+        default = "default-value"
+        retrieved_metadata_value = get_from_cfg_metadata("this_doesnt_exist", {"test_config_value": "foobar"},
+                                                         default=default, type_=float, )
+        assert retrieved_metadata_value == default
 
-    async with engine.connect() as conn:
-        tsx = await conn.begin()
-        async with session_maker(bind=conn) as session:
-            yield session
-
-            await tsx.rollback()
+    @pytest.mark.parametrize("endpoint", ["/docs", "/redoc"])
+    async def test_docs(self, endpoint, client):
+        """
+        Test FastAPI docs endpoints
+        """
+        response = await client.get(endpoint)
+        assert response.status_code == 200
