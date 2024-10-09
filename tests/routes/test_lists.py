@@ -83,7 +83,7 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_create_single_valid_list(self, get_token_claims, arborist, endpoint, user_list, client, session):
+    async def test_create_single_valid_list(self, get_token_claims, arborist, endpoint, user_list, client):
         """
         Test the response for creating a single valid list
         """

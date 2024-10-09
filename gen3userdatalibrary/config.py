@@ -68,7 +68,8 @@ def read_json_if_exists(file_path):
             return None
 
 
-ITEM_SCHEMAS = read_json_if_exists("./../config/item_schemas.json")
+SCHEMAS_LOCATION = config("SCHEMAS_LOCATION", cast=str, default="./../config/item_schemas.json")
+ITEM_SCHEMAS = read_json_if_exists(SCHEMAS_LOCATION)
 if ITEM_SCHEMAS is None:
     raise OSError("No item schema json file found!")
 if 'None' in ITEM_SCHEMAS:
