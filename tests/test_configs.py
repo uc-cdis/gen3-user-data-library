@@ -15,10 +15,9 @@ class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
-    @pytest.mark.parametrize("endpoint", ["/lists/1"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_max_limits(self, get_token_claims, arborist, endpoint, user_list, client):
+    async def test_max_limits(self, get_token_claims, arborist, user_list, client):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         config.MAX_LISTS = 1
         config.MAX_LIST_ITEMS = 1
