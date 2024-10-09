@@ -32,6 +32,12 @@ Defines the maximum number of items a user can have for a given list.
 NOTE: If a user has N number of items and the configuration is set to N - M, the user
 will maintain N number of items, but they will be unable to add more.
 
+## SCHEMAS_LOCATION
+
+This property defines where the validation schema mapping definition is
+located. It should be a json file. More details abut the validation
+schema in the next section. 
+
 ## ITEM_SCHEMAS
 
 Holds a dictionary of schema `type` => schema properties. When a request comes

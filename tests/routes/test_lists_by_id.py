@@ -13,7 +13,7 @@ class TestUserListsRouter(BaseTestRouter):
     router = route_aggregator
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", ["/lists/1"])
+    @pytest.mark.parametrize("endpoint", [f"/lists/{aeau}"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_getting_id_success(self, get_token_claims, arborist, endpoint, user_list, client):
@@ -32,10 +32,9 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.status_code == 200
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", ["/lists/2"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_getting_id_failure(self, get_token_claims, arborist, endpoint, user_list, client):
+    async def test_getting_id_failure(self, get_token_claims, arborist, user_list, client):
         """
         Ensure asking for a list with unused id returns 404
         """
@@ -45,17 +44,16 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.status_code == 404
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", ["/lists/1"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_updating_by_id_success(self, get_token_claims, arborist, endpoint, user_list, client):
+    async def test_updating_by_id_success(self, get_token_claims, arborist, user_list, client):
         """
         Test we can update a specific list correctly
 
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        response = await client.put("/lists/1", headers=headers, json=VALID_REPLACEMENT_LIST)
+        response = await client.put(f"/lists/{aeau}", headers=headers, json=VALID_REPLACEMENT_LIST)
         updated_list = response.json().get("updated_list", None)
         assert response.status_code == 200
         assert updated_list is not None
@@ -64,10 +62,9 @@ class TestUserListsRouter(BaseTestRouter):
         assert updated_list["items"].get('drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65', None) is not None
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", ["/lists/1"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_updating_by_id_failures(self, get_token_claims, arborist, endpoint, user_list, client):
+    async def test_updating_by_id_failures(self, get_token_claims, arborist, user_list, client):
         """
         Test updating non-existent list fails
 
@@ -79,15 +76,12 @@ class TestUserListsRouter(BaseTestRouter):
         # don't ever remove?
         # if they set limit to 10, but then limit to 5, don't set down but just don't let add more
         # 100 lists, 1000 items per lists
-        # todo (addressed): refer to schema relationships (use .env)
-        #   throw exception if invalid items format
-        response = await client.put("/lists/2", headers=headers, json=VALID_REPLACEMENT_LIST)
+        response = await client.put(f"/lists/{aeou}", headers=headers, json=VALID_REPLACEMENT_LIST)
         assert response.status_code == 404
 
-    @pytest.mark.parametrize("endpoint", ["/lists/1"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_appending_by_id_success(self, get_token_claims, arborist, endpoint, client):
+    async def test_appending_by_id_success(self, get_token_claims, arborist, client):
         """
         Test we can append to a specific list correctly
         note: getting weird test behavior if I try to use valid lists, so keeping local until that is resolved
@@ -114,8 +108,8 @@ class TestUserListsRouter(BaseTestRouter):
             }
         }
 
-        response_one = await client.patch("/lists/1", headers=headers, json=body)
-        response_two = await client.patch("/lists/2", headers=headers, json=body)
+        response_one = await client.patch(f"/lists/{aeou}", headers=headers, json=body)
+        response_two = await client.patch(f"/lists/{aeou}", headers=headers, json=body)
         for response in [response_one]:
             updated_list = response.json().get("data", None)
             items = updated_list.get("items", None)
@@ -130,10 +124,9 @@ class TestUserListsRouter(BaseTestRouter):
                 assert len(items) == 6
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", ["/lists/1"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_appending_by_id_failures(self, get_token_claims, arborist, endpoint, user_list, client):
+    async def test_appending_by_id_failures(self, get_token_claims, arborist, user_list, client):
         """
         Test that appending to non-existent list fails
 
@@ -157,28 +150,26 @@ class TestUserListsRouter(BaseTestRouter):
                                 {"IN": {"data_format": ["CRAM"]}}, {"IN": {"race": ["[\"hispanic\"]"]}}]}}}
             }
         }
-        # todo (addressed): is there anything we should be worried about users trying to append?
-        #  e.g. malicious or bad data? -> no, we should be safe
-        # NOTE: what about bad links?
-        response = await client.patch("/lists/2", headers=headers, json=body)
+        # todo (addressed): what about malicious links? make a note in the docs but
+        # otherwise no not until we allow shared lists
+        response = await client.patch(f"/lists/{aeou}", headers=headers, json=body)
         assert response.status_code == 404
 
-    @pytest.mark.parametrize("endpoint", ["/lists/1"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_deleting_by_id_success(self, get_token_claims, arborist, endpoint, client):
+    async def test_deleting_by_id_success(self, get_token_claims, arborist, client):
         """
         Test that we can't get data after it has been deleted
 
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        sanity_get_check = await client.get("lists/1", headers=headers)
+        sanity_get_check = await client.get(f"/lists/{aeau}", headers=headers)
         assert sanity_get_check.status_code == 200
-        first_delete = await client.delete("/lists/1", headers=headers)
-        first_get_outcome = await client.get("lists/1", headers=headers)
+        first_delete = await client.delete(f"/lists/{aeau}", headers=headers)
+        first_get_outcome = await client.get(f"/lists/{aeau}", headers=headers)
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
-        second_delete = await client.delete("/lists/2", headers=headers)
+        second_delete = await client.delete(f"/lists/{aeou}", headers=headers)
         second_get_outcome = await client.get("list/2", headers=headers)
         assert first_delete.status_code == 200
         assert first_get_outcome.status_code == 404
@@ -186,7 +177,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert second_get_outcome.status_code == 404
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", ["/lists/1"])
+    @pytest.mark.parametrize("endpoint", [f"/lists/{aeau}"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_deleting_by_id_failures(self, get_token_claims, arborist, endpoint, user_list, client):
@@ -195,22 +186,22 @@ class TestUserListsRouter(BaseTestRouter):
 
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        first_delete_attempt_1 = await client.delete("/lists/1", headers=headers)
+        first_delete_attempt_1 = await client.delete(f"/lists/{aeau}", headers=headers)
         assert first_delete_attempt_1.status_code == 404
 
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        sanity_get_check_1 = await client.get("lists/1", headers=headers)
+        sanity_get_check_1 = await client.get(f"/lists/{aeau}", headers=headers)
         assert sanity_get_check_1.status_code == 200
 
-        first_delete_attempt_2 = await client.delete("/lists/1", headers=headers)
+        first_delete_attempt_2 = await client.delete(f"/lists/{aeau}", headers=headers)
         assert first_delete_attempt_2.status_code == 200
 
-        first_delete_attempt_3 = await client.delete("/lists/1", headers=headers)
+        first_delete_attempt_3 = await client.delete(f"/lists/{aeau}", headers=headers)
         assert first_delete_attempt_3.status_code == 404
 
         await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
-        sanity_get_check_2 = await client.get("lists/2", headers=headers)
+        sanity_get_check_2 = await client.get(f"/lists/{aeau}", headers=headers)
         assert sanity_get_check_2.status_code == 200
 
-        second_delete_attempt_1 = await client.delete("/lists/2", headers=headers)
+        second_delete_attempt_1 = await client.delete(f"/lists/{aeau}", headers=headers)
         assert second_delete_attempt_1.status_code == 200

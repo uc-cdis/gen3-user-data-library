@@ -1,8 +1,9 @@
 import datetime
+import uuid
 from typing import Dict, Any, Optional
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint, UUID
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -31,7 +32,7 @@ class RequestedUserListModel(BaseModel):
 class UserList(Base):
     __tablename__ = "user_lists"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
     version = Column(Integer, nullable=False)
     creator = Column(String, nullable=False, index=True)
     authz = Column(JSON, nullable=False)

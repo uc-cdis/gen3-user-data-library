@@ -109,8 +109,6 @@ def validate_user_list_item(item_contents: dict):
     """
     # todo (myself): test this whole function
     content_type = item_contents.get("type", None)
-    if content_type is None:
-        logging.warning("No content type provided!")
     matching_schema = ITEM_SCHEMAS.get(content_type, None)
     if matching_schema is None:
         logging.error("No matching schema for type, aborting!")
