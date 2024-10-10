@@ -7,7 +7,7 @@ from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.utils import get_from_cfg_metadata
 from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
-from tests.routes.data import VALID_LIST_A
+from tests.data.example_lists import VALID_LIST_A
 
 
 @pytest.mark.asyncio

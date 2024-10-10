@@ -5,7 +5,7 @@ import pytest
 from gen3userdatalibrary.routes import route_aggregator
 from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
-from tests.routes.data import VALID_LIST_A, VALID_LIST_B, VALID_REPLACEMENT_LIST, VALID_LIST_D, VALID_LIST_E
+from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_REPLACEMENT_LIST, VALID_LIST_D, VALID_LIST_E
 
 
 @pytest.mark.asyncio

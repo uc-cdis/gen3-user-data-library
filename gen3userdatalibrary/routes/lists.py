@@ -34,7 +34,7 @@ async def read_all_lists(request: Request,
     start_time = time.time()
 
     try:
-        new_user_lists = await data_access_layer.get_all_lists()
+        new_user_lists = await data_access_layer.get_all_lists(user_id)
     except Exception as exc:
         logging.exception(f"Unknown exception {type(exc)} when trying to fetch lists.")
         logging.debug(f"Details: {exc}")
