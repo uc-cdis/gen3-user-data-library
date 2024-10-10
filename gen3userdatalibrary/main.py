@@ -71,7 +71,6 @@ def get_app() -> fastapi.FastAPI:
     fastapi_app = FastAPI(title="Gen3 User Data Library Service", version=version("gen3userdatalibrary"),
                           debug=config.DEBUG, root_path=config.URL_PREFIX, lifespan=lifespan, )
     fastapi_app.include_router(route_aggregator)
-    fastapi_app.add_middleware([Middleware(AuthMiddleware)])
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:

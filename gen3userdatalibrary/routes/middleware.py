@@ -5,6 +5,7 @@ app = FastAPI()
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
+    # todo: test that this is called before every endpoint
     auth_header = request.headers.get('Authorization')
     if not auth_header or auth_header != "Bearer yoursecrettoken":
         raise HTTPException(status_code=401, detail="Unauthorized")

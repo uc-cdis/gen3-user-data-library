@@ -13,10 +13,9 @@ class TestUserListsRouter(BaseTestRouter):
     router = route_aggregator
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", [f"/lists/{aeau}"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_getting_id_success(self, get_token_claims, arborist, endpoint, user_list, client):
+    async def test_getting_id_success(self, get_token_claims, arborist, user_list, client):
         """
         If I create a list, I should be able to access it without issue if I have the correct auth
 
@@ -27,7 +26,7 @@ class TestUserListsRouter(BaseTestRouter):
         :param arborist: async instance of our access control policy engine
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        resp1 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
         response = await client.get(endpoint, headers=headers)
         assert response.status_code == 200
 
@@ -177,10 +176,9 @@ class TestUserListsRouter(BaseTestRouter):
         assert second_get_outcome.status_code == 404
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @pytest.mark.parametrize("endpoint", [f"/lists/{aeau}"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_deleting_by_id_failures(self, get_token_claims, arborist, endpoint, user_list, client):
+    async def test_deleting_by_id_failures(self, get_token_claims, arborist, user_list, client):
         """
         Test we can't delete a non-existent list
 
