@@ -9,7 +9,7 @@ from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.models.metrics import Metrics
 from gen3userdatalibrary.routes import route_aggregator
-from gen3userdatalibrary.routes.middleware import add_process_time_header
+from gen3userdatalibrary.routes.middleware import ensure_endpoint_authorized, middleware_catcher
 from gen3userdatalibrary.services.db import get_data_access_layer
 
 
@@ -71,7 +71,7 @@ def get_app() -> fastapi.FastAPI:
     fastapi_app = FastAPI(title="Gen3 User Data Library Service", version=version("gen3userdatalibrary"),
                           debug=config.DEBUG, root_path=config.URL_PREFIX, lifespan=lifespan, )
     fastapi_app.include_router(route_aggregator)
-    fastapi_app.middleware("http")(add_process_time_header)
+    fastapi_app.middleware("http")(middleware_catcher)
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:
