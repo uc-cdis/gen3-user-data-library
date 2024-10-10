@@ -76,6 +76,7 @@ async def upsert_user_lists(request: Request,
     user_id = await get_user_id(request=request)
 
     # TODO dynamically create user policy, ROUGH UNTESTED VERSION: need to verify
+    # todo: test authorize request for all endpoints
     if not config.DEBUG_SKIP_AUTH:
         # make sure the user exists in Arborist
         # IMPORTANT: This is using the user's unique subject ID

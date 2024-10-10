@@ -1,51 +1,41 @@
 import re
 
-from fastapi import Request, FastAPI, HTTPException
+from fastapi import Request, HTTPException
 
-from gen3userdatalibrary.services.auth import authorize_request, get_user_data_library_endpoint
-
-uuid4_regex_pattern = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
-
-endpoint_method_to_access_method = {
-    "^/_version/?$": {"methods": {"GET": {"resource": "/gen3_data_library/service_info/version",
-                                          "method": "read"}}},
-    "^/_status/?$": {"methods": {"GET": {"resource": "/gen3_data_library/service_info/status",
-                                         "method": "read"}}},
-    "^/?$": {"methods": {"GET": {"resource": "/gen3_data_library/service_info/redoc",
-                                 "method": "read"}}},
-    "^/lists/?$": {"GET": "read", "PUT": "update", "DELETE": "delete"},
-    f"^/lists/{uuid4_regex_pattern}/?$": {
-        "methods": {"GET": {"resource": lambda user_id: get_user_data_library_endpoint(user_id),
-                            "method": "read"},
-                    "PUT": {"resource": lambda user_id: get_user_data_library_endpoint(user_id),
-                            "method": "update"},
-                    "PATCH": {"resource": lambda user_id: get_user_data_library_endpoint(user_id),
-                              "method": "update"},
-                    "DELETE": {"resource": lambda user_id: get_user_data_library_endpoint(user_id),
-                               "method": "delete"}},
-        }
-}
+from gen3userdatalibrary.models.data import endpoint_method_to_access_method
+from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 
 
 def reg_match_key(matcher, dictionary_to_match):
     for key, value in dictionary_to_match.items():
         matches = matcher(key)
         if matches is not None:
-            return value
+            return key, value
     return None
 
 
 async def add_process_time_header(request: Request, call_next):
     # todo: test that this is called before every endpoint
-    endpoint = request.scope["path"]
+    endpoint = "/lists/123e4567-e89b-12d3-a456-426614174000"  # /lists/  # request.scope["path"]
     method = request.method
-    methods_at_endpoint = reg_match_key(lambda endpoint_regex: re.match(endpoint_regex, endpoint),
-                                        endpoint_method_to_access_method)
-    access_method = methods_at_endpoint.get(method, None)
-    if access_method is None:
+    matched_pattern, methods_at_endpoint = reg_match_key(lambda endpoint_regex: re.match(endpoint_regex, endpoint),
+                                                         endpoint_method_to_access_method)
+    endpoint_auth_info = methods_at_endpoint.get(method, {})
+    endpoint_type = endpoint_auth_info.get("type", None)
+    get_resource = endpoint_auth_info.get("resource", None)
+    user_id = await get_user_id(request=request)
+    if endpoint_type == "all":
+        resource = get_resource(user_id)
+    elif endpoint_type == "id":
+        list_id = re.search(matched_pattern, endpoint).group(1)
+        resource = get_resource(user_id, list_id)
+    else:  # None
+        resource = get_resource
+
+    if not endpoint_auth_info:
         raise HTTPException(status_code=404, detail="Unrecognized endpoint, could not authenticate user!")
     auth_outcome = await authorize_request(request=request,
-                                           authz_access_method=access_method,
-                                           authz_resources=["/gen3_data_library/service_info/status"])
+                                           authz_access_method=endpoint_auth_info["method"],
+                                           authz_resources=[resource])
     response = await call_next(request)
     return response
