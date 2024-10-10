@@ -7,7 +7,7 @@ from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.services import helpers
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
 from tests.helpers import create_basic_list
-from tests.routes.configs_for_test_routes import BaseTestRouter
+from tests.routes.conftest import BaseTestRouter
 from tests.routes.data import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
 
 
