@@ -20,14 +20,15 @@ class TestConfigRouter(BaseTestRouter):
 
     async def test_regex_key_matcher(self):
         endpoint_method_to_access_method = {
-            "/lists": {"GET": "red"},
+            "^/lists$": {"GET": "red"},
             rf"^/lists/{uuid4_regex_pattern}$": {"GET": "blue"}}
 
         matcher = lambda k: re.match(k, "/lists/123e4567-e89b-12d3-a456-426614174000")
 
         # Test: Should match the UUID pattern
         result = reg_match_key(matcher, endpoint_method_to_access_method)
-        assert result == rf"^/lists/{uuid4_regex_pattern}", {"GET": "blue"}
+        assert result[0] == rf"^/lists/{uuid4_regex_pattern}$"
+        assert result[1] == {"GET": "blue"}
 
         # Test: Should not match anything when using an endpoint that doesn't fit
         no_matcher = lambda k: None
@@ -39,11 +40,10 @@ class TestConfigRouter(BaseTestRouter):
         matcher_lists = lambda key: re.match(key, "/lists")
 
         result_lists = reg_match_key(matcher_lists, endpoint_method_to_access_method)
-        assert result_lists == ("/lists", {"GET": "red"})
+        assert result_lists == ("^/lists$", {"GET": "red"})
 
         # Test: Edge case with an invalid pattern
-        invalid_dict = {
-            "/invalid": {"GET": "red"}}
+        invalid_dict = {"/invalid": {"GET": "red"}}
 
         result_invalid = reg_match_key(matcher, invalid_dict)
         assert result_invalid is None
@@ -63,7 +63,7 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_middleware_validated(self):
+    async def test_middleware_validated(self, get_token_claims, arborist, user_list, client, endpoint):
         # test _version, /lists, and /lists/id
         # /lists/123e4567-e89b-12d3-a456-426614174000
         assert NotImplemented
