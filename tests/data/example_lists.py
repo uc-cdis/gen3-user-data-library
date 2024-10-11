@@ -131,3 +131,19 @@ VALID_REPLACEMENT_LIST = {
 }
 
 VALID_MULTI_LIST_BODY = {"lists": [VALID_LIST_A, VALID_LIST_B]}
+
+PATCH_BODY = {
+            "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a99": {
+                "dataset_guid": "phs000001.v1.p1.c1",
+                "type": "GA4GH_DRS"
+            },
+            "CF_2": {
+                "name": "Cohort Filter 1",
+                "type": "Gen3GraphQL",
+                "schema_version": "c246d0f",
+                "data": {
+                    "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
+                histogram { sum } } } } }""",
+                    "variables": {"filter": {
+                        "AND": [{"IN": {"annotated_sex": ["male"]}}, {"IN": {"data_type": ["Aligned Reads"]}},
+                                {"IN": {"data_format": ["CRAM"]}}, {"IN": {"race": ["[\"hispanic\"]"]}}]}}}}}

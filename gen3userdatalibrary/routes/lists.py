@@ -49,6 +49,10 @@ async def read_all_lists(request: Request,
     return JSONResponse(status_code=status.HTTP_200_OK, content=response)
 
 
+def mutate_keys(mutator, updated_user_lists: dict):
+    return dict(map(lambda kvp: (mutator(kvp[0]), kvp[1]), updated_user_lists.items()))
+
+
 @lists_router.put("",  # most of the following stuff helps populate the openapi docs
                   response_model=UserListResponseModel, status_code=status.HTTP_201_CREATED,
                   description="Create user list(s) by providing valid list information", tags=["User Lists"],
@@ -98,7 +102,8 @@ async def upsert_user_lists(request: Request,
     if not raw_lists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
     start_time = time.time()
-    response_user_lists = await helpers.sort_persist_and_get_changed_lists(data_access_layer, raw_lists, user_id)
+    updated_user_lists = await helpers.sort_persist_and_get_changed_lists(data_access_layer, raw_lists, user_id)
+    response_user_lists = mutate_keys(lambda k: str(k), updated_user_lists)
     end_time = time.time()
     response_time_seconds = end_time - start_time
     response = {"lists": response_user_lists}
@@ -154,4 +159,4 @@ async def delete_all_lists(request: Request,
                  f"count={number_of_lists_deleted}, response={response}, "
                  f"response_time_seconds={response_time_seconds} user_id={user_id}")
     logging.debug(response)
-    return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=response)

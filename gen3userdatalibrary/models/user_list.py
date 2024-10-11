@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint, UUID
@@ -24,9 +24,13 @@ class UserListResponseModel(BaseModel):
     lists: Dict[int, UserListModel]
 
 
-class RequestedUserListModel(BaseModel):
+class ItemToUpdateModel(BaseModel):
     name: str
-    items: Optional[Dict] = {}  # Nested items
+    items: Dict[str, Any]
+
+
+class UpdateItemsModel(BaseModel):
+    lists: List[ItemToUpdateModel]
 
 
 class UserList(Base):

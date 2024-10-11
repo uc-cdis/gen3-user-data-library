@@ -5,7 +5,7 @@ from fastapi import Request, Depends, HTTPException, APIRouter
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary.models.user_list import RequestedUserListModel
+from gen3userdatalibrary.models.user_list import UpdateItemsModel
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers import try_conforming_list, make_db_request_or_return_500
@@ -48,8 +48,11 @@ async def get_list_by_id(ID: UUID,
 
 @lists_by_id_router.put("/{ID}")
 @lists_by_id_router.put("/{ID}/", include_in_schema=False)
-async def update_list_by_id(request: Request, ID: int, info_to_update_with: RequestedUserListModel,
-                            data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
+async def update_list_by_id(request: Request,
+                            ID: UUID,
+                            info_to_update_with: UpdateItemsModel,
+                            data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) \
+        -> JSONResponse:
     """
     Create a new list if it does not exist with the provided content OR updates a list with the
         provided content if a list already exists.
@@ -80,7 +83,7 @@ async def update_list_by_id(request: Request, ID: int, info_to_update_with: Requ
 
 @lists_by_id_router.patch("/{ID}")
 @lists_by_id_router.patch("/{ID}/", include_in_schema=False)
-async def append_items_to_list(request: Request, ID: int, body: dict,
+async def append_items_to_list(request: Request, ID: UUID, body: dict,
                                data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Adds a list of provided items to an existing list
@@ -122,7 +125,7 @@ async def append_items_to_list(request: Request, ID: int, body: dict,
 
 @lists_by_id_router.delete("/{ID}")
 @lists_by_id_router.delete("/{ID}/", include_in_schema=False)
-async def delete_list_by_id(ID: int, request: Request,
+async def delete_list_by_id(ID: UUID, request: Request,
                             data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Delete a list under the given id

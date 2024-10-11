@@ -45,6 +45,7 @@ async def ensure_endpoint_authorized(request: Request):
     auth_outcome = await authorize_request(request=request,
                                            authz_access_method=endpoint_auth_info["method"],
                                            authz_resources=[resource])
+    return resource
 
 
 async def middleware_catcher(request: Request, call_next):

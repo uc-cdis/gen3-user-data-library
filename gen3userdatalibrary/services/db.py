@@ -98,7 +98,7 @@ class DataAccessLayer:
         user_list = result.scalar_one_or_none()
         return user_list
 
-    async def get_existing_list_or_throw(self, list_id: int) -> UserList:
+    async def get_existing_list_or_throw(self, list_id: UUID) -> UserList:
         """
         List SHOULD exist, so throw if it doesn't
         """
@@ -133,14 +133,14 @@ class DataAccessLayer:
         """
         Delete all lists for a given list creator, return how many lists were deleted
         """
-        count = self.get_list_count_for_creator(sub_id)
+        count = await self.get_list_count_for_creator(sub_id)
         query = delete(UserList).where(UserList.creator == sub_id)
         query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(query)
         await self.db_session.commit()
         return count
 
-    async def delete_list(self, list_id: int):
+    async def delete_list(self, list_id: UUID):
         """
         Delete a specific list given its ID
         """
@@ -168,7 +168,7 @@ class DataAccessLayer:
         await self.db_session.commit()
         return list_as_orm
 
-    async def add_items_to_list(self, list_id: int, item_data: dict):
+    async def add_items_to_list(self, list_id: UUID, item_data: dict):
         """
         Gets existing list and adds items to the items property
         # yes, it has automatic sql injection protection

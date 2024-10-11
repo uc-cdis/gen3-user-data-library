@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, patch
 
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.data import uuid4_regex_pattern
-from gen3userdatalibrary.routes.middleware import reg_match_key
+from gen3userdatalibrary.routes.middleware import reg_match_key, ensure_endpoint_authorized
 from tests.routes.conftest import BaseTestRouter
-from tests.data.example_lists import VALID_LIST_A
+from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B
 
 
 @pytest.mark.asyncio
@@ -31,7 +31,7 @@ class TestConfigRouter(BaseTestRouter):
         no_matcher = lambda k: None
 
         result_no_match = reg_match_key(no_matcher, endpoint_method_to_access_method)
-        assert result_no_match is None
+        assert result_no_match == (None, {})
 
         # Test: Direct match with /lists
         matcher_lists = lambda key: re.match(key, "/lists")
@@ -43,15 +43,7 @@ class TestConfigRouter(BaseTestRouter):
         invalid_dict = {"/invalid": {"GET": "red"}}
 
         result_invalid = reg_match_key(matcher, invalid_dict)
-        assert result_invalid is None
-
-    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_middleware_hit(self, get_token_claims, arborist, user_list, client):
-        # todo: test that this is called before every endpoint
-        headers = {"Authorization": "Bearer ofa.valid.token"}
-        assert NotImplemented
+        assert result_invalid == (None, {})
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/",
@@ -60,13 +52,13 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", new_callable=AsyncMock)
-    async def test_middleware_get_validated(self, ensure_endpoint_authorized, get_token_claims,
-                                            arborist,
-                                            user_list,
-                                            client,
-                                            endpoint):
-        # todo: test different endpoints give correct auth structure
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    async def test_middleware_get_hit(self, ensure_endpoint_auth,
+                                      get_token_claims,
+                                      arborist,
+                                      user_list,
+                                      client,
+                                      endpoint):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         arborist.auth_request.return_value = True
@@ -75,4 +67,88 @@ class TestConfigRouter(BaseTestRouter):
             assert result1.status_code == 200
         else:
             assert result1.status_code == 404
-        ensure_endpoint_authorized.assert_called_once()
+        ensure_endpoint_auth.assert_called_once()
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize("endpoint", ["/lists/123e4567-e89b-12d3-a456-426614174000",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000/"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    async def test_middleware_patch_hit(self, ensure_endpoint_auth,
+                                        get_token_claims,
+                                        arborist,
+                                        user_list,
+                                        client,
+                                        endpoint):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
+        arborist.auth_request.return_value = True
+        result1 = await client.patch(endpoint, headers=headers, json=PATCH_BODY)
+        assert result1.status_code == 404
+        ensure_endpoint_auth.assert_called_once()
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000/"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    async def test_middleware_put_hit(self,
+                                      ensure_endpoint_auth,
+                                      get_token_claims,
+                                      arborist,
+                                      user_list,
+                                      client,
+                                      endpoint):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
+        arborist.auth_request.return_value = True
+        result1 = await client.put(endpoint, headers=headers, json={"lists": [user_list]})
+        if endpoint in {"/lists", "/lists/"}:
+            assert result1.status_code == 201
+        else:
+            assert result1.status_code == 404
+        ensure_endpoint_auth.assert_called_once()
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000/"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    async def test_middleware_delete_hit(self, ensure_endpoint_auth,
+                                         get_token_claims,
+                                         arborist,
+                                         user_list,
+                                         client,
+                                         endpoint):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
+        arborist.auth_request.return_value = True
+        result1 = await client.delete(endpoint, headers=headers)
+        if endpoint in {"/lists", "/lists/"}:
+            assert result1.status_code == 204
+        else:
+            assert result1.status_code == 404
+        ensure_endpoint_auth.assert_called_once()
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize("endpoint", ["/_version", "/_version/",
+                                          "/lists", "/lists/",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000/"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    async def test_middleware_get_validated(self, ensure_endpoint_authorized, get_token_claims,
+                                            arborist,
+                                            user_list,
+                                            client,
+                                            endpoint):
+        assert NotImplemented
+        # todo: test different endpoints give correct auth structure
+        # come back to this, it's giving me a headache
+        # I need to test that the content of the endpoint auth is what i expect it to be
