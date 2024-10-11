@@ -5,9 +5,14 @@ import cdislogging
 from starlette.config import Config
 from starlette.datastructures import Secret
 
-config = Config(".env")
-if not config.file_values:
-    config = Config("env")
+env = os.getenv('ENV', 'production')
+
+if env == 'test':
+    path = "./tests/.env"
+else:
+    path = ".env"
+# todo: make path
+config = Config("./../../tests/.env")
 
 DEBUG = config("DEBUG", cast=bool, default=False)
 VERBOSE_LLM_LOGS = config("VERBOSE_LLM_LOGS", cast=bool, default=False)

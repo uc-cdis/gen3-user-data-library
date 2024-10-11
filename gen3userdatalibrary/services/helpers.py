@@ -45,7 +45,13 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: dict,
     lists_to_create = list(
         filter(lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers, new_lists_as_orm))
     updated_lists = []
+    # endpoints_with_items = {
+    #     "/lists", "/lists/", "put"
+    #     "/lists/{id}", "put", "patch"
+    # }
+
     for list_to_update in lists_to_update:
+        # tood: check new items + existing items
         identifier = (list_to_update.creator, list_to_update.name)
         new_version_of_list = unique_list_identifiers.get(identifier, None)
         assert new_version_of_list is not None
@@ -53,6 +59,7 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: dict,
         updated_list = await data_access_layer.update_and_persist_list(list_to_update.id, changes_to_make)
         updated_lists.append(updated_list)
     for list_to_create in lists_to_create:
+        # todo: check new items
         await data_access_layer.persist_user_list(user_id, list_to_create)
     response_user_lists = {}
     for user_list in (lists_to_create + updated_lists):

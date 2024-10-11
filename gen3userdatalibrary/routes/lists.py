@@ -29,8 +29,6 @@ async def read_all_lists(request: Request,
     user_id = await get_user_id(request=request)
     # todo (myself): automatically auth request instead of typing it out in each endpoint?
     # dynamically create user policy
-    await authorize_request(request=request, authz_access_method="read",
-                            authz_resources=[get_user_data_library_endpoint(user_id)])
     start_time = time.time()
 
     try:
@@ -96,8 +94,6 @@ async def upsert_user_lists(request: Request,
                 e)  # keep going; maybe just some conflicts from things existing already
             # TODO: Unsure if this is
             # safe, we might need to actually error here?
-    await authorize_request(request=request, authz_access_method="create",
-                            authz_resources=[get_user_data_library_endpoint(user_id)])
     raw_lists = requested_lists.get("lists", {})
     if not raw_lists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
@@ -138,10 +134,6 @@ async def delete_all_lists(request: Request,
         :param request: FastAPI request (so we can check authorization)
         :param data_access_layer: how we interface with db
     """
-    user_id = await get_user_id(request=request)
-    await authorize_request(request=request, authz_access_method="delete",
-                            authz_resources=[get_user_data_library_endpoint(user_id)])
-
     start_time = time.time()
     user_id = await get_user_id(request=request)
     try:
