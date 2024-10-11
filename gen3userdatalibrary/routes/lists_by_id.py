@@ -1,4 +1,5 @@
 import time
+from uuid import UUID
 
 from fastapi import Request, Depends, HTTPException, APIRouter
 from starlette import status
@@ -14,7 +15,8 @@ lists_by_id_router = APIRouter()
 
 @lists_by_id_router.get("/{ID}")
 @lists_by_id_router.get("/{ID}/", include_in_schema=False)
-async def get_list_by_id(ID: int, request: Request,
+async def get_list_by_id(ID: UUID,
+                         request: Request,
                          data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Find list by its id

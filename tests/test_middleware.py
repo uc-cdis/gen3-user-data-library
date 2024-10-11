@@ -4,12 +4,9 @@ import pytest
 
 from unittest.mock import AsyncMock, patch
 
-from gen3userdatalibrary import config
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.data import uuid4_regex_pattern
 from gen3userdatalibrary.routes.middleware import reg_match_key
-from gen3userdatalibrary.utils import get_from_cfg_metadata
-from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
 from tests.data.example_lists import VALID_LIST_A
 
@@ -57,13 +54,25 @@ class TestConfigRouter(BaseTestRouter):
         assert NotImplemented
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
-    @pytest.mark.parametrize("endpoint", ["/_version", "/_versions/",
+    @pytest.mark.parametrize("endpoint", ["/_version", "/_version/",
                                           "/lists", "/lists/",
                                           "/lists/123e4567-e89b-12d3-a456-426614174000",
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_middleware_validated(self, get_token_claims, arborist, user_list, client, endpoint):
-        # test _version, /lists, and /lists/id
-        # /lists/123e4567-e89b-12d3-a456-426614174000
-        assert NotImplemented
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", new_callable=AsyncMock)
+    async def test_middleware_get_validated(self, ensure_endpoint_authorized, get_token_claims,
+                                            arborist,
+                                            user_list,
+                                            client,
+                                            endpoint):
+        # todo: test different endpoints give correct auth structure
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
+        arborist.auth_request.return_value = True
+        result1 = await client.get(endpoint, headers=headers)
+        if endpoint in {"/_version", "/_version/", "/lists", "/lists/"}:
+            assert result1.status_code == 200
+        else:
+            assert result1.status_code == 404
+        ensure_endpoint_authorized.assert_called_once()

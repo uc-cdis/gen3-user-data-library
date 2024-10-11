@@ -10,11 +10,11 @@ endpoint_type_to_auth_resource = {
 
 endpoint_method_to_access_method = {
     r"^/_version/?$": {"GET": {"resource": "/gen3_data_library/service_info/version",
-                              "method": "read"}},
+                               "method": "read"}},
     r"^/_status/?$": {"GET": {"resource": "/gen3_data_library/service_info/status",
-                             "method": "read"}},
+                              "method": "read"}},
     r"^/?$": {"GET": {"resource": "/gen3_data_library/service_info/redoc",
-                     "method": "read"}},
+                      "method": "read"}},
     r"^/lists/?$": {
         "GET": {
             "type": "all",

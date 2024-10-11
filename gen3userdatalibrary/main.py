@@ -9,7 +9,7 @@ from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.models.metrics import Metrics
 from gen3userdatalibrary.routes import route_aggregator
-from gen3userdatalibrary.routes.middleware import ensure_endpoint_authorized, middleware_catcher
+from gen3userdatalibrary.routes.middleware import middleware_catcher
 from gen3userdatalibrary.services.db import get_data_access_layer
 
 

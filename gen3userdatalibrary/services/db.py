@@ -29,6 +29,7 @@ What do we do in this file?
 """
 
 from typing import List, Optional, Tuple, Union
+from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import text, delete, func, tuple_
@@ -85,7 +86,7 @@ class DataAccessLayer:
         query = await self.db_session.execute(select(UserList).order_by(UserList.id))
         return list(query.scalars().all())
 
-    async def get_list(self, identifier: Union[int, Tuple[str, str]], by="id") -> Optional[UserList]:
+    async def get_list(self, identifier: Union[UUID, Tuple[str, str]], by="id") -> Optional[UserList]:
         """
         Get a list by either unique id or unique (creator, name) combo
         """

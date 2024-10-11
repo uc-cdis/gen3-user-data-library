@@ -16,7 +16,7 @@ def reg_match_key(matcher, dictionary_to_match):
         matches = matcher(key)
         if matches is not None:
             return key, value
-    return None
+    return None, {}
 
 
 async def ensure_endpoint_authorized(request: Request):
