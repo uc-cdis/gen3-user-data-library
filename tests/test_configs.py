@@ -7,7 +7,7 @@ from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.utils import get_from_cfg_metadata
 from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
-from tests.data.example_lists import VALID_LIST_A
+from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B
 
 
 @pytest.mark.asyncio
@@ -21,15 +21,17 @@ class TestConfigRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         config.MAX_LISTS = 1
         config.MAX_LIST_ITEMS = 1
-        resp1 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
+        resp1 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
+        assert resp1.status_code == 400 and resp1.text == '{"detail":"Too many items for list: My Saved List 1"}'
         config.MAX_LIST_ITEMS = 2
-        assert resp1.status_code == 400
         resp2 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        resp3 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        assert resp3.status_code == 400
-
-        # assert response.status_code == 404
-        assert NotImplemented
+        resp3 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_B]})
+        assert resp2.status_code == 201 and resp3.status_code == 400
+        config.MAX_LISTS = 2
+        resp4 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
+        assert resp4.status_code == 400 and resp4.text.startswith('{"detail":"Max items reached')
 
     async def test_item_schema_validation(self):
 

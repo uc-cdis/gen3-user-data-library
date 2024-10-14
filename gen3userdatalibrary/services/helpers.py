@@ -2,6 +2,7 @@ import datetime
 import time
 from collections import defaultdict
 from functools import reduce
+from itertools import count
 
 from fastapi import HTTPException
 from jsonschema import ValidationError, validate
@@ -9,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary.config import logging, ITEM_SCHEMAS
+import gen3userdatalibrary.config as config
 from gen3userdatalibrary.models.data import WHITELIST
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_lists_endpoint
@@ -45,21 +46,28 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: dict,
     lists_to_create = list(
         filter(lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers, new_lists_as_orm))
     updated_lists = []
-    # endpoints_with_items = {
-    #     "/lists", "/lists/", "put"
-    #     "/lists/{id}", "put", "patch"
-    # }
+    total_lists = len(await data_access_layer.get_all_lists(user_id))
+    total_list_after_create = total_lists + len(lists_to_create)
+    if total_list_after_create > config.MAX_LISTS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Max lists reached, delete some!")
 
     for list_to_update in lists_to_update:
         # tood: check new items + existing items
         identifier = (list_to_update.creator, list_to_update.name)
         new_version_of_list = unique_list_identifiers.get(identifier, None)
         assert new_version_of_list is not None
+        existing_items = len(list_to_update.items.items())
+        new_items = len(new_version_of_list.items.items())
+        if (existing_items + new_items) > config.MAX_LIST_ITEMS:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Max items reached, cannot update! "
+                                                                                f"ID: {list_to_update.id}")
         changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
         updated_list = await data_access_layer.update_and_persist_list(list_to_update.id, changes_to_make)
         updated_lists.append(updated_list)
     for list_to_create in lists_to_create:
-        # todo: check new items
+        if len(list_to_create.items.items()) > config.MAX_LIST_ITEMS:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Too many items for list: "
+                                                                                f"{list_to_create.name}")
         await data_access_layer.persist_user_list(user_id, list_to_create)
     response_user_lists = {}
     for user_list in (lists_to_create + updated_lists):
@@ -101,11 +109,11 @@ async def try_conforming_list(user_id, user_list: dict) -> UserList:
     except IntegrityError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name")
     except ValidationError:
-        logging.debug(f"Invalid user-provided data when trying to create lists for user {user_id}.")
+        config.logging.debug(f"Invalid user-provided data when trying to create lists for user {user_id}.")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid list information provided")
     except Exception as exc:
-        logging.exception(f"Unknown exception {type(exc)} when trying to create lists for user {user_id}.")
-        logging.debug(f"Details: {exc}")
+        config.logging.exception(f"Unknown exception {type(exc)} when trying to create lists for user {user_id}.")
+        config.logging.debug(f"Details: {exc}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid list information provided")
     return list_as_orm
 
@@ -116,9 +124,9 @@ def validate_user_list_item(item_contents: dict):
     """
     # todo (myself): test this whole function
     content_type = item_contents.get("type", None)
-    matching_schema = ITEM_SCHEMAS.get(content_type, None)
+    matching_schema = config.ITEM_SCHEMAS.get(content_type, None)
     if matching_schema is None:
-        logging.error("No matching schema for type, aborting!")
+        config.logging.error("No matching schema for type, aborting!")
         raise HTTPException(status_code=400, detail="No matching schema identified for items, aborting!")
     validate(instance=item_contents, schema=matching_schema)
 
