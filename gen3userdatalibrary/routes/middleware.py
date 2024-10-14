@@ -27,7 +27,10 @@ async def ensure_endpoint_authorized(request: Request):
     endpoint = request.scope["path"]
     method = request.method
     user_id = await get_user_id(request=request)
-    matched_pattern, methods_at_endpoint = reg_match_key(lambda endpoint_regex: re.match(endpoint_regex, endpoint),
+
+    def regex_matches_endpoint(endpoint_regex):
+        return re.match(endpoint_regex, endpoint)
+    matched_pattern, methods_at_endpoint = reg_match_key(regex_matches_endpoint,
                                                          endpoint_method_to_access_method)
     endpoint_auth_info = methods_at_endpoint.get(method, {})
     endpoint_type = endpoint_auth_info.get("type", None)

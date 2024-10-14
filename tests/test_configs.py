@@ -2,6 +2,8 @@ import pytest
 
 from unittest.mock import AsyncMock, patch
 
+from numpy.distutils.conv_template import header
+
 from gen3userdatalibrary import config
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.utils import get_from_cfg_metadata
@@ -67,9 +69,18 @@ class TestConfigRouter(BaseTestRouter):
         assert retrieved_metadata_value == default
 
     @pytest.mark.parametrize("endpoint", ["/docs", "/redoc"])
-    async def test_docs(self, endpoint, client):
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_docs(self,
+                        get_token_claims,
+                        arborist,
+                        endpoint,
+                        client):
         """
         Test FastAPI docs endpoints
         """
-        response = await client.get(endpoint)
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        response = await client.get(endpoint, headers=headers)
         assert response.status_code == 200
