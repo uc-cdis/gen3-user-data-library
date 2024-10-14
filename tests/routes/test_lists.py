@@ -40,13 +40,13 @@ class TestUserListsRouter(BaseTestRouter):
         """
         # Simulate an unauthorized request
         arborist.auth_request.return_value = False
-
         # not a valid token
         headers = {"Authorization": "Bearer ofbadnews"}
 
-        response = await client.put(endpoint, headers=headers, json={"lists": [user_list]})
-        assert response.status_code == 401
-        assert response.json().get("detail")
+        with pytest.raises(HTTPException) as e:
+            response = await client.put(endpoint, headers=headers, json={"lists": [user_list]})
+        assert e.value.status_code == 401
+        assert e.value.detail == 'Could not verify, parse, and/or validate scope from provided access token.'
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])

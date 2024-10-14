@@ -44,7 +44,8 @@ class UserList(Base):
     name = Column(String, nullable=False)
 
     created_time = Column(DateTime(timezone=True), default=datetime.datetime.now(datetime.timezone.utc), nullable=False)
-    updated_time = Column(DateTime(timezone=True), default=datetime.datetime.now(datetime.timezone.utc), nullable=False)
+    updated_time = Column(DateTime(timezone=True), default=datetime.datetime.now(datetime.timezone.utc),
+                          onupdate=datetime.datetime.now(datetime.timezone.utc), nullable=False)
 
     # see ITEMS_JSON_SCHEMA_* above for various schemas for different items here
     items = Column(JSON)

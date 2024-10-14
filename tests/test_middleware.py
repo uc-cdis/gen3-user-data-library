@@ -102,6 +102,8 @@ class TestConfigRouter(BaseTestRouter):
                                       user_list,
                                       client,
                                       endpoint):
+        assert NotImplemented
+        # todo: fix tests
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         arborist.auth_request.return_value = True

@@ -37,7 +37,8 @@ async def read_all_lists(request: Request,
         logging.exception(f"Unknown exception {type(exc)} when trying to fetch lists.")
         logging.debug(f"Details: {exc}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid list information provided")
-    response_user_lists = helpers.map_list_id_to_list_dict(new_user_lists)
+    id_to_list_dict = helpers.map_list_id_to_list_dict(new_user_lists)
+    response_user_lists = mutate_keys(lambda k: str(k), id_to_list_dict)
     response = {"lists": response_user_lists}
     end_time = time.time()
     response_time_seconds = end_time - start_time
