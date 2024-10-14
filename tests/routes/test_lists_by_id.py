@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from gen3userdatalibrary.routes import route_aggregator
-from tests.helpers import create_basic_list
+from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
 from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_REPLACEMENT_LIST, VALID_LIST_D, VALID_LIST_E
 
@@ -27,7 +27,8 @@ class TestUserListsRouter(BaseTestRouter):
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         resp1 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        response = await client.get(endpoint, headers=headers)
+        l_id = get_id_from_response(resp1)
+        response = await client.get(f"/lists/{l_id}", headers=headers)
         assert response.status_code == 200
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])

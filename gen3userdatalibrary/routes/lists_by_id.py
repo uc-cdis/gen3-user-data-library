@@ -6,11 +6,17 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary.models.user_list import UpdateItemsModel
+from gen3userdatalibrary.routes.lists import mutate_keys, mutate_values
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers import try_conforming_list, make_db_request_or_return_500
 
 lists_by_id_router = APIRouter()
+
+
+def update(k, updater, dict_to_update):
+    dict_to_update[k] = updater(dict_to_update[k])
+    return dict_to_update
 
 
 @lists_by_id_router.get("/{ID}")
@@ -33,15 +39,16 @@ async def get_list_by_id(ID: UUID,
                             authz_resources=["/gen3_data_library/service_info/status"])
     status_text = "OK"
 
-    succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.get_list(ID))
+    succeeded, get_result = await make_db_request_or_return_500(lambda: data_access_layer.get_list(ID))
     if not succeeded:
-        response = data
-    elif data is None:
+        response = get_result
+    elif get_result is None:
         resp_content = {"status": "NOT FOUND", "timestamp": time.time()}
         response = JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=resp_content)
     else:
+        data = update("id", lambda ul_id: str(ul_id), get_result.to_dict())
         resp_content = {"status": status_text, "timestamp": time.time(),
-                        "body": {"lists": {data.id: data.to_dict()}}}
+                        "body": {"lists": {str(get_result.id): data}}}
         response = JSONResponse(status_code=status.HTTP_200_OK, content=resp_content)
     return response
 
@@ -71,11 +78,14 @@ async def update_list_by_id(request: Request,
         raise HTTPException(status_code=404, detail="List not found")
     user_id = get_user_id(request=request)
     list_as_orm = await try_conforming_list(user_id, info_to_update_with.__dict__)
-    succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.replace_list(ID, list_as_orm))
+    succeeded, update_result = await make_db_request_or_return_500(lambda: data_access_layer.replace_list(ID,
+                                                                                                          list_as_orm))
+
     if not succeeded:
-        response = data
+        response = update_result
     else:
-        resp_content = {"status": "OK", "timestamp": time.time(), "updated_list": data.to_dict()}
+        data = mutate_keys(lambda k: str(k), update_result.to_dict())
+        resp_content = {"status": "OK", "timestamp": time.time(), "updated_list": data}
         return_status = status.HTTP_200_OK
         response = JSONResponse(status_code=return_status, content=resp_content)
     return response
@@ -113,13 +123,15 @@ async def append_items_to_list(request: Request, ID: UUID, body: dict,
     if not list_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist")
 
-    succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.add_items_to_list(ID, body))
+    succeeded, append_result = await make_db_request_or_return_500(lambda: data_access_layer.add_items_to_list(ID, body))
+
     if succeeded:
-        resp_content = {"status": "OK", "timestamp": time.time(), "data": data.to_dict()}
+        data = mutate_keys(lambda k: str(k), append_result.to_dict())
+        resp_content = {"status": "OK", "timestamp": time.time(), "data": data}
         return_status = status.HTTP_200_OK
         response = JSONResponse(status_code=return_status, content=resp_content)
     else:
-        response = data
+        response = append_result
     return response
 
 
@@ -138,10 +150,10 @@ async def delete_list_by_id(ID: UUID, request: Request,
     """
     await authorize_request(request=request, authz_access_method="create",
                             authz_resources=["/gen3_data_library/service_info/status"])
-    succeeded, data = await make_db_request_or_return_500(lambda: data_access_layer.get_list(ID))
+    succeeded, delete_result = await make_db_request_or_return_500(lambda: data_access_layer.get_list(ID))
     if not succeeded:
-        return data
-    elif data is None:
+        return delete_result
+    elif delete_result is None:
         response = {"status": "NOT FOUND", "timestamp": time.time(), "list_deleted": False}
         return JSONResponse(status_code=404, content=response)
 

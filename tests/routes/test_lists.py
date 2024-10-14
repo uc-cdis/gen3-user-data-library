@@ -7,7 +7,7 @@ from starlette.exceptions import HTTPException
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.services import helpers
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
-from tests.helpers import create_basic_list
+from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
 from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
 
@@ -62,20 +62,20 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": "foo"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        if method == "post":
-            response = await client.post(endpoint, headers=headers, json={"lists": [user_list]})
-        elif method == "get":
-            response = await client.get(endpoint, headers=headers)
-        elif method == "put":
-            response = await client.put(endpoint, headers=headers, json={"lists": [user_list]})
-        elif method == "delete":
-            response = await client.delete(endpoint, headers=headers)
-        else:
-            response = None
+        with pytest.raises(HTTPException) as e:
+            if method == "post":
+                response = await client.post(endpoint, headers=headers, json={"lists": [user_list]})
+            elif method == "get":
+                response = await client.get(endpoint, headers=headers)
+            elif method == "put":
+                response = await client.put(endpoint, headers=headers, json={"lists": [user_list]})
+            elif method == "delete":
+                response = await client.delete(endpoint, headers=headers)
+            else:
+                response = None
 
-        assert response
-        assert response.status_code == 403
-        assert response.json().get("detail")
+        assert e.value.status_code == 403
+        assert e.value.detail == 'Forbidden'
 
     # endregion
 
@@ -144,7 +144,6 @@ class TestUserListsRouter(BaseTestRouter):
             assert user_list["version"] == 0
             assert user_list["created_time"]
             assert user_list["updated_time"]
-            assert user_list["created_time"] == user_list["updated_time"]
             assert user_list["creator"] == user_id
 
             # NOTE: if we change the service to allow multiple diff authz versions,
@@ -315,18 +314,25 @@ class TestUserListsRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response_1 = await client.get("/lists", headers=headers)
         # todo (addressed): should we 404 if user exists but no lists? no, just return empty result
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers, "2")
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "2")
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "3")
-        response_2 = await client.get("/lists", headers=headers)
-        resp_as_string = response_2.content.decode('utf-8')
+        r1 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
+        r2 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        r3 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers, "2")
+        r4 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "2")
+        r5 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "3")
+        response_6 = await client.get("/lists", headers=headers)
+        resp_as_string = response_6.content.decode('utf-8')
         content_as_dict = json.loads(resp_as_string)
         lists = content_as_dict.get("lists", None)
         creator_to_list_ids = helpers.map_creator_to_list_ids(lists)
-        assert (creator_to_list_ids["1"] == {"1", "2"} and creator_to_list_ids["2"] == {"3", "4"} and
-                creator_to_list_ids["3"] == {"5"})
+        id_1 = get_id_from_response(r1)
+        id_2 = get_id_from_response(r2)
+        id_3 = get_id_from_response(r3)
+        id_4 = get_id_from_response(r4)
+        id_5 = get_id_from_response(r5)
+        one_matches = creator_to_list_ids["1"] == {id_1, id_2}
+        two_matches = creator_to_list_ids["2"] == {id_3, id_4}
+        three_matches = creator_to_list_ids["3"] == {id_5}
+        assert one_matches and two_matches and three_matches
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")

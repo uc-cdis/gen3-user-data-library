@@ -52,6 +52,10 @@ def mutate_keys(mutator, updated_user_lists: dict):
     return dict(map(lambda kvp: (mutator(kvp[0]), kvp[1]), updated_user_lists.items()))
 
 
+def mutate_values(mutator, updated_user_lists: dict):
+    return dict(map(lambda kvp: (kvp[0], mutator(kvp[1])), updated_user_lists.items()))
+
+
 @lists_router.put("",  # most of the following stuff helps populate the openapi docs
                   response_model=UserListResponseModel, status_code=status.HTTP_201_CREATED,
                   description="Create user list(s) by providing valid list information", tags=["User Lists"],
