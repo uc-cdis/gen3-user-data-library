@@ -6,6 +6,7 @@ from sqlalchemy import inspect
 from starlette.requests import Request
 
 from gen3userdatalibrary import logging
+from gen3userdatalibrary.models.user_list import UpdateItemsModel, ItemToUpdateModel
 
 
 def add_to_dict_set(dict_list, key, value):
@@ -43,7 +44,7 @@ def remove_keys(d: dict, keys: set):
     return {k: v for k, v in d.items() if k not in keys}
 
 
-def add_user_list_metric(fastapi_app: Request, action: str, user_lists: List[Dict[str, Any]],
+def add_user_list_metric(fastapi_app: Request, action: str, user_lists: List[ItemToUpdateModel],
                          response_time_seconds: float, user_id: str) -> None:
     """
     Add a metric to the Metrics() instance on the specified FastAPI app for managing user lists.
@@ -57,14 +58,13 @@ def add_user_list_metric(fastapi_app: Request, action: str, user_lists: List[Dic
         response_time_seconds (float): The response time in seconds for the action performed
         user_id (str): The identifier of the user associated with the action
     """
-    # todo (look into more): state property does not exist?
     if not getattr(fastapi_app.state, "metrics", None):
         return
 
     for user_list in user_lists:
         fastapi_app.state.metrics.add_user_list_counter(action=action, user_id=user_id,
                                                         response_time_seconds=response_time_seconds)
-        for item_id, item in user_list.get("items", {}).items():
+        for item_id, item in (user_list.items or {}).items():
             fastapi_app.state.metrics.add_user_list_item_counter(action=action, user_id=user_id,
                                                                  type=item.get("type", "Unknown"),
                                                                  schema_version=item.get("schema_version", "Unknown"),

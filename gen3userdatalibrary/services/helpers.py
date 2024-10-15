@@ -3,6 +3,7 @@ import time
 from collections import defaultdict
 from functools import reduce
 from itertools import count
+from typing import List
 
 from fastapi import HTTPException
 from jsonschema import ValidationError, validate
@@ -12,7 +13,7 @@ from starlette.responses import JSONResponse
 
 import gen3userdatalibrary.config as config
 from gen3userdatalibrary.models.data import WHITELIST
-from gen3userdatalibrary.models.user_list import UserList
+from gen3userdatalibrary.models.user_list import UserList, ItemToUpdateModel
 from gen3userdatalibrary.services.auth import get_lists_endpoint
 from gen3userdatalibrary.utils import find_differences, add_to_dict_set
 
@@ -34,12 +35,13 @@ async def make_db_request_or_return_500(primed_db_query, fail_handler=build_gene
         return False, outcome
 
 
-async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: dict, user_id):
+async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: List[ItemToUpdateModel], user_id):
     """
     Conforms and sorts lists into sets to be updated or created, persists them, and returns an
     id => list (as dict) relationship
     """
-    new_lists_as_orm = [await try_conforming_list(user_id, user_list) for user_list in raw_lists]
+    new_lists_as_orm = [await try_conforming_list(user_id, user_list)
+                        for user_list in raw_lists]
     unique_list_identifiers = {(user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm}
     lists_to_update = await data_access_layer.grab_all_lists_that_exist("name", list(unique_list_identifiers.keys()))
     set_of_existing_identifiers = set(map(lambda ul: (ul.creator, ul.name), lists_to_update))
@@ -98,7 +100,7 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
     return property_to_change_to_make
 
 
-async def try_conforming_list(user_id, user_list: dict) -> UserList:
+async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList:
     """
     Handler for modeling endpoint data into a user list orm
     user_id: list creator's id
@@ -131,7 +133,7 @@ def validate_user_list_item(item_contents: dict):
     validate(instance=item_contents, schema=matching_schema)
 
 
-async def create_user_list_instance(user_id, user_list: dict):
+async def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
     """
     Creates a user list orm given the user's id and a dictionary representation.
     Tests the type
@@ -140,8 +142,9 @@ async def create_user_list_instance(user_id, user_list: dict):
     """
     assert user_id is not None, "User must have an ID!"
     now = datetime.datetime.now(datetime.timezone.utc)
-    name = user_list.get("name", f"Saved List {now}")
-    user_list_items = user_list.get("items", {})  # todo (addressed?): what if they don't have any items?
+    name = user_list.name or f"Saved List {now}"
+    user_list_items = user_list.items or {}
+    # todo (addressed?): what if they don't have any items?
     # todo (myself): create items, update items, or append items
     # append: 200 or 400? -> 400
     # update: 200

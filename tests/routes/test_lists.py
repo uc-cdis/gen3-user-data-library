@@ -227,10 +227,10 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.put(endpoint, headers=headers, json=input_body)
+        response = await client.put(endpoint, headers=headers, json={"lists": [input_body]})
 
         assert response
-        assert response.status_code == 400
+        assert response.status_code == 422
         assert response.json().get("detail")
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])

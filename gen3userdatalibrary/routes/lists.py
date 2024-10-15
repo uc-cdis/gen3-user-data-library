@@ -6,7 +6,7 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.models.user_list import UserListResponseModel
+from gen3userdatalibrary.models.user_list import UserListResponseModel, ItemToUpdateModel, UpdateItemsModel
 from gen3userdatalibrary.services import helpers
 from gen3userdatalibrary.services.auth import get_user_id, authorize_request, get_user_data_library_endpoint
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
@@ -69,7 +69,7 @@ def mutate_values(mutator, updated_user_lists: dict):
                                                              }})
 @lists_router.put("/", include_in_schema=False)
 async def upsert_user_lists(request: Request,
-                            requested_lists: dict,
+                            requested_lists: UpdateItemsModel,
                             data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Create a new list with the provided items, or update any lists that already exist
@@ -99,7 +99,7 @@ async def upsert_user_lists(request: Request,
                 e)  # keep going; maybe just some conflicts from things existing already
             # TODO: Unsure if this is
             # safe, we might need to actually error here?
-    raw_lists = requested_lists.get("lists", {})
+    raw_lists = requested_lists.lists
     if not raw_lists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
     start_time = time.time()
@@ -112,7 +112,7 @@ async def upsert_user_lists(request: Request,
     logging.info(f"Gen3 User Data Library Response. Action: {action}. "
                  f"lists={requested_lists}, response={response}, "
                  f"response_time_seconds={response_time_seconds} user_id={user_id}")
-    add_user_list_metric(fastapi_app=request.app, action=action, user_lists=[requested_lists],
+    add_user_list_metric(fastapi_app=request.app, action=action, user_lists=requested_lists.lists,
                          response_time_seconds=response_time_seconds, user_id=user_id)
     logging.debug(response)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
