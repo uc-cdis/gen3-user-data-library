@@ -12,7 +12,7 @@ if env == 'test':
 else:
     path = ".env"
 # todo: make path
-config = Config("./../../tests/.env")
+config = Config(path)
 
 DEBUG = config("DEBUG", cast=bool, default=False)
 VERBOSE_LLM_LOGS = config("VERBOSE_LLM_LOGS", cast=bool, default=False)
