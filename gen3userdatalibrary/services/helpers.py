@@ -47,13 +47,8 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: List[
     lists_to_create = list(
         filter(lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers, new_lists_as_orm))
     updated_lists = []
-    total_lists = len(await data_access_layer.get_all_lists(user_id))
-    total_list_after_create = total_lists + len(lists_to_create)
-    if total_list_after_create > config.MAX_LISTS:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Max lists reached, delete some!")
-
+    await data_access_layer.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
     for list_to_update in lists_to_update:
-        # tood: check new items + existing items
         identifier = (list_to_update.creator, list_to_update.name)
         new_version_of_list = unique_list_identifiers.get(identifier, None)
         assert new_version_of_list is not None
@@ -165,3 +160,11 @@ def map_list_id_to_list_dict(new_user_lists):
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
     return response_user_lists
+
+
+def mutate_keys(mutator, updated_user_lists: dict):
+    return dict(map(lambda kvp: (mutator(kvp[0]), kvp[1]), updated_user_lists.items()))
+
+
+def mutate_values(mutator, updated_user_lists: dict):
+    return dict(map(lambda kvp: (kvp[0], mutator(kvp[1])), updated_user_lists.items()))

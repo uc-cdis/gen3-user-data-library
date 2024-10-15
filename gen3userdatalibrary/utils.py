@@ -94,3 +94,8 @@ def get_from_cfg_metadata(field: str, metadata: Dict[str, Any], default: Any, ty
                       f"{metadata.get(field)}. Cannot convert to {type_}. "
                       f"Defaulting to {default} and continuing...")
     return configured_value
+
+
+def update(k, updater, dict_to_update):
+    dict_to_update[k] = updater(dict_to_update[k])
+    return dict_to_update

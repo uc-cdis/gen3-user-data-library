@@ -5,17 +5,14 @@ from fastapi import Request, Depends, HTTPException, APIRouter
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary.models.user_list import UpdateItemsModel, ItemToUpdateModel
+from gen3userdatalibrary import config
+from gen3userdatalibrary.models.user_list import UpdateItemsModel, ItemToUpdateModel, IDToItems
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers import try_conforming_list, make_db_request_or_return_500
+from gen3userdatalibrary.utils import update
 
 lists_by_id_router = APIRouter()
-
-
-def update(k, updater, dict_to_update):
-    dict_to_update[k] = updater(dict_to_update[k])
-    return dict_to_update
 
 
 @lists_by_id_router.get("/{ID}")
@@ -75,8 +72,8 @@ async def update_list_by_id(request: Request,
         raise HTTPException(status_code=404, detail="List not found")
     user_id = get_user_id(request=request)
     list_as_orm = await try_conforming_list(user_id, info_to_update_with)
-    succeeded, update_result = await make_db_request_or_return_500(lambda: data_access_layer.replace_list(ID,
-                                                                                                          list_as_orm))
+    succeeded, update_result = await make_db_request_or_return_500(
+        lambda: data_access_layer.replace_list(ID, list_as_orm))
 
     if not succeeded:
         response = update_result
@@ -92,7 +89,7 @@ async def update_list_by_id(request: Request,
 @lists_by_id_router.patch("/{ID}/", include_in_schema=False)
 async def append_items_to_list(request: Request,
                                ID: UUID,
-                               body: dict,
+                               id_to_items: IDToItems,
                                data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Adds a list of provided items to an existing list
@@ -104,11 +101,14 @@ async def append_items_to_list(request: Request,
         :param body: the items to be appended
         :return: JSONResponse: json response with info about the request outcome
     """
-    list_exists = await data_access_layer.get_list(ID) is not None
+    user_list = await data_access_layer.get_list(ID)
+    list_exists = user_list is not None
     if not list_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist")
+    await ensure_items_less_than_max(len(id_to_items["items"]), len(user_list.items))
 
-    succeeded, append_result = await make_db_request_or_return_500(lambda: data_access_layer.add_items_to_list(ID, body))
+    succeeded, append_result = await make_db_request_or_return_500(
+        lambda: data_access_layer.add_items_to_list(ID, id_to_items.__dict__))
 
     if succeeded:
         data = update("id", lambda ul_id: str(ul_id), append_result.to_dict())
@@ -118,6 +118,13 @@ async def append_items_to_list(request: Request,
     else:
         response = append_result
     return response
+
+
+async def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
+    more_items_than_max = existing_item_count + number_of_new_items > config.MAX_LIST_ITEMS
+    if more_items_than_max:
+        raise HTTPException(status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+                            detail="Too many items in list")
 
 
 @lists_by_id_router.delete("/{ID}")

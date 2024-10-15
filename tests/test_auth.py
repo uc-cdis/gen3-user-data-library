@@ -17,14 +17,24 @@ class TestAuthRouter(BaseTestRouter):
         """
         Test that DEBUG_SKIP_AUTH configuration allows access to endpoints without auth
         """
+
+        @patch("gen3userdatalibrary.services.auth._get_token_claims")
+        async def test_version(self,
+                               get_token_claims,
+                               arborist,
+                               endpoint,
+                               client):
+            """
+            Test that the version endpoint returns a non-empty version
+            """
+            arborist.auth_request.return_value = True
+            headers = {"Authorization": "Bearer ofa.valid.token"}
+            get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
+
         previous_config = config.DEBUG_SKIP_AUTH
-
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", True)
-
         response = await client.get(endpoint)
-
         assert str(response.status_code).startswith("20")
-
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("token_param", [None, "something"])

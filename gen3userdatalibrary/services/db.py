@@ -56,18 +56,18 @@ class DataAccessLayer:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    def ensure_user_has_not_reached_max_lists(self, creator_id):
+    async def ensure_user_has_not_reached_max_lists(self, creator_id, lists_to_add=0):
         new_list = UserList.id is None
         if new_list:
-            lists_so_far = self.get_list_count_for_creator(creator_id)
-            if lists_so_far >= config.MAX_LISTS:
+            lists_so_far = await self.get_list_count_for_creator(creator_id)
+            if lists_so_far + lists_to_add >= config.MAX_LISTS:
                 raise HTTPException(status_code=500, detail="Max number of lists reached!")
 
     async def persist_user_list(self, user_id, user_list: UserList):
         """
         Save user list to db as well as update authz
         """
-        self.ensure_user_has_not_reached_max_lists(user_list.creator)
+        await self.ensure_user_has_not_reached_max_lists(user_list.creator)
         self.db_session.add(user_list)
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()
@@ -127,6 +127,7 @@ class DataAccessLayer:
         query = select(func.count()).select_from(UserList).where(UserList.creator == creator_id)
         result = await self.db_session.execute(query)
         count = result.scalar()
+        count = count or 0
         return count
 
     async def delete_all_lists(self, sub_id: str):
@@ -158,7 +159,7 @@ class DataAccessLayer:
         Delete the original list, replace it with the new one!
         """
         existing_obj = await self.get_existing_list_or_throw(original_list_id)
-        self.ensure_user_has_not_reached_max_lists(existing_obj.creator)
+        await self.ensure_user_has_not_reached_max_lists(existing_obj.creator)
         await self.db_session.delete(existing_obj)
         await self.db_session.commit()
 

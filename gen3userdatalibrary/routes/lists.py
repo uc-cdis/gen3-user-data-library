@@ -10,6 +10,7 @@ from gen3userdatalibrary.models.user_list import UserListResponseModel, ItemToUp
 from gen3userdatalibrary.services import helpers
 from gen3userdatalibrary.services.auth import get_user_id, authorize_request, get_user_data_library_endpoint
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.services.helpers import mutate_keys
 from gen3userdatalibrary.utils import add_user_list_metric
 
 lists_router = APIRouter()
@@ -45,14 +46,6 @@ async def read_all_lists(request: Request,
                  f"response={response}, response_time_seconds={response_time_seconds} user_id={user_id}")
     logging.debug(response)
     return JSONResponse(status_code=status.HTTP_200_OK, content=response)
-
-
-def mutate_keys(mutator, updated_user_lists: dict):
-    return dict(map(lambda kvp: (mutator(kvp[0]), kvp[1]), updated_user_lists.items()))
-
-
-def mutate_values(mutator, updated_user_lists: dict):
-    return dict(map(lambda kvp: (kvp[0], mutator(kvp[1])), updated_user_lists.items()))
 
 
 @lists_router.put("",  # most of the following stuff helps populate the openapi docs
