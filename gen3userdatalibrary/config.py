@@ -11,7 +11,6 @@ if env == 'test':
     path = "./tests/.env"
 else:
     path = ".env"
-# todo: make path
 config = Config(path)
 
 DEBUG = config("DEBUG", cast=bool, default=False)
@@ -53,10 +52,8 @@ ARBORIST_URL = config("ARBORIST_URL", default="http://arborist-service")
 
 logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")
 
-# todo (me): creating list should check this
 MAX_LISTS = config("MAX_LISTS", cast=int, default=100)
 
-# todo (me): all endpoints that update items should check this
 MAX_LIST_ITEMS = config("MAX_LIST_ITEMS", cast=int, default=1000)
 
 
@@ -73,7 +70,8 @@ def read_json_if_exists(file_path):
             return None
 
 
-SCHEMAS_LOCATION = config("SCHEMAS_LOCATION", cast=str, default="./../config/item_schemas.json")
+dl = "./../../config/item_schemas.json"
+SCHEMAS_LOCATION = config("SCHEMAS_LOCATION", cast=str, default=dl)
 ITEM_SCHEMAS = read_json_if_exists(SCHEMAS_LOCATION)
 if ITEM_SCHEMAS is None:
     raise OSError("No item schema json file found!")

@@ -27,7 +27,6 @@ async def read_all_lists(request: Request,
         :param data_access_layer: how we interface with db
     """
     user_id = await get_user_id(request=request)
-    # todo (myself): automatically auth request instead of typing it out in each endpoint?
     # dynamically create user policy
     start_time = time.time()
 
@@ -82,8 +81,6 @@ async def upsert_user_lists(request: Request,
     """
     user_id = await get_user_id(request=request)
 
-    # TODO dynamically create user policy, ROUGH UNTESTED VERSION: need to verify
-    # todo: test authorize request for all endpoints
     if not config.DEBUG_SKIP_AUTH:
         # make sure the user exists in Arborist
         # IMPORTANT: This is using the user's unique subject ID
@@ -95,10 +92,9 @@ async def upsert_user_lists(request: Request,
             logging.debug("attempting to update arborist resource: {}".format(resource))
             request.app.state.arborist_client.update_resource("/", resource, merge=True)
         except ArboristError as e:
-            logging.error(
-                e)  # keep going; maybe just some conflicts from things existing already
-            # TODO: Unsure if this is
-            # safe, we might need to actually error here?
+            logging.error(e)
+            # keep going; maybe just some conflicts from things existing already
+
     raw_lists = requested_lists.lists
     if not raw_lists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!")
@@ -117,16 +113,6 @@ async def upsert_user_lists(request: Request,
     logging.debug(response)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
-
-# todo (addressed): remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}}
-# lib for arborist requests. when a user makes a req, ensure an auth check goes to authz for
-# the records they're trying to modify
-# create will always work if they haven't hit limit
-# for modify, get authz from the record
-# make a request for record to arborist with sub id and id, check if they have write access
-# need to check if they have read access
-# filtering db based on the user in the first place, but may one day share with others
-# make sure requests is done efficently
 
 @lists_router.delete("")
 @lists_router.delete("/", include_in_schema=False)

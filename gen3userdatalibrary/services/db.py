@@ -80,10 +80,10 @@ class DataAccessLayer:
         """
         Return all known lists
         """
-        # todo (addressed): bring in user id, should only be all lists by user
-        # how to quickly get lists not owned by user (implement later, maybe make custom table)
 
-        query = await self.db_session.execute(select(UserList).order_by(UserList.id))
+        query = await self.db_session.execute(select(UserList)
+                                              .order_by(UserList.id)
+                                              .where(UserList.creator == creator_id))
         return list(query.scalars().all())
 
     async def get_list(self, identifier: Union[UUID, Tuple[str, str]], by="id") -> Optional[UserList]:

@@ -12,15 +12,7 @@ class BaseTestRouter:
     @pytest_asyncio.fixture(scope="function")
     async def client(self, session):
         app = get_app()
-        # todo (addressed): https://docs.python.org/3/library/abc.html
-        # alex: label as abstract base class, should provide a way to define that router is required
-        # abstractbaseclass lib
-        # find way to define abstract property
-        # @property
-        # def router(self):
-        #     raise NotImplemented()
 
-        # todo later: where does app get state and dep_overrides from?
         app.include_router(self.router)
         app.dependency_overrides[get_data_access_layer] = lambda: DataAccessLayer(session)
 

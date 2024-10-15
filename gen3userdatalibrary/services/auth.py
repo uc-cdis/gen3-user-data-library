@@ -100,21 +100,6 @@ async def _get_token_claims(token: HTTPAuthorizationCredentials = None, request:
     """
     Retrieves and validates token claims from the provided token.
 
-    todo (addressed): move these comments into confluence doc
-    claim is a terminology
-    token has a bunch of info
-    info i "claim" is true
-    jwt, sever validates info was not modified and allows you to do what you want to do
-    pub/priv key encryption
-    fence has both keys, signs token, provides to user
-    only fence has priv
-    on server side, decode content and ensure it has not been modified
-    validating token has not been modified using fence
-    if true, returns token contents (encoded json base 64)
-    code is defined by oauth
-    sub field is required by oauth (sub = subject)
-    only use case is to get unique sub id
-
     handler for proccessing token
 
     Args:

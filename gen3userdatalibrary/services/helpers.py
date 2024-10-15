@@ -26,7 +26,6 @@ def build_generic_500_response():
 
 
 async def make_db_request_or_return_500(primed_db_query, fail_handler=build_generic_500_response):
-    # todo (myself): look up better way to do error handling in fastapi
     try:
         outcome = await primed_db_query()
         return True, outcome
@@ -124,7 +123,6 @@ def validate_user_list_item(item_contents: dict):
     """
     Ensures that the item component of a user list has the correct setup for type property
     """
-    # todo (myself): test this whole function
     content_type = item_contents.get("type", None)
     matching_schema = config.ITEM_SCHEMAS.get(content_type, None)
     if matching_schema is None:
@@ -144,11 +142,7 @@ async def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
     now = datetime.datetime.now(datetime.timezone.utc)
     name = user_list.name or f"Saved List {now}"
     user_list_items = user_list.items or {}
-    # todo (addressed?): what if they don't have any items?
-    # todo (myself): create items, update items, or append items
-    # append: 200 or 400? -> 400
-    # update: 200
-    # create: 200
+
     for item in user_list_items.values():
         validate_user_list_item(item)
 

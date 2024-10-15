@@ -77,7 +77,6 @@ class TestUserListsRouter(BaseTestRouter):
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        # todo: double check that we only stop user from adding more than max lists
         ul_id = "d94ddbcc-6ef5-4a38-bc9f-95b3ef58e274"
         response = await client.put(f"/lists/{ul_id}", headers=headers, json=VALID_REPLACEMENT_LIST)
         assert response.status_code == 404
