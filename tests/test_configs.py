@@ -34,6 +34,8 @@ class TestConfigRouter(BaseTestRouter):
         config.MAX_LISTS = 2
         resp4 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
         assert resp4.status_code == 400 and resp4.text.startswith('{"detail":"Max items reached')
+        config.MAX_LISTS = 6
+        config.MAX_LIST_ITEMS = 12
 
     async def test_item_schema_validation(self):
 

@@ -189,22 +189,22 @@ class TestUserListsRouter(BaseTestRouter):
 
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        first_delete_attempt_1 = await client.delete(f"/lists/{aeau}", headers=headers)
-        assert first_delete_attempt_1.status_code == 404
 
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        sanity_get_check_1 = await client.get(f"/lists/{aeau}", headers=headers)
+        resp1 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
+        ul_id = get_id_from_response(resp1)
+        sanity_get_check_1 = await client.get(f"/lists/{ul_id}", headers=headers)
         assert sanity_get_check_1.status_code == 200
 
-        first_delete_attempt_2 = await client.delete(f"/lists/{aeau}", headers=headers)
+        first_delete_attempt_2 = await client.delete(f"/lists/{ul_id}", headers=headers)
         assert first_delete_attempt_2.status_code == 200
 
-        first_delete_attempt_3 = await client.delete(f"/lists/{aeau}", headers=headers)
+        first_delete_attempt_3 = await client.delete(f"/lists/{ul_id}", headers=headers)
         assert first_delete_attempt_3.status_code == 404
 
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
-        sanity_get_check_2 = await client.get(f"/lists/{aeau}", headers=headers)
+        resp2 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        ul_id_2 = get_id_from_response(resp2)
+        sanity_get_check_2 = await client.get(f"/lists/{ul_id_2}", headers=headers)
         assert sanity_get_check_2.status_code == 200
 
-        second_delete_attempt_1 = await client.delete(f"/lists/{aeau}", headers=headers)
+        second_delete_attempt_1 = await client.delete(f"/lists/{ul_id_2}", headers=headers)
         assert second_delete_attempt_1.status_code == 200
