@@ -24,6 +24,9 @@ async def ensure_endpoint_authorized(request: Request):
     Before any endpoint is hit, we should verify that the requester has access to the endpoint.
     This middleware function handles that.
     """
+    # todo warning: This design does not bode well. We should find a better way to derive
+    # the matching endpoint they're trying to hit, if possible.
+    # Otherwise, we may need to handle `/abc/def?foo=bar&blah` which could be rough
     endpoint = request.scope["path"]
     method = request.method
     user_id = await get_user_id(request=request)

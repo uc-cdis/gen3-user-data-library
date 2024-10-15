@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from starlette.exceptions import HTTPException
 
 from gen3userdatalibrary.routes import route_aggregator
 from tests.helpers import create_basic_list, get_id_from_response
@@ -40,7 +41,12 @@ class TestUserListsRouter(BaseTestRouter):
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        response = await client.get(endpoint, headers=headers)
+        l_id = "1"
+        with pytest.raises(HTTPException) as e:
+            response = await client.get(f"/lists/{l_id}", headers=headers)
+        assert e.value.status_code == 404
+        l_id = "550e8400-e29b-41d4-a716-446655440000"
+        response = await client.get(f"/lists/{l_id}", headers=headers)
         assert response.status_code == 404
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
@@ -53,7 +59,8 @@ class TestUserListsRouter(BaseTestRouter):
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        response = await client.put(f"/lists/{aeau}", headers=headers, json=VALID_REPLACEMENT_LIST)
+        ul_id = get_id_from_response(create_outcome)
+        response = await client.put(f"/lists/{ul_id}", headers=headers, json=VALID_REPLACEMENT_LIST)
         updated_list = response.json().get("updated_list", None)
         assert response.status_code == 200
         assert updated_list is not None
@@ -67,16 +74,12 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_updating_by_id_failures(self, get_token_claims, arborist, user_list, client):
         """
         Test updating non-existent list fails
-
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        # todo (myself): limit max number of items
-        # should be in configuration
-        # don't ever remove?
-        # if they set limit to 10, but then limit to 5, don't set down but just don't let add more
-        # 100 lists, 1000 items per lists
-        response = await client.put(f"/lists/{aeou}", headers=headers, json=VALID_REPLACEMENT_LIST)
+        # todo: double check that we only stop user from adding more than max lists
+        ul_id = "d94ddbcc-6ef5-4a38-bc9f-95b3ef58e274"
+        response = await client.put(f"/lists/{ul_id}", headers=headers, json=VALID_REPLACEMENT_LIST)
         assert response.status_code == 404
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
@@ -108,8 +111,8 @@ class TestUserListsRouter(BaseTestRouter):
             }
         }
 
-        response_one = await client.patch(f"/lists/{aeou}", headers=headers, json=body)
-        response_two = await client.patch(f"/lists/{aeou}", headers=headers, json=body)
+        response_one = await client.patch(f"/lists/{get_id_from_response(outcome_D)}", headers=headers, json=body)
+        response_two = await client.patch(f"/lists/{get_id_from_response(outcome_E)}", headers=headers, json=body)
         for response in [response_one]:
             updated_list = response.json().get("data", None)
             items = updated_list.get("items", None)
@@ -150,9 +153,8 @@ class TestUserListsRouter(BaseTestRouter):
                                 {"IN": {"data_format": ["CRAM"]}}, {"IN": {"race": ["[\"hispanic\"]"]}}]}}}
             }
         }
-        # todo (addressed): what about malicious links? make a note in the docs but
-        # otherwise no not until we allow shared lists
-        response = await client.patch(f"/lists/{aeou}", headers=headers, json=body)
+        ul_id = "d94ddbcc-6ef5-4a38-bc9f-95b3ef58e274"
+        response = await client.patch(f"/lists/{ul_id}", headers=headers, json=body)
         assert response.status_code == 404
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
@@ -163,14 +165,16 @@ class TestUserListsRouter(BaseTestRouter):
 
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        sanity_get_check = await client.get(f"/lists/{aeau}", headers=headers)
+        resp1 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
+        first_id = get_id_from_response(resp1)
+        sanity_get_check = await client.get(f"/lists/{first_id}", headers=headers)
         assert sanity_get_check.status_code == 200
-        first_delete = await client.delete(f"/lists/{aeau}", headers=headers)
-        first_get_outcome = await client.get(f"/lists/{aeau}", headers=headers)
-        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
-        second_delete = await client.delete(f"/lists/{aeou}", headers=headers)
-        second_get_outcome = await client.get("list/2", headers=headers)
+        first_delete = await client.delete(f"/lists/{first_id}", headers=headers)
+        first_get_outcome = await client.get(f"/lists/{first_id}", headers=headers)
+        resp2 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        second_id = get_id_from_response(resp2)
+        second_delete = await client.delete(f"/lists/{second_id}", headers=headers)
+        second_get_outcome = await client.get(f"lists/{second_id}", headers=headers)
         assert first_delete.status_code == 200
         assert first_get_outcome.status_code == 404
         assert second_delete.status_code == 200
