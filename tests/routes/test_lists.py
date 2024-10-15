@@ -27,6 +27,7 @@ class TestUserListsRouter(BaseTestRouter):
         valid_single_list_body = {"lists": [user_list]}
         with pytest.raises(HTTPException):
             response = await client.put(endpoint, json=valid_single_list_body)
+        assert NotImplemented
         # assert response
         # assert response.status_code == 401
         # assert response.json().get("detail")
