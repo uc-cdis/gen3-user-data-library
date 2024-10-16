@@ -64,6 +64,10 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: List[
         updated_list = await data_access_layer.update_and_persist_list(list_to_update.id, changes_to_make)
         updated_lists.append(updated_list)
     for list_to_create in lists_to_create:
+        if len(list_to_create.items) == 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"No items provided for list to create: "
+                                                                                f"{list_to_create.name}")
+
         if len(list_to_create.items.items()) > config.MAX_LIST_ITEMS:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Too many items for list: "
                                                                                 f"{list_to_create.name}")
@@ -140,9 +144,6 @@ async def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
     now = datetime.datetime.now(datetime.timezone.utc)
     name = user_list.name or f"Saved List {now}"
     user_list_items = user_list.items or {}
-
-    for item in user_list_items.values():
-        validate_user_list_item(item)
 
     new_list = UserList(version=0, creator=str(user_id),
                         # temporarily set authz without the list ID since we haven't created the list in the db yet

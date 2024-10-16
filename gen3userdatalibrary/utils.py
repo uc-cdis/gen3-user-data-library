@@ -8,6 +8,8 @@ from starlette.requests import Request
 from gen3userdatalibrary import logging
 from gen3userdatalibrary.models.user_list import UpdateItemsModel, ItemToUpdateModel
 
+identity = lambda P: P
+
 
 def add_to_dict_set(dict_list, key, value):
     """ If I want to add to a default dict set, I want to append and then return the list """

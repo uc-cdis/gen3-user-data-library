@@ -31,7 +31,8 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
   - NOTE: use monkeypatch?
 - tests should probably rearranged, specifically middleware
 - test max items is not bypassed
-
+- test validation of items against all endpoints
+- add a test that checks that all endpoints have a definition for auth and validation
 ## Auth Work
 -  remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}} 
 
@@ -61,7 +62,6 @@ https://fastapi.tiangolo.com/how-to/custom-request-and-route/
    -> referring to make_db req or 500
     - specifically, is there a way to abstract all the exceptions we throw so they're not 
     in the way of all our code?
-- change any create or update to throw if no items provided
 - if use passes invalid data, throw instead of creating default empty list
 - abstract validation step on all endpoints (e.g. MAX ITEM/MAX LISTS)
 

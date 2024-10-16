@@ -1,15 +1,13 @@
 import re
-from functools import wraps
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from unittest.mock import AsyncMock, patch
-
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.data import uuid4_regex_pattern
-from gen3userdatalibrary.routes.middleware import reg_match_key, ensure_endpoint_authorized
-from tests.routes.conftest import BaseTestRouter
+from gen3userdatalibrary.routes.middleware import reg_match_key, handle_data_check_before_endpoint
 from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B
+from tests.routes.conftest import BaseTestRouter
 
 
 @pytest.mark.asyncio
@@ -53,9 +51,10 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
+    @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
+           wraps=handle_data_check_before_endpoint)
     async def test_middleware_get_hit(self,
-                                      ensure_endpoint_auth,
+                                      middleware_handler,
                                       get_token_claims,
                                       arborist,
                                       user_list,
@@ -69,15 +68,16 @@ class TestConfigRouter(BaseTestRouter):
             assert result1.status_code == 200
         else:
             assert result1.status_code == 404
-        ensure_endpoint_auth.assert_called_once()
+        middleware_handler.assert_called_once()
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/lists/123e4567-e89b-12d3-a456-426614174000",
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
-    async def test_middleware_patch_hit(self, ensure_endpoint_auth,
+    @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
+           wraps=handle_data_check_before_endpoint)
+    async def test_middleware_patch_hit(self, middleware_handler,
                                         get_token_claims,
                                         arborist,
                                         user_list,
@@ -88,15 +88,16 @@ class TestConfigRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         result1 = await client.patch(endpoint, headers=headers, json=PATCH_BODY)
         assert result1.status_code == 404
-        ensure_endpoint_auth.assert_called_once()
+        middleware_handler.assert_called_once()
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
+    @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
+           wraps=handle_data_check_before_endpoint)
     async def test_middleware_lists_put_hit(self,
-                                            ensure_endpoint_auth,
+                                            middleware_handler,
                                             get_token_claims,
                                             arborist,
                                             user_list,
@@ -110,16 +111,17 @@ class TestConfigRouter(BaseTestRouter):
             assert result1.status_code == 201
         else:
             assert result1.status_code == 404
-        ensure_endpoint_auth.assert_called_once()
+        middleware_handler.assert_called_once()
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists/123e4567-e89b-12d3-a456-426614174000",
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
+    @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
+           wraps=handle_data_check_before_endpoint)
     async def test_middleware_lists_by_id_put_hit(self,
-                                                  ensure_endpoint_auth,
+                                                  middleware_handler,
                                                   get_token_claims,
                                                   arborist,
                                                   user_list,
@@ -133,7 +135,7 @@ class TestConfigRouter(BaseTestRouter):
             assert result1.status_code == 201
         else:
             assert result1.status_code == 404
-        ensure_endpoint_auth.assert_called_once()
+        middleware_handler.assert_called_once()
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/",
@@ -141,8 +143,9 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
-    async def test_middleware_delete_hit(self, ensure_endpoint_auth,
+    @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
+           wraps=handle_data_check_before_endpoint)
+    async def test_middleware_delete_hit(self, middleware_handler,
                                          get_token_claims,
                                          arborist,
                                          user_list,
@@ -156,7 +159,7 @@ class TestConfigRouter(BaseTestRouter):
             assert result1.status_code == 204
         else:
             assert result1.status_code == 404
-        ensure_endpoint_auth.assert_called_once()
+        middleware_handler.assert_called_once()
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/",
@@ -165,8 +168,9 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
-    async def test_middleware_get_validated(self, ensure_endpoint_authorized, get_token_claims,
+    @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
+           wraps=handle_data_check_before_endpoint)
+    async def test_middleware_get_validated(self, middleware_handler, get_token_claims,
                                             arborist,
                                             user_list,
                                             client,

@@ -6,7 +6,6 @@ from fastapi import Request, Depends, HTTPException, APIRouter
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary import config
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer

@@ -1,18 +1,24 @@
 from gen3userdatalibrary.services.auth import get_lists_endpoint, get_list_by_id_endpoint
+from gen3userdatalibrary.utils import identity
 
 WHITELIST = {"items", "name"}
 
 uuid4_regex_pattern = "([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"
 
-endpoint_type_to_auth_resource = {
+recognized_endpoints_as_regex = {
+    r"^/docs/?$",
+    r"^/redoc/?$",
+    r"^/_version/?$",
+    r"^/_status/?$",
+    r"^/?$",
+    r"^/lists/?$",
+    rf"^/lists/{uuid4_regex_pattern}/?$"}
 
-}
-
-endpoint_method_to_access_method = {
+endpoints_to_context = {
     r"^/docs/?$": {"GET": {"resource": "/gen3_data_library/service_info/docs",
-                               "method": "read"}},
+                           "method": "read"}},
     r"^/redoc/?$": {"GET": {"resource": "/gen3_data_library/service_info/docs",
-                               "method": "read"}},
+                            "method": "read"}},
     r"^/_version/?$": {"GET": {"resource": "/gen3_data_library/service_info/version",
                                "method": "read"}},
     r"^/_status/?$": {"GET": {"resource": "/gen3_data_library/service_info/status",
@@ -23,11 +29,14 @@ endpoint_method_to_access_method = {
         "GET": {
             "type": "all",
             "resource": lambda user_id: get_lists_endpoint(user_id),
-            "method": "read"},
+            "method": "read",
+        },
         "PUT": {
             "type": "all",
             "resource": lambda user_id: get_lists_endpoint(user_id),
-            "method": "update"},
+            "method": "update",
+            "items": lambda b: list(map(lambda item_to_update: item_to_update["items"], b["lists"]))
+        },
         "DELETE": {
             "type": "all",
             "resource": lambda user_id: get_lists_endpoint(user_id),
@@ -40,11 +49,15 @@ endpoint_method_to_access_method = {
         "PUT": {
             "type": "id",
             "resource": lambda user_id, list_id: get_list_by_id_endpoint(user_id, list_id),
-            "method": "update"},
+            "method": "update",
+            "items": lambda b: b["items"]
+        },
         "PATCH": {
             "type": "id",
             "resource": lambda user_id, list_id: get_list_by_id_endpoint(user_id, list_id),
-            "method": "update"},
+            "method": "update",
+            "items": identity
+        },
         "DELETE": {
             "type": "id",
             "resource": lambda user_id, list_id: get_list_by_id_endpoint(user_id, list_id),
