@@ -33,6 +33,8 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
 - test max items is not bypassed
 - test validation of items against all endpoints
 - add a test that checks that all endpoints have a definition for auth and validation
+
+
 ## Auth Work
 -  remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}} 
 
@@ -50,7 +52,7 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
 -  abstract design for MAX_LISTS/ITEMS
     - max lists should be checked on ANY create, so abstract it from endpoint/db 
     - max items should be checked on ANY create/update, so abstract it from endpoint nuance
-    - where should we check config? e.g. where should abstraction be
+    - where should we check config? e.g. where should abstraction be? middleware?
 
 - think about middleware more, the design is not good
   - specifically, we use regex to figure which endpoint the client is trying to hit
@@ -62,8 +64,6 @@ https://fastapi.tiangolo.com/how-to/custom-request-and-route/
    -> referring to make_db req or 500
     - specifically, is there a way to abstract all the exceptions we throw so they're not 
     in the way of all our code?
-- if use passes invalid data, throw instead of creating default empty list
-- abstract validation step on all endpoints (e.g. MAX ITEM/MAX LISTS)
 
 
 ## Needs Implemented
