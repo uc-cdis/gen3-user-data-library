@@ -66,19 +66,7 @@ https://fastapi.tiangolo.com/how-to/custom-request-and-route/
 - abstract validation step on all endpoints (e.g. MAX ITEM/MAX LISTS)
 
 
-## Minor Problems
--  fix the base class not having a router in BaseTestRouter
-```NOTES: 
-https://docs.python.org/3/library/abc.html
-alex: label as abstract base class, should provide a way to define that router is required
- abstractbaseclass lib
- find way to define abstract property
- @property
- def router(self):
-     raise NotImplemented()
-```
-
-## Remaining Work
+## Needs Implemented
 
 - Add the auth endpoint hit for specific lists. The endpoint that ensure user has access to
   the specific lists.
