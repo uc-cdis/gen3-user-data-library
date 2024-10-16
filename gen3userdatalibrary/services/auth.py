@@ -87,7 +87,7 @@ async def get_user_id(token: HTTPAuthorizationCredentials = None, request: Reque
     """
     if config.DEBUG_SKIP_AUTH and not token:
         logging.warning("DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING user_id = 0")
-        return 0
+        return "0"
 
     token_claims = await _get_token_claims(token, request)
     if "sub" not in token_claims:

@@ -2,6 +2,7 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from black.trans import defaultdict
 from starlette.exceptions import HTTPException
 
 from gen3userdatalibrary.main import route_aggregator
@@ -315,16 +316,27 @@ class TestUserListsRouter(BaseTestRouter):
         r3 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers, "2")
         r4 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "2")
         r5 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "3")
+        get_token_claims.return_value = {"sub": "1"}
         response_6 = await client.get("/lists", headers=headers)
-        resp_as_string = response_6.content.decode('utf-8')
-        content_as_dict = json.loads(resp_as_string)
-        lists = content_as_dict.get("lists", None)
-        creator_to_list_ids = helpers.map_creator_to_list_ids(lists)
+        get_token_claims.return_value = {"sub": "2"}
+        response_7 = await client.get("/lists", headers=headers)
+        get_token_claims.return_value = {"sub": "3"}
+        response_8 = await client.get("/lists", headers=headers)
+
+        def get_creator_to_id_from_resp(resp):
+            return helpers.map_creator_to_list_ids(json.loads(resp.content.decode('utf-8')).get("lists", {}))
+        first_ids = get_creator_to_id_from_resp(response_6)
+        second_ids = get_creator_to_id_from_resp(response_7)
+        third_ids = get_creator_to_id_from_resp(response_8)
         id_1 = get_id_from_response(r1)
         id_2 = get_id_from_response(r2)
         id_3 = get_id_from_response(r3)
         id_4 = get_id_from_response(r4)
         id_5 = get_id_from_response(r5)
+        creator_to_list_ids = defaultdict(set)
+        creator_to_list_ids.update(first_ids)
+        creator_to_list_ids.update(second_ids)
+        creator_to_list_ids.update(third_ids)
         one_matches = creator_to_list_ids["1"] == {id_1, id_2}
         two_matches = creator_to_list_ids["2"] == {id_3, id_4}
         three_matches = creator_to_list_ids["3"] == {id_5}

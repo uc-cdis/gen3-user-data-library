@@ -80,11 +80,9 @@ class DataAccessLayer:
         """
         Return all known lists
         """
-
-        query = await self.db_session.execute(select(UserList)
-                                              .order_by(UserList.id)
-                                              .where(UserList.creator == creator_id))
-        return list(query.scalars().all())
+        query = select(UserList).order_by(UserList.id).where(UserList.creator == creator_id)
+        result = await self.db_session.execute(query)
+        return list(result.scalars().all())
 
     async def get_list(self, identifier: Union[UUID, Tuple[str, str]], by="id") -> Optional[UserList]:
         """

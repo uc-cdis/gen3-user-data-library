@@ -28,6 +28,7 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
 - teste append with empty, should be 400
 - fix `test_max_limits` so that i can test config without affecting other tests
   right now I have to set the config at the end, seems wrong
+  - NOTE: use monkeypatch?
 - tests should probably rearranged, specifically middleware
 
 
