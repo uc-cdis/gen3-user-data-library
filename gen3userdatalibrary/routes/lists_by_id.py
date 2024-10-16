@@ -1,4 +1,5 @@
 import time
+from typing import Dict, Any
 from uuid import UUID
 
 from fastapi import Request, Depends, HTTPException, APIRouter
@@ -89,7 +90,7 @@ async def update_list_by_id(request: Request,
 @lists_by_id_router.patch("/{ID}/", include_in_schema=False)
 async def append_items_to_list(request: Request,
                                ID: UUID,
-                               id_to_items: IDToItems,
+                               item_list: Dict[str, Any],
                                data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
     Adds a list of provided items to an existing list
@@ -98,17 +99,17 @@ async def append_items_to_list(request: Request,
         :param ID: the id of the list you wish to retrieve
         :param request: FastAPI request (so we can check authorization)
         :param data_access_layer: how we interface with db
-        :param body: the items to be appended
+        :param item_list: the items to be appended
         :return: JSONResponse: json response with info about the request outcome
     """
     user_list = await data_access_layer.get_list(ID)
     list_exists = user_list is not None
     if not list_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist")
-    await ensure_items_less_than_max(len(id_to_items["items"]), len(user_list.items))
+    await ensure_items_less_than_max(len(item_list), len(user_list.items))
 
     succeeded, append_result = await make_db_request_or_return_500(
-        lambda: data_access_layer.add_items_to_list(ID, id_to_items.__dict__))
+        lambda: data_access_layer.add_items_to_list(ID, item_list))
 
     if succeeded:
         data = update("id", lambda ul_id: str(ul_id), append_result.to_dict())

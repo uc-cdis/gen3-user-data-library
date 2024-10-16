@@ -1,4 +1,5 @@
 import re
+from functools import wraps
 
 import pytest
 
@@ -52,8 +53,9 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
-    async def test_middleware_get_hit(self, ensure_endpoint_auth,
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
+    async def test_middleware_get_hit(self,
+                                      ensure_endpoint_auth,
                                       get_token_claims,
                                       arborist,
                                       user_list,
@@ -74,7 +76,7 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
     async def test_middleware_patch_hit(self, ensure_endpoint_auth,
                                         get_token_claims,
                                         arborist,
@@ -92,7 +94,7 @@ class TestConfigRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
     async def test_middleware_lists_put_hit(self,
                                             ensure_endpoint_auth,
                                             get_token_claims,
@@ -115,7 +117,7 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
     async def test_middleware_lists_by_id_put_hit(self,
                                                   ensure_endpoint_auth,
                                                   get_token_claims,
@@ -139,7 +141,7 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
     async def test_middleware_delete_hit(self, ensure_endpoint_auth,
                                          get_token_claims,
                                          arborist,
@@ -163,7 +165,7 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized")
+    @patch("gen3userdatalibrary.routes.middleware.ensure_endpoint_authorized", wraps=ensure_endpoint_authorized)
     async def test_middleware_get_validated(self, ensure_endpoint_authorized, get_token_claims,
                                             arborist,
                                             user_list,
