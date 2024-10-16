@@ -30,7 +30,7 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
   right now I have to set the config at the end, seems wrong
   - NOTE: use monkeypatch?
 - tests should probably rearranged, specifically middleware
-
+- test max items is not bypassed
 
 ## Auth Work
 -  remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}} 
@@ -63,7 +63,7 @@ https://fastapi.tiangolo.com/how-to/custom-request-and-route/
     in the way of all our code?
 - change any create or update to throw if no items provided
 - if use passes invalid data, throw instead of creating default empty list
-
+- abstract validation step on all endpoints (e.g. MAX ITEM/MAX LISTS)
 ## Documentation (Either here or conflunce)
 
 - move these comments into confluence doc

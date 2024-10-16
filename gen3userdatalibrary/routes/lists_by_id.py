@@ -7,10 +7,11 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config
-from gen3userdatalibrary.models.user_list import UpdateItemsModel, ItemToUpdateModel, IDToItems
+from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.helpers import try_conforming_list, make_db_request_or_return_500
+from gen3userdatalibrary.services.helpers import try_conforming_list, make_db_request_or_return_500, \
+    ensure_items_less_than_max
 from gen3userdatalibrary.utils import update
 
 lists_by_id_router = APIRouter()
@@ -73,6 +74,7 @@ async def update_list_by_id(request: Request,
         raise HTTPException(status_code=404, detail="List not found")
     user_id = get_user_id(request=request)
     list_as_orm = await try_conforming_list(user_id, info_to_update_with)
+    ensure_items_less_than_max(len(info_to_update_with.items))
     succeeded, update_result = await make_db_request_or_return_500(
         lambda: data_access_layer.replace_list(ID, list_as_orm))
 
@@ -106,7 +108,7 @@ async def append_items_to_list(request: Request,
     list_exists = user_list is not None
     if not list_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist")
-    await ensure_items_less_than_max(len(item_list), len(user_list.items))
+    ensure_items_less_than_max(len(item_list), len(user_list.items))
 
     succeeded, append_result = await make_db_request_or_return_500(
         lambda: data_access_layer.add_items_to_list(ID, item_list))
@@ -119,13 +121,6 @@ async def append_items_to_list(request: Request,
     else:
         response = append_result
     return response
-
-
-async def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
-    more_items_than_max = existing_item_count + number_of_new_items > config.MAX_LIST_ITEMS
-    if more_items_than_max:
-        raise HTTPException(status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
-                            detail="Too many items in list")
 
 
 @lists_by_id_router.delete("/{ID}")

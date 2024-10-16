@@ -18,6 +18,13 @@ from gen3userdatalibrary.services.auth import get_lists_endpoint
 from gen3userdatalibrary.utils import find_differences, add_to_dict_set
 
 
+def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
+    more_items_than_max = existing_item_count + number_of_new_items > config.MAX_LIST_ITEMS
+    if more_items_than_max:
+        raise HTTPException(status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+                            detail="Too many items in list")
+
+
 def build_generic_500_response():
     return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
     status_text = "UNHEALTHY"
@@ -52,11 +59,7 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: List[
         identifier = (list_to_update.creator, list_to_update.name)
         new_version_of_list = unique_list_identifiers.get(identifier, None)
         assert new_version_of_list is not None
-        existing_items = len(list_to_update.items.items())
-        new_items = len(new_version_of_list.items.items())
-        if (existing_items + new_items) > config.MAX_LIST_ITEMS:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Max items reached, cannot update! "
-                                                                                f"ID: {list_to_update.id}")
+        ensure_items_less_than_max(len(new_version_of_list.items.items()), len(list_to_update.items.items()))
         changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
         updated_list = await data_access_layer.update_and_persist_list(list_to_update.id, changes_to_make)
         updated_lists.append(updated_list)

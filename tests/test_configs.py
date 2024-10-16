@@ -33,7 +33,7 @@ class TestConfigRouter(BaseTestRouter):
         assert resp2.status_code == 201 and resp3.status_code == 400
         config.MAX_LISTS = 2
         resp4 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
-        assert resp4.status_code == 400 and resp4.text.startswith('{"detail":"Max items reached')
+        assert resp4.status_code == 507
         config.MAX_LISTS = 6
         config.MAX_LIST_ITEMS = 12
 
