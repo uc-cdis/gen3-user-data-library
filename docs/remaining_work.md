@@ -64,29 +64,8 @@ https://fastapi.tiangolo.com/how-to/custom-request-and-route/
 - change any create or update to throw if no items provided
 - if use passes invalid data, throw instead of creating default empty list
 - abstract validation step on all endpoints (e.g. MAX ITEM/MAX LISTS)
-## Documentation (Either here or conflunce)
 
-- move these comments into confluence doc
 
-    claim is a terminology
-    token has a bunch of info
-    info i "claim" is true
-    jwt, sever validates info was not modified and allows you to do what you want to do
-    pub/priv key encryption
-    fence has both keys, signs token, provides to user
-    only fence has priv
-    on server side, decode content and ensure it has not been modified
-    validating token has not been modified using fence
-    if true, returns token contents (encoded json base 64)
-    code is defined by oauth
-    sub field is required by oauth (sub = subject)
-    only use case is to get unique sub id
-   
-- make note in docs: 
-  -         # how to test non-existent user?
-          # if they have token they exist, if they don't they're auth
-- make a note in docs that we don't need to worry about a user trying to update
-  the wrong list because that's handled in the auth portion
 ## Minor Problems
 -  fix the base class not having a router in BaseTestRouter
 ```NOTES: 
@@ -99,13 +78,7 @@ alex: label as abstract base class, should provide a way to define that router i
      raise NotImplemented()
 ```
 
+## Remaining Work
 
-## Double Check Behavior
-
--  double check that we only stop user from adding more than max lists if it
-   has somehow been bypassed
--  if no lists when we get do return 404
-
-## Remaining work
-
-- validate in list update that we don't allow more than max items
+- Add the auth endpoint hit for specific lists. The endpoint that ensure user has access to
+  the specific lists.
