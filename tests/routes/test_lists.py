@@ -28,7 +28,8 @@ class TestUserListsRouter(BaseTestRouter):
         valid_single_list_body = {"lists": [user_list]}
         with pytest.raises(HTTPException):
             response = await client.put(endpoint, json=valid_single_list_body)
-        assert NotImplemented
+        # todo
+        # # todo
         # assert response
         # assert response.status_code == 401
         # assert response.json().get("detail")
@@ -285,7 +286,7 @@ class TestUserListsRouter(BaseTestRouter):
         # test all auth for relevant endpoint
         # test lowest level calls 500
 
-        assert NotImplemented
+        # todo
         # arborist.auth_request.return_value = True
         # user_id = "79"
         # get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
@@ -431,7 +432,9 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_update_ignores_items_on_blacklist(self, get_token_claims, arborist, endpoint, client):
-        assert NotImplemented
+        pass
+        # todo
+
         # headers = {"Authorization": "Bearer ofa.valid.token"}
         # await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
         # arborist.auth_request.return_value = True
@@ -441,7 +444,8 @@ class TestUserListsRouter(BaseTestRouter):
         #               "fake_prop": "aaa"}
 
     async def test_fake_props_fail(self):
-        assert NotImplemented
+        # todo
+        pass
         # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
         # with pytest.raises(TypeError):
         # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
@@ -455,7 +459,7 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         invalid_list = {"name": "foo", "itmes": {"aaa": "eee"}}
         # response = await client.put("/lists", headers=headers, json={"lists": [invalid_list]})
-        assert NotImplemented
+        # todo
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
@@ -489,12 +493,13 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_deleting_lists_failures(self, get_token_claims, arborist, client):
+        pass
         # try to delete for wrong user
         # NOTE: if deleting for wrong user, auth out
         # auth out
 
         # what should we do if a user X has no lists but requests a delete?
-        assert NotImplemented
+        # todo
         # arborist.auth_request.return_value = True
         # headers = {"Authorization": "Bearer ofa.valid.token"}
         # await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)

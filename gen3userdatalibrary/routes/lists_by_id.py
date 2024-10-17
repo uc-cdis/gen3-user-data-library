@@ -71,7 +71,7 @@ async def update_list_by_id(request: Request,
     user_list = await data_access_layer.get_list(ID)
     if user_list is None:
         raise HTTPException(status_code=404, detail="List not found")
-    user_id = get_user_id(request=request)
+    user_id = await get_user_id(request=request)
     list_as_orm = await try_conforming_list(user_id, info_to_update_with)
     ensure_items_less_than_max(len(info_to_update_with.items))
     succeeded, update_result = await make_db_request_or_return_500(

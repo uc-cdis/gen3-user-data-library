@@ -2,8 +2,6 @@ import pytest
 
 from unittest.mock import AsyncMock, patch
 
-from numpy.distutils.conv_template import header
-
 from gen3userdatalibrary import config
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.utils import get_from_cfg_metadata
@@ -38,8 +36,8 @@ class TestConfigRouter(BaseTestRouter):
         config.MAX_LIST_ITEMS = 12
 
     async def test_item_schema_validation(self):
-
-        assert NotImplemented
+        pass
+        # todo
 
     async def test_metadata_cfg_util(self):
         """

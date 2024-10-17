@@ -18,12 +18,14 @@ lists_router = APIRouter()
 
 def parse_and_auth_request(request: Request):
     route_function = request.scope["route"].name
-    assert NotImplemented
+    pass
+    # raise NotImplemented
 
 
 def validate_items(request: Request):
     route_function = request.scope["route"].name
-    assert NotImplemented
+    pass
+    # raise NotImplemented
 
 
 @lists_router.get("/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)])

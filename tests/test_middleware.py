@@ -175,7 +175,8 @@ class TestConfigRouter(BaseTestRouter):
                                             user_list,
                                             client,
                                             endpoint):
-        assert NotImplemented
+        pass
+        # todo
         # test different endpoints give correct auth structure
         # come back to this, it's giving me a headache
         # I need to test that the content of the endpoint auth is what i expect it to be

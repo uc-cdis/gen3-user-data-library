@@ -65,6 +65,8 @@ https://fastapi.tiangolo.com/how-to/custom-request-and-route/
    -> referring to make_db req or 500
     - specifically, is there a way to abstract all the exceptions we throw so they're not 
     in the way of all our code?
+    - answer: probably not, use result types or somethin
+    - 
 
 
 ## Needs Implemented

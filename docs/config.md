@@ -3,6 +3,11 @@
 This doc will offer an explanation for the various properties that are 
 configurable in this repo's env
 
+# ENV
+
+This variable is used to look for the .env file. Useful if you have different .env configurations for, say,
+prod or testing
+
 ## DB_CONNECTION_STRING
 
 This property defines the postgres configuration string to connect to the database. 
