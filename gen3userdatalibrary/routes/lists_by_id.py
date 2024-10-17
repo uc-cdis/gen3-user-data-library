@@ -10,14 +10,14 @@ from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers import try_conforming_list, make_db_request_or_return_500, \
-    ensure_items_less_than_max
+    ensure_items_less_than_max, parse_and_auth_request, validate_items
 from gen3userdatalibrary.utils import update
 
 lists_by_id_router = APIRouter()
 
 
-@lists_by_id_router.get("/{ID}")
-@lists_by_id_router.get("/{ID}/", include_in_schema=False)
+@lists_by_id_router.get("/{ID}", dependencies=[Depends(parse_and_auth_request)])
+@lists_by_id_router.get("/{ID}/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)])
 async def get_list_by_id(ID: UUID,
                          request: Request,
                          data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
@@ -50,8 +50,10 @@ async def get_list_by_id(ID: UUID,
     return response
 
 
-@lists_by_id_router.put("/{ID}")
-@lists_by_id_router.put("/{ID}/", include_in_schema=False)
+@lists_by_id_router.put("/{ID}", dependencies=[Depends(parse_and_auth_request), Depends(validate_items)])
+@lists_by_id_router.put("/{ID}/",
+                        include_in_schema=False,
+                        dependencies=[Depends(parse_and_auth_request), Depends(validate_items)])
 async def update_list_by_id(request: Request,
                             ID: UUID,
                             info_to_update_with: ItemToUpdateModel,
@@ -87,8 +89,11 @@ async def update_list_by_id(request: Request,
     return response
 
 
-@lists_by_id_router.patch("/{ID}")
-@lists_by_id_router.patch("/{ID}/", include_in_schema=False)
+@lists_by_id_router.patch("/{ID}",
+                          dependencies=[Depends(parse_and_auth_request), Depends(validate_items)])
+@lists_by_id_router.patch("/{ID}/",
+                          include_in_schema=False,
+                          dependencies=[Depends(parse_and_auth_request), Depends(validate_items)])
 async def append_items_to_list(request: Request,
                                ID: UUID,
                                item_list: Dict[str, Any],
@@ -122,8 +127,10 @@ async def append_items_to_list(request: Request,
     return response
 
 
-@lists_by_id_router.delete("/{ID}")
-@lists_by_id_router.delete("/{ID}/", include_in_schema=False)
+@lists_by_id_router.delete("/{ID}",
+                           dependencies=[Depends(parse_and_auth_request)])
+@lists_by_id_router.delete("/{ID}/", include_in_schema=False,
+                           dependencies=[Depends(parse_and_auth_request)])
 async def delete_list_by_id(ID: UUID, request: Request,
                             data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """

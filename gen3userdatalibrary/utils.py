@@ -11,6 +11,34 @@ from gen3userdatalibrary.models.user_list import UpdateItemsModel, ItemToUpdateM
 identity = lambda P: P
 
 
+def mutate_keys(mutator, updated_user_lists: dict):
+    return dict(map(lambda kvp: (mutator(kvp[0]), kvp[1]), updated_user_lists.items()))
+
+
+def mutate_values(mutator, provided_dict: dict):
+    return dict(map(lambda kvp: (kvp[0], mutator(kvp[1])), provided_dict.items()))
+
+
+def filter_keys(filter_func, differences):
+    return {k: v
+            for k, v in differences.items()
+            if filter_func(k, v)}
+
+
+def reg_match_key(matcher, dictionary_to_match):
+    """
+    Matcher should be a boolean lambda. Expects a dictionary.
+    Passes the key to the matcher, when a result is found, returns
+    the kv pair back.
+    """
+    dict_contents = dictionary_to_match.items()
+    for key, value in dict_contents:
+        matches = matcher(key)
+        if matches is not None:
+            return key, value
+    return None, {}
+
+
 def add_to_dict_set(dict_list, key, value):
     """ If I want to add to a default dict set, I want to append and then return the list """
     dict_list[key].add(value)

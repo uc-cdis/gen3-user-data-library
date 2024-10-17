@@ -5,16 +5,16 @@ import fastapi
 from fastapi import FastAPI
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
+from starlette.requests import Request
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.models.metrics import Metrics
 from gen3userdatalibrary.routes import route_aggregator
-from gen3userdatalibrary.routes.middleware import middleware_catcher
 from gen3userdatalibrary.services.db import get_data_access_layer
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: Request):
     """
     Parse the configuration, setup and instantiate necessary classes.
 
@@ -71,7 +71,8 @@ def get_app() -> fastapi.FastAPI:
     fastapi_app = FastAPI(title="Gen3 User Data Library Service", version=version("gen3userdatalibrary"),
                           debug=config.DEBUG, root_path=config.URL_PREFIX, lifespan=lifespan, )
     fastapi_app.include_router(route_aggregator)
-    fastapi_app.middleware("http")(middleware_catcher)
+    # This line can be added to add a middleman check on all endpoints
+    # fastapi_app.middleware("http")(middleware_catcher)
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:
@@ -91,4 +92,4 @@ def make_metrics_app():
     return make_asgi_app(registry=registry)
 
 
-app = get_app()
+app_instance = get_app()

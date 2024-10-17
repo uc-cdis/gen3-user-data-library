@@ -6,30 +6,18 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.models.user_list import UserListResponseModel, ItemToUpdateModel, UpdateItemsModel
+from gen3userdatalibrary.models.user_list import UserListResponseModel, UpdateItemsModel
 from gen3userdatalibrary.services import helpers
-from gen3userdatalibrary.services.auth import get_user_id, authorize_request, get_user_data_library_endpoint
+from gen3userdatalibrary.services.auth import get_user_id, get_user_data_library_endpoint
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.helpers import mutate_keys
+from gen3userdatalibrary.services.helpers import mutate_keys, parse_and_auth_request, validate_items
 from gen3userdatalibrary.utils import add_user_list_metric
 
 lists_router = APIRouter()
 
 
-def parse_and_auth_request(request: Request):
-    route_function = request.scope["route"].name
-    pass
-    # raise NotImplemented
-
-
-def validate_items(request: Request):
-    route_function = request.scope["route"].name
-    pass
-    # raise NotImplemented
-
-
 @lists_router.get("/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)])
-@lists_router.get("")
+@lists_router.get("", dependencies=[Depends(parse_and_auth_request)])
 async def read_all_lists(request: Request,
                          data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """
@@ -71,7 +59,9 @@ async def read_all_lists(request: Request,
                                                              status.HTTP_400_BAD_REQUEST: {
                                                                  "description": "Bad request, unable to create list"}},
                   dependencies=[Depends(parse_and_auth_request), Depends(validate_items)])
-@lists_router.put("/", include_in_schema=False)
+@lists_router.put("/",
+                  include_in_schema=False,
+                  dependencies=[Depends(parse_and_auth_request), Depends(validate_items)])
 async def upsert_user_lists(request: Request,
                             requested_lists: UpdateItemsModel,
                             data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
@@ -119,8 +109,8 @@ async def upsert_user_lists(request: Request,
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
 
-@lists_router.delete("")
-@lists_router.delete("/", include_in_schema=False)
+@lists_router.delete("", dependencies=[Depends(parse_and_auth_request)])
+@lists_router.delete("/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)])
 async def delete_all_lists(request: Request,
                            data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
     """

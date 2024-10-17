@@ -66,7 +66,10 @@ https://fastapi.tiangolo.com/how-to/custom-request-and-route/
     - specifically, is there a way to abstract all the exceptions we throw so they're not 
     in the way of all our code?
     - answer: probably not, use result types or somethin
-    - 
+
+
+## Minor Issues 
+- fix get_data_access_layer in main.py (type thing)
 
 
 ## Needs Implemented

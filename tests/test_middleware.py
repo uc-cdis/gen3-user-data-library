@@ -5,7 +5,6 @@ import pytest
 
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.data import uuid4_regex_pattern
-from gen3userdatalibrary.routes.middleware import reg_match_key, handle_data_check_before_endpoint
 from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B
 from tests.routes.conftest import BaseTestRouter
 
@@ -52,7 +51,8 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
-           wraps=handle_data_check_before_endpoint)
+           # wraps=handle_data_check_before_endpoint
+           )
     async def test_middleware_get_hit(self,
                                       middleware_handler,
                                       get_token_claims,
@@ -76,7 +76,8 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
-           wraps=handle_data_check_before_endpoint)
+           # wraps=handle_data_check_before_endpoint
+           )
     async def test_middleware_patch_hit(self, middleware_handler,
                                         get_token_claims,
                                         arborist,
@@ -95,7 +96,8 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
-           wraps=handle_data_check_before_endpoint)
+           # wraps=handle_data_check_before_endpoint
+           )
     async def test_middleware_lists_put_hit(self,
                                             middleware_handler,
                                             get_token_claims,
@@ -119,7 +121,8 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
-           wraps=handle_data_check_before_endpoint)
+           # wraps=handle_data_check_before_endpoint
+           )
     async def test_middleware_lists_by_id_put_hit(self,
                                                   middleware_handler,
                                                   get_token_claims,
@@ -144,7 +147,8 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
-           wraps=handle_data_check_before_endpoint)
+           # wraps=handle_data_check_before_endpoint
+           )
     async def test_middleware_delete_hit(self, middleware_handler,
                                          get_token_claims,
                                          arborist,
@@ -169,7 +173,8 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     @patch("gen3userdatalibrary.routes.middleware.handle_data_check_before_endpoint",
-           wraps=handle_data_check_before_endpoint)
+           # wraps=handle_data_check_before_endpoint
+           )
     async def test_middleware_get_validated(self, middleware_handler, get_token_claims,
                                             arborist,
                                             user_list,
