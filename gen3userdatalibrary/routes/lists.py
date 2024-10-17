@@ -16,7 +16,17 @@ from gen3userdatalibrary.utils import add_user_list_metric
 lists_router = APIRouter()
 
 
-@lists_router.get("/", include_in_schema=False)
+def parse_and_auth_request(request: Request):
+    route_function = request.scope["route"].name
+    assert NotImplemented
+
+
+def validate_items(request: Request):
+    route_function = request.scope["route"].name
+    assert NotImplemented
+
+
+@lists_router.get("/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)])
 @lists_router.get("")
 async def read_all_lists(request: Request,
                          data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
@@ -57,8 +67,8 @@ async def read_all_lists(request: Request,
                                                                                                       " user request "
                                                                                                       "", },
                                                              status.HTTP_400_BAD_REQUEST: {
-                                                                 "description": "Bad request, unable to create list",
-                                                             }})
+                                                                 "description": "Bad request, unable to create list"}},
+                  dependencies=[Depends(parse_and_auth_request), Depends(validate_items)])
 @lists_router.put("/", include_in_schema=False)
 async def upsert_user_lists(request: Request,
                             requested_lists: UpdateItemsModel,

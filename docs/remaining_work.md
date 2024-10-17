@@ -14,6 +14,10 @@ E.G. should be done before release.
 - meant to track overall number of user lists over time, can increase/decrease 
 as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
 - Do we really want to throw if they add extra unused params? fastapi doesn't
+-  abstract design for MAX_LISTS/ITEMS
+    - max lists should be checked on ANY create, so abstract it from endpoint/db 
+    - max items should be checked on ANY create/update, so abstract it from endpoint nuance
+    - where should we check config? e.g. where should abstraction be? middleware?
 
 
 ## Tests
@@ -49,16 +53,13 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
 
 
 ## Abstractions
--  abstract design for MAX_LISTS/ITEMS
-    - max lists should be checked on ANY create, so abstract it from endpoint/db 
-    - max items should be checked on ANY create/update, so abstract it from endpoint nuance
-    - where should we check config? e.g. where should abstraction be? middleware?
 
 - think about middleware more, the design is not good
   - specifically, we use regex to figure which endpoint the client is trying to hit
   - is there a better way? 
 https://github.com/fastapi/fastapi/issues/486
 https://fastapi.tiangolo.com/how-to/custom-request-and-route/
+- TODO: SWITCH TO DEPENDENCIES
 
 - look up better way to do error handling in fastapi 
    -> referring to make_db req or 500

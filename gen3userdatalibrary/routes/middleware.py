@@ -87,4 +87,10 @@ async def middleware_catcher(request: Request, call_next):
     """ Catch the request, pass it into the actual handler """
     await handle_data_check_before_endpoint(request)
     response = await call_next(request)
+    # routes = request.scope['router'].routes
+    # paths = [route
+    #          for route in routes
+    #          if route.endpoint == request.scope['endpoint']]
+    # final_path = paths[0].path
+
     return response
