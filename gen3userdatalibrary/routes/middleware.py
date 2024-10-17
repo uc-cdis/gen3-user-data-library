@@ -5,7 +5,6 @@ from fastapi import Request, HTTPException
 
 from gen3userdatalibrary.models.data import endpoints_to_context
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
-from gen3userdatalibrary.services.helpers import validate_user_list_item
 
 
 # def ensure_any_items_match_schema(endpoint_context, conformed_body):
@@ -32,8 +31,6 @@ from gen3userdatalibrary.services.helpers import validate_user_list_item
 #     raw_body = await request.body()
 #     if bool(raw_body):
 #         conformed_body = json.loads(raw_body)
-
-
 
 # async def middleware_catcher(request: Request, call_next):
 #     """ Catch the request, pass it into the actual handler """

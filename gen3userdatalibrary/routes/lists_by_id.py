@@ -9,8 +9,10 @@ from starlette.responses import JSONResponse
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.helpers import try_conforming_list, make_db_request_or_return_500, \
-    ensure_items_less_than_max, parse_and_auth_request, validate_items
+from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request, validate_items, \
+    ensure_items_less_than_max
+from gen3userdatalibrary.services.helpers.error_handling import make_db_request_or_return_500
+from gen3userdatalibrary.services.helpers.modeling import try_conforming_list
 from gen3userdatalibrary.utils import update
 
 lists_by_id_router = APIRouter()
