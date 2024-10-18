@@ -123,6 +123,16 @@ def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
                             detail="Too many items in list")
 
 
-async def validate_lists(request: Request):
-    # await data_access_layer.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
-    pass
+async def validate_lists(request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)):
+    user_id = await get_user_id(request=request)
+    conformed_body = json.loads(await request.body())
+    raw_lists = conformed_body["lists"]
+    new_lists_as_orm = [await try_conforming_list(user_id, conform_to_item_update(user_list))
+                        for user_list in raw_lists]
+    unique_list_identifiers = {(user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm}
+    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(dal,
+                                                                              unique_list_identifiers,
+                                                                              new_lists_as_orm)
+    for item_to_create in lists_to_create:
+        ensure_items_less_than_max(len(item_to_create.items))
+    await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))

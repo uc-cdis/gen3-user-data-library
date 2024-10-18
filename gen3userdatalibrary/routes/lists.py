@@ -7,12 +7,11 @@ from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.models.user_list import UserListResponseModel, UpdateItemsModel
-from gen3userdatalibrary.services import helpers
 from gen3userdatalibrary.services.auth import get_user_id, get_user_data_library_endpoint
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers.core import map_list_id_to_list_dict
 from gen3userdatalibrary.services.helpers.db import sort_persist_and_get_changed_lists
-from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request, validate_items
+from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request, validate_items, validate_lists
 from gen3userdatalibrary.utils import add_user_list_metric, mutate_keys
 
 lists_router = APIRouter()
@@ -60,10 +59,10 @@ async def read_all_lists(request: Request,
                                                                                                       "", },
                                                              status.HTTP_400_BAD_REQUEST: {
                                                                  "description": "Bad request, unable to create list"}},
-                  dependencies=[Depends(parse_and_auth_request), Depends(validate_items)])
+                  dependencies=[Depends(parse_and_auth_request), Depends(validate_items), Depends(validate_lists)])
 @lists_router.put("/",
                   include_in_schema=False,
-                  dependencies=[Depends(parse_and_auth_request), Depends(validate_items)])
+                  dependencies=[Depends(parse_and_auth_request), Depends(validate_items), Depends(validate_lists)])
 async def upsert_user_lists(request: Request,
                             requested_lists: UpdateItemsModel,
                             data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
