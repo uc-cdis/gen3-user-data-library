@@ -34,17 +34,14 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: List[
     new_lists_as_orm = [await try_conforming_list(user_id, user_list)
                         for user_list in raw_lists]
     unique_list_identifiers = {(user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm}
-    lists_to_update = await data_access_layer.grab_all_lists_that_exist("name", list(unique_list_identifiers.keys()))
-    set_of_existing_identifiers = set(map(lambda ul: (ul.creator, ul.name), lists_to_update))
-    lists_to_create = list(
-        filter(lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers, new_lists_as_orm))
+    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(data_access_layer,
+                                                                              unique_list_identifiers,
+                                                                              new_lists_as_orm)
     updated_lists = []
-    await data_access_layer.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
     for list_to_update in lists_to_update:
         identifier = (list_to_update.creator, list_to_update.name)
         new_version_of_list = unique_list_identifiers.get(identifier, None)
         assert new_version_of_list is not None
-        # todo: fix none issue
         changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
         updated_list = await data_access_layer.update_and_persist_list(list_to_update.id, changes_to_make)
         updated_lists.append(updated_list)
@@ -62,3 +59,11 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: List[
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
     return response_user_lists
+
+
+async def sort_lists_into_create_or_update(data_access_layer, unique_list_identifiers, new_lists_as_orm):
+    lists_to_update = await data_access_layer.grab_all_lists_that_exist("name", list(unique_list_identifiers.keys()))
+    set_of_existing_identifiers = set(map(lambda ul: (ul.creator, ul.name), lists_to_update))
+    lists_to_create = list(
+        filter(lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers, new_lists_as_orm))
+    return lists_to_create, lists_to_update

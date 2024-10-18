@@ -72,6 +72,9 @@ https://fastapi.tiangolo.com/how-to/custom-request-and-route/
 - fix get_data_access_layer in main.py (type thing)
 
 
+## Refactoring
+- refactor dependencies
+
 ## Needs Implemented
 
 - Add the auth endpoint hit for specific lists. The endpoint that ensure user has access to
