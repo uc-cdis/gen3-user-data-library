@@ -14,6 +14,7 @@ else:
 config = Config(path)
 
 DEBUG = config("DEBUG", cast=bool, default=False)
+VERBOSE_LLM_LOGS = config("VERBOSE_LLM_LOGS", cast=bool, default=False)
 
 logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")
 
@@ -23,6 +24,8 @@ DEBUG_SKIP_AUTH = config("DEBUG_SKIP_AUTH", cast=bool, default=False)
 
 if DEBUG:
     logging.info(f"DEBUG is {DEBUG}")
+if VERBOSE_LLM_LOGS:
+    logging.info(f"VERBOSE_LLM_LOGS is {VERBOSE_LLM_LOGS}")
 if DEBUG_SKIP_AUTH:
     logging.warning(f"DEBUG_SKIP_AUTH is {DEBUG_SKIP_AUTH}. Authorization will be SKIPPED if no token is provided. "
                     "FOR NON-PRODUCTION USE ONLY!! USE WITH CAUTION!!")
