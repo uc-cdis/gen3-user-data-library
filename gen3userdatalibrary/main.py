@@ -76,6 +76,7 @@ def get_app() -> fastapi.FastAPI:
     # fastapi_app.middleware("http")(middleware_catcher)
 
     # set up the prometheus metrics
+    logging.info(f"Prometheus metrics enabled: {config.ENABLE_PROMETHEUS_METRICS}")
     if config.ENABLE_PROMETHEUS_METRICS:
         metrics_app = make_metrics_app()
         fastapi_app.mount("/metrics", metrics_app)
