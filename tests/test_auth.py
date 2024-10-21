@@ -20,7 +20,7 @@ class TestAuthRouter(BaseTestRouter):
                                         # get_token_claims,
                                         # arborist,
                                         endpoint,
-                                        client):
+                                        app_client_pair):
         """
         Test that DEBUG_SKIP_AUTH configuration allows access to endpoints without auth
         """
@@ -29,7 +29,7 @@ class TestAuthRouter(BaseTestRouter):
         # get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", True)
-        response = await client.get(endpoint)
+        response = await app_client_pair.get(endpoint)
         assert str(response.status_code).startswith("20")
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 

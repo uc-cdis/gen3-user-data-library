@@ -18,14 +18,14 @@ class TestAuthRouter(BaseTestRouter):
                            get_token_claims,
                            arborist,
                            endpoint,
-                           client):
+                           app_client_pair):
         """
         Test that the version endpoint returns a non-empty version
         """
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
-        response = await client.get(endpoint, headers=headers)
+        response = await app_client_pair.get(endpoint, headers=headers)
         response.raise_for_status()
         assert response
         assert response.json().get("version")
@@ -37,13 +37,13 @@ class TestAuthRouter(BaseTestRouter):
                                     get_token_claims,
                                     arborist,
                                     endpoint,
-                                    client):
+                                    app_client_pair):
         """
         Test that the version endpoint returns a 401 with details when no token is provided
         """
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
-        response = await client.get(endpoint)
+        response = await app_client_pair.get(endpoint)
         assert response.status_code == 401
 
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/", "/_status", "/_status/"])
@@ -53,7 +53,7 @@ class TestAuthRouter(BaseTestRouter):
                                                    get_token_claims,
                                                    arborist,
                                                    endpoint,
-                                                   client):
+                                                   app_client_pair):
         """
         Test accessing the endpoint when authorized
         """
@@ -61,7 +61,7 @@ class TestAuthRouter(BaseTestRouter):
         arborist.auth_request.return_value = False
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofbadnews"}
-        response = await client.get(endpoint, headers=headers)
+        response = await app_client_pair.get(endpoint, headers=headers)
         assert response.status_code == 403
         assert 'Forbidden' in response.text
 
@@ -72,14 +72,14 @@ class TestAuthRouter(BaseTestRouter):
                           get_token_claims,
                           arborist,
                           endpoint,
-                          client):
+                          app_client_pair):
         """
         Test that the status endpoint returns a non-empty status
         """
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
-        response = await client.get(endpoint, headers=headers)
+        response = await app_client_pair.get(endpoint, headers=headers)
         response.raise_for_status()
         assert response
         assert response.json().get("status")
@@ -91,12 +91,12 @@ class TestAuthRouter(BaseTestRouter):
                                    get_token_claims,
                                    arborist,
                                    endpoint,
-                                   client):
+                                   app_client_pair):
         """
         Test that the status endpoint returns a 401 with details when no token is provided
         """
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofbadnews"}
-        response = await client.get(endpoint, headers=headers)
+        response = await app_client_pair.get(endpoint, headers=headers)
         assert response.status_code == 401
         assert 'Unauthorized' in response.text

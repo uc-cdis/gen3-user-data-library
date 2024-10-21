@@ -6,6 +6,7 @@ from httpx import AsyncClient
 
 from gen3userdatalibrary.main import get_app
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request
 
 
 class BaseTestRouter:
@@ -16,7 +17,7 @@ class BaseTestRouter:
         raise NotImplemented()
 
     @pytest_asyncio.fixture(scope="function")
-    async def client(self, session):
+    async def app_client_pair(self, session):
         app = get_app()
 
         app.include_router(self.router)
@@ -26,4 +27,4 @@ class BaseTestRouter:
         app.state.arborist_client = MagicMock()
 
         async with AsyncClient(app=app, base_url="http://test") as test_client:
-            yield test_client
+            yield app, test_client
