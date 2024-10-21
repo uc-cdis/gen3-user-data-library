@@ -37,10 +37,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.future import select
 from sqlalchemy.orm import make_transient
 
-from gen3userdatalibrary import config
+from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
 
+logging.info(f'DB_CONNECTION_STRING: {config.DB_CONNECTION_STRING}')
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
 # creates AsyncSession instances
