@@ -4,6 +4,7 @@ from importlib.metadata import version
 import fastapi
 from fastapi import FastAPI
 from gen3authz.client.arborist.client import ArboristClient
+from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 from starlette.requests import Request
 
 from gen3userdatalibrary import config, logging
