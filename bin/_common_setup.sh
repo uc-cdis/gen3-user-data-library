@@ -7,7 +7,7 @@ set -e
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source the environment variables from the metrics setup script
-source "${CURRENT_DIR}/bin/setup_prometheus"
+source "${CURRENT_DIR}/setup_prometheus"
 
 echo "installing dependencies w/ 'poetry install -vv'..."
 poetry install -vv
@@ -15,7 +15,7 @@ poetry env info
 echo "ensuring db exists"
 
 # Read the .env file and export environment variables
-export $(grep -v '^#' "${CURRENT_DIR}/.env" | xargs)
+export "$(grep -v '^#' "${CURRENT_DIR}/.env" | xargs)"
 
 if [ -z "${DB_CONNECTION_STRING}" ]; then
     echo "DB_CONNECTION_STRING is not set in the .env file"

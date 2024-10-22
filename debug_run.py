@@ -22,13 +22,9 @@ def main():
     host = "0.0.0.0"
     port = 8000
     print(f"gen3userdatalibrary.main:app running at {host}:{port}")
-    uvicorn.run(
-        "gen3userdatalibrary.main:app",
-        host=host,
-        port=port,
-        reload=True,
-        log_config=None,
-    )
+    uvicorn.run("gen3userdatalibrary.main:app",
+                host=host, port=port, reload=True,
+                log_config=None, )
 
 
 if __name__ == "__main__":

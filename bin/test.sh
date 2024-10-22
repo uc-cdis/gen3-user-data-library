@@ -24,7 +24,7 @@ else
     touch "${CURRENT_DIR}/.env.bak"
 fi
 
-cp "${CURRENT_DIR}/tests/.env" "${CURRENT_DIR}/.env"
+cp "${CURRENT_DIR}/../tests/.env" "${CURRENT_DIR}/.env"
 
 cat "${CURRENT_DIR}/.env"
 
