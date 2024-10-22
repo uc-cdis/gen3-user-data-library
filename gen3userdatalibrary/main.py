@@ -5,15 +5,16 @@ import fastapi
 from fastapi import FastAPI
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
+from starlette.requests import Request
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.db import get_data_access_layer
-from gen3userdatalibrary.metrics import Metrics
-from gen3userdatalibrary.routes import root_router
+from gen3userdatalibrary.models.metrics import Metrics
+from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.services.db import get_data_access_layer
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: Request):
     """
     Parse the configuration, setup and instantiate necessary classes.
 
@@ -26,37 +27,28 @@ async def lifespan(app: FastAPI):
         app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    app.state.metrics = Metrics(
-        enabled=config.ENABLE_PROMETHEUS_METRICS,
-        prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
-    )
+    app.state.metrics = Metrics(enabled=config.ENABLE_PROMETHEUS_METRICS,
+                                prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR)
 
     app.state.arborist_client = ArboristClient(arborist_base_url=config.ARBORIST_URL)
 
     try:
-        logging.debug(
-            "Startup database connection test initiating. Attempting a simple query..."
-        )
+        logging.debug("Startup database connection test initiating. Attempting a simple query...")
         async for data_access_layer in get_data_access_layer():
             await data_access_layer.test_connection()
             logging.debug("Startup database connection test PASSED.")
     except Exception as exc:
-        logging.exception(
-            "Startup database connection test FAILED. Unable to connect to the configured database."
-        )
+        logging.exception("Startup database connection test FAILED. Unable to connect to the configured database.")
         logging.debug(exc)
         raise
 
     if not config.DEBUG_SKIP_AUTH:
         try:
-            logging.debug(
-                "Startup policy engine (Arborist) connection test initiating..."
-            )
+            logging.debug("Startup policy engine (Arborist) connection test initiating...")
             assert app.state.arborist_client.healthy()
         except Exception as exc:
             logging.exception(
-                "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
-            )
+                "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine.")
             logging.debug(exc)
             raise
 
@@ -64,8 +56,8 @@ async def lifespan(app: FastAPI):
 
     # teardown
 
-    # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker
-    #       "child_exit" is defined in the gunicorn.conf.py
+    # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker  #
+    # "child_exit" is defined in the gunicorn.conf.py
 
 
 def get_app() -> fastapi.FastAPI:
@@ -76,14 +68,11 @@ def get_app() -> fastapi.FastAPI:
         fastapi.FastAPI: The FastAPI app object
     """
 
-    fastapi_app = FastAPI(
-        title="Gen3 User Data Library Service",
-        version=version("gen3userdatalibrary"),
-        debug=config.DEBUG,
-        root_path=config.URL_PREFIX,
-        lifespan=lifespan,
-    )
-    fastapi_app.include_router(root_router)
+    fastapi_app = FastAPI(title="Gen3 User Data Library Service", version=version("gen3userdatalibrary"),
+                          debug=config.DEBUG, root_path=config.URL_PREFIX, lifespan=lifespan, )
+    fastapi_app.include_router(route_aggregator)
+    # This line can be added to add a middleman check on all endpoints
+    # fastapi_app.middleware("http")(middleware_catcher)
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:
@@ -103,4 +92,4 @@ def make_metrics_app():
     return make_asgi_app(registry=registry)
 
 
-app = get_app()
+app_instance = get_app()
