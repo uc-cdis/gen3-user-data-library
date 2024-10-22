@@ -3,8 +3,9 @@ import unittest
 from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
+from fastapi.params import Depends
 from starlette.responses import JSONResponse
-
+from fastapi import Request
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.data import uuid4_regex_pattern
 from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request
@@ -49,43 +50,6 @@ class TestConfigRouter(BaseTestRouter):
         assert result_invalid == (None, {})
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
-    @pytest.mark.parametrize("endpoint", ["/_version", "/_version/",
-                                          # "/lists", "/lists/",
-                                          # "/lists/123e4567-e89b-12d3-a456-426614174000",
-                                          # "/lists/123e4567-e89b-12d3-a456-426614174000/"
-                                          ])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    # @patch("gen3userdatalibrary.services.helpers.dependencies.parse_and_auth_request", new_callable=AsyncMock)
-    async def test_middleware_get_hit(self,
-                                      # parse_dep,
-                                      get_token_claims,
-                                      arborist,
-                                      user_list,
-                                      app_client_pair,
-                                      # session,
-                                      endpoint):
-        # headers = {"Authorization": "Bearer ofa.valid.token"}
-        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
-        # parse_dep.return_value = True
-        arborist.auth_request.return_value = True
-        app, client = app_client_pair
-        mock_parse_and_auth = lambda: unittest.mock.MagicMock()
-        app.dependency_overrides[parse_and_auth_request] = mock_parse_and_auth
-        response = await client.get(endpoint)
-        assert response.status_code == 200
-        assert response.json() == {"message": "hit parsing"}
-        mock_parse_and_auth.assert_called_once()
-        del app.dependency_overrides[parse_and_auth_request]
-
-        result1 = await client.get(endpoint, headers=headers)
-        if endpoint in {"/_version", "/_version/", "/lists", "/lists/"}:
-            assert result1.status_code == 200
-        else:
-            assert result1.status_code == 404
-        parse_dep.assert_called_once()
-
-    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/lists/123e4567-e89b-12d3-a456-426614174000",
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
@@ -97,12 +61,12 @@ class TestConfigRouter(BaseTestRouter):
                                         get_token_claims,
                                         arborist,
                                         user_list,
-                                        app_client_pair,
+                                        client,
                                         endpoint):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         arborist.auth_request.return_value = True
-        result1 = await app_client_pair.patch(endpoint, headers=headers, json=PATCH_BODY)
+        result1 = await client.patch(endpoint, headers=headers, json=PATCH_BODY)
         assert result1.status_code == 404
         middleware_handler.assert_called_once()
 
@@ -118,12 +82,12 @@ class TestConfigRouter(BaseTestRouter):
                                             get_token_claims,
                                             arborist,
                                             user_list,
-                                            app_client_pair,
+                                            client,
                                             endpoint):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         arborist.auth_request.return_value = True
-        result1 = await app_client_pair.put(endpoint, headers=headers, json={"lists": [user_list]})
+        result1 = await client.put(endpoint, headers=headers, json={"lists": [user_list]})
         if endpoint in {"/lists", "/lists/"}:
             assert result1.status_code == 201
         else:
@@ -143,12 +107,12 @@ class TestConfigRouter(BaseTestRouter):
                                                   get_token_claims,
                                                   arborist,
                                                   user_list,
-                                                  app_client_pair,
+                                                  client,
                                                   endpoint):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         arborist.auth_request.return_value = True
-        result1 = await app_client_pair.put(endpoint, headers=headers, json=user_list)
+        result1 = await client.put(endpoint, headers=headers, json=user_list)
         if endpoint in {"/lists", "/lists/"}:
             assert result1.status_code == 201
         else:
@@ -168,12 +132,12 @@ class TestConfigRouter(BaseTestRouter):
                                          get_token_claims,
                                          arborist,
                                          user_list,
-                                         app_client_pair,
+                                         client,
                                          endpoint):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         arborist.auth_request.return_value = True
-        result1 = await app_client_pair.delete(endpoint, headers=headers)
+        result1 = await client.delete(endpoint, headers=headers)
         if endpoint in {"/lists", "/lists/"}:
             assert result1.status_code == 204
         else:
@@ -193,7 +157,7 @@ class TestConfigRouter(BaseTestRouter):
     async def test_middleware_get_validated(self, middleware_handler, get_token_claims,
                                             arborist,
                                             user_list,
-                                            app_client_pair,
+                                            client,
                                             endpoint):
         pass
         # todo

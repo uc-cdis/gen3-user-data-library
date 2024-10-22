@@ -45,15 +45,14 @@ def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
 
 
 async def parse_and_auth_request(request: Request):
-    return True
-    # user_id = await get_user_id(request=request)
-    # path_params = request.scope["path_params"]
-    # route_function = request.scope["route"].name
-    # endpoint_context = endpoints_to_context.get(route_function, {})
-    # resource = get_resource_from_endpoint_context(endpoint_context, user_id, path_params)
-    # auth_outcome = await authorize_request(request=request,
-    #                                        authz_access_method=endpoint_context["method"],
-    #                                        authz_resources=[resource])
+    user_id = await get_user_id(request=request)
+    path_params = request.scope["path_params"]
+    route_function = request.scope["route"].name
+    endpoint_context = endpoints_to_context.get(route_function, {})
+    resource = get_resource_from_endpoint_context(endpoint_context, user_id, path_params)
+    auth_outcome = await authorize_request(request=request,
+                                           authz_access_method=endpoint_context["method"],
+                                           authz_resources=[resource])
 
 
 def ensure_any_items_match_schema(endpoint_context, conformed_body):

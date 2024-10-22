@@ -37,8 +37,8 @@ async def get_version(request: Request) -> dict:
     Returns:
         dict: {"version": "1.0.0"} the version
     """
-    await authorize_request(request=request, authz_access_method="read",
-                            authz_resources=["/gen3_data_library/service_info/version"], )
+    # await authorize_request(request=request, authz_access_method="read",
+    #                         authz_resources=["/gen3_data_library/service_info/version"], )
     service_version = version("gen3userdatalibrary")
     return {"version": service_version}
 

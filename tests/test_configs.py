@@ -17,7 +17,7 @@ class TestConfigRouter(BaseTestRouter):
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_max_limits(self, get_token_claims, arborist, user_list, app_client_pair):
+    async def test_max_limits(self, get_token_claims, arborist, user_list, client):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         # config.MAX_LISTS = 1
         # config.MAX_LIST_ITEMS = 1
@@ -75,12 +75,12 @@ class TestConfigRouter(BaseTestRouter):
                         get_token_claims,
                         arborist,
                         endpoint,
-                        app_client_pair):
+                        client):
         """
         Test FastAPI docs endpoints
         """
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await app_client_pair.get(endpoint, headers=headers)
+        response = await client.get(endpoint, headers=headers)
         assert response.status_code == 200
