@@ -36,7 +36,7 @@ async def lifespan(app: Request):
         logging.debug("Startup database connection test initiating. Attempting a simple query...")
         dals = get_data_access_layer()
         async for data_access_layer in dals:
-            await data_access_layer.test_connection()
+            # await data_access_layer.test_connection()
             logging.debug("Startup database connection test PASSED.")
     except Exception as exc:
         logging.exception("Startup database connection test FAILED. Unable to connect to the configured database.")

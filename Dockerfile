@@ -37,7 +37,7 @@ USER root
 RUN pip3 install --no-cache-dir --upgrade poetry
 
 RUN yum update -y && yum install -y --setopt install_weak_deps=0 \
-    postgresql-devel shadow-utils\
+    postgresql shadow-utils\
     bash && yum clean all
 
 RUN useradd -ms /bin/bash appuser
