@@ -30,6 +30,7 @@ cryptography = "43.0.1"
 httpx = "0.23.3"
 pyyaml = ">=6.0.1"
 pytest-asyncio = ">=0.23.8"
+jsonschema = "3.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -46,7 +47,6 @@ pytest-profiling = ">=1.7.0"
 gen3 = "4.25.1"
 drsclient = "0.2.3"
 dictionaryutils = "3.4.10"
-jsonschema = "3.2.0"
 
 [tool.pytest.ini_options]
 # Better default `pytest` command which adds coverage
