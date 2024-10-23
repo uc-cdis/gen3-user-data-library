@@ -30,9 +30,11 @@ from gen3userdatalibrary.models.user_list import Base
 
 @pytest.fixture(scope="session", autouse=True)
 def ensure_test_config():
-    os.chdir(os.path.dirname(os.path.abspath(__file__)).rstrip("/"))
-    importlib.reload(config)
-    assert not config.DEBUG_SKIP_AUTH
+    is_test = os.environ.get("ENV", None) == "test"
+    if not is_test:
+        os.chdir(os.path.dirname(os.path.abspath(__file__)).rstrip("/"))
+        importlib.reload(config)
+        assert not config.DEBUG_SKIP_AUTH
 
 
 @pytest_asyncio.fixture(scope="function")

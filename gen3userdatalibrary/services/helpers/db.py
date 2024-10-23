@@ -46,13 +46,6 @@ async def sort_persist_and_get_changed_lists(data_access_layer, raw_lists: List[
         updated_list = await data_access_layer.update_and_persist_list(list_to_update.id, changes_to_make)
         updated_lists.append(updated_list)
     for list_to_create in lists_to_create:
-        if len(list_to_create.items) == 0:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=f"No items provided for list to create: {list_to_create.name}")
-
-        if len(list_to_create.items.items()) > config.MAX_LIST_ITEMS:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Too many items for list: "
-                                                                                f"{list_to_create.name}")
         await data_access_layer.persist_user_list(user_id, list_to_create)
     response_user_lists = {}
     for user_list in (lists_to_create + updated_lists):

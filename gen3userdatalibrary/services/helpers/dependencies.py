@@ -134,5 +134,8 @@ async def validate_lists(request: Request, dal: DataAccessLayer = Depends(get_da
                                                                               unique_list_identifiers,
                                                                               new_lists_as_orm)
     for item_to_create in lists_to_create:
+        if len(item_to_create.items) == 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"No items provided for list for user: {user_id}")
         ensure_items_less_than_max(len(item_to_create.items))
     await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))

@@ -1,14 +1,11 @@
 from abc import abstractmethod
-from sre_parse import parse
 from unittest.mock import MagicMock
 
 import pytest_asyncio
-from fastapi import Depends
 from httpx import AsyncClient
 
 from gen3userdatalibrary.main import get_app
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request
 
 
 class BaseTestRouter:

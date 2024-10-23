@@ -4,10 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from black.trans import defaultdict
-from starlette.exceptions import HTTPException
 
 from gen3userdatalibrary.main import route_aggregator
-from gen3userdatalibrary.services import helpers
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
 from gen3userdatalibrary.services.helpers.core import map_creator_to_list_ids
 from tests.helpers import create_basic_list, get_id_from_response
@@ -430,17 +428,18 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_update_ignores_items_on_blacklist(self, get_token_claims, arborist, endpoint, client):
-        pass
-        # todo
-
-        # headers = {"Authorization": "Bearer ofa.valid.token"}
-        # await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        # arborist.auth_request.return_value = True
-        # alt_list_a = {"name": VALID_LIST_A["name"], "authz": {"left": "right"},
-        #               "created_time": json.dumps(datetime.now().isoformat()),
-        #               "updated_time": json.dumps(datetime.now().isoformat()),
-        #               "fake_prop": "aaa"}
+    async def test_update_only_adds_whitelist(self, get_token_claims, arborist, endpoint, client):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        resp1 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
+        test_body = {
+            "name": "My Saved List 1",
+            "creator": "should_not_save",
+            "items": {
+                "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a64": {
+                    "dataset_guid": "phs000001.v1.p1.c1",
+                    "type": "GA4GH_DRS"}}}
+        resp2 = await client.put(endpoint, headers=headers, json=test_body)
+        assert resp2.status_code == 400
 
     async def test_fake_props_fail(self):
         # todo
