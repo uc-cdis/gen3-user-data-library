@@ -428,7 +428,7 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_update_only_adds_whitelist(self, get_token_claims, arborist, endpoint, client):
+    async def test_bad_lists_contents(self, get_token_claims, arborist, endpoint, client):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         resp1 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
         test_body = {
@@ -440,24 +440,6 @@ class TestUserListsRouter(BaseTestRouter):
                     "type": "GA4GH_DRS"}}}
         resp2 = await client.put(endpoint, headers=headers, json=test_body)
         assert resp2.status_code == 400
-
-    async def test_fake_props_fail(self):
-        # todo
-        pass
-        # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
-        # with pytest.raises(TypeError):
-        # response_2 = await client.put(endpoint, headers=headers, json={"lists": [alt_list_a]})
-
-    @pytest.mark.parametrize("endpoint", ["/lists"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_updating_lists_failures(self, get_token_claims, arborist, endpoint, client):
-        headers = {"Authorization": "Bearer ofa.valid.token"}
-        arborist.auth_request.return_value = True
-        get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
-        invalid_list = {"name": "foo", "itmes": {"aaa": "eee"}}
-        # response = await client.put("/lists", headers=headers, json={"lists": [invalid_list]})
-        # todo
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
@@ -491,23 +473,20 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_deleting_lists_failures(self, get_token_claims, arborist, client):
-        pass
-        # try to delete for wrong user
-        # NOTE: if deleting for wrong user, auth out
-        # auth out
 
         # what should we do if a user X has no lists but requests a delete?
-        # todo
-        # arborist.auth_request.return_value = True
-        # headers = {"Authorization": "Bearer ofa.valid.token"}
-        # await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
-        # await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
-        # await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "2")
-        #
-        # response_1 = await client.get("/lists", headers=headers)
-        # get_token_claims.return_value = {"sub": "89", "otherstuff": "foobar"}
-        # response_2 = await client.get("/lists", headers=headers)
-        # response_3 = await client.delete("/lists", headers=headers)
-        # response_4 = await client.get("/lists", headers=headers)
+        arborist.auth_request.return_value = True
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
+        await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers, "2")
+
+        response_1 = await client.get("/lists", headers=headers)
+        get_token_claims.return_value = {"sub": "89", "otherstuff": "foobar"}
+        response_2 = await client.get("/lists", headers=headers)
+        response_3 = await client.delete("/lists", headers=headers)
+        response_4 = await client.get("/lists", headers=headers)
+        assert response_3.status_code == 204
+        assert response_4.status_code == 200
 
     # endregion
