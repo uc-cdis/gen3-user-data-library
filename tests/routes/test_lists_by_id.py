@@ -42,7 +42,6 @@ class TestUserListsRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
         l_id = get_id_from_response(create_outcome)
-        # with pytest.raises(HTTPException) as e:
         response = await client.get(f"/lists/{l_id}", headers=headers)
         assert response.status_code == 200
         l_id = "550e8400-e29b-41d4-a716-446655440000"

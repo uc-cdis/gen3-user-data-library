@@ -1,4 +1,5 @@
 from sre_parse import parse
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import Request
@@ -6,8 +7,21 @@ from fastapi.routing import APIRoute
 
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request
-from tests.data.example_lists import VALID_LIST_A
+from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B
 from tests.routes.conftest import BaseTestRouter
+
+
+class DependencyException(Exception):
+    """A custom exception for specific error handling."""
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+async def raises_mock(r: Request):
+    # todo: validate instead
+    raise DependencyException("Hit depedency")
 
 
 @pytest.mark.asyncio
@@ -32,23 +46,57 @@ class TestConfigRouter(BaseTestRouter):
                                           "/lists", "/lists/",
                                           "/lists/123e4567-e89b-12d3-a456-426614174000",
                                           "/lists/123e4567-e89b-12d3-a456-426614174000/"])
-    async def test_auth_dep_get_hit(self,
-                                    user_list,
-                                    app_client_pair,
-                                    endpoint):
+    async def test_auth_dep_get_validates_correctly(self,
+                                                    user_list,
+                                                    app_client_pair,
+                                                    endpoint):
         app, client_instance = app_client_pair
-
-        class DependencyException(Exception):
-            """A custom exception for specific error handling."""
-
-            def __init__(self, message):
-                self.message = message
-                super().__init__(self.message)
-
-        async def raises_mock(r: Request):
-            raise DependencyException("Hit depedency")
-
-        app.dependency_overrides[parse_and_auth_request] = raises_mock  # mock_auth
+        app.dependency_overrides[parse_and_auth_request] = raises_mock
         with pytest.raises(DependencyException) as e:
             response = await client_instance.get(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize("endpoint", ["/lists/123e4567-e89b-12d3-a456-426614174000",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000/"])
+    async def test_middleware_patch_hit(self,
+                                        user_list,
+                                        app_client_pair,
+                                        endpoint):
+        app, client_instance = app_client_pair
+        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.patch(endpoint, headers=headers, json=PATCH_BODY)
+        del app.dependency_overrides[parse_and_auth_request]
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000/"])
+    async def test_middleware_lists_put_hit(self,
+                                            user_list,
+                                            app_client_pair,
+                                            endpoint):
+        app, client_instance = app_client_pair
+        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.put(endpoint, headers=headers, json=PATCH_BODY)
+        del app.dependency_overrides[parse_and_auth_request]
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000",
+                                          "/lists/123e4567-e89b-12d3-a456-426614174000/"])
+    async def test_middleware_delete_hit(self,
+                                         user_list,
+                                         app_client_pair,
+                                         endpoint):
+        app, client_instance = app_client_pair
+        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.delete(endpoint)
+        del app.dependency_overrides[parse_and_auth_request]
+

@@ -245,9 +245,6 @@ class TestUserListsRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(JSONDecodeError) as e:
             response = await client.put(endpoint, headers=headers)
-        # assert response
-        # assert response.status_code == 422
-        # assert response.json().get("detail")
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
@@ -276,21 +273,18 @@ class TestUserListsRouter(BaseTestRouter):
         """
         Test db.create_lists raising some error other than unique constraint, ensure 400
         """
-        # unique constraint: test creating two lists same name and creator, should 400
-        # malformed body
-        # empty should be 200
-        # test all auth for relevant endpoint
-        # test lowest level calls 500
 
-        # todo
-        # arborist.auth_request.return_value = True
-        # user_id = "79"
-        # get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
-        # headers = {"Authorization":
-        # "Bearer ofa.valid.token"}
-        # response = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A]})
-        # assert response.status_code == 400  # assert response.json()["detail"] == "Invalid list
-        # information provided"
+        # malformed body
+
+        arborist.auth_request.return_value = True
+        user_id = "79"
+        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        r1 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
+        r2 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_A]})
+        assert r2.status_code == 400
+        r3 = await client.put("/lists", headers=headers, json={"lists": []})
+        assert r3.status_code == 400
 
     # endregion
 
