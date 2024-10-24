@@ -93,4 +93,4 @@ def make_metrics_app():
     return make_asgi_app(registry=registry)
 
 
-app_instance = get_app()
+app = get_app()

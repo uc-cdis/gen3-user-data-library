@@ -3,6 +3,7 @@ set -e
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+echo "Current Directory: ${CURRENT_DIR}"
 # Function to run on script exit
 cleanup() {
     echo "Executing cleanup tasks..."
