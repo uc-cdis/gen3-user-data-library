@@ -2,12 +2,13 @@ from sre_parse import parse
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi import Request
+from fastapi import Request, Depends
 from fastapi.routing import APIRoute
 
 from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request, \
-    validate_items
+    validate_items, validate_lists
 from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B
 from tests.routes.conftest import BaseTestRouter
 
@@ -20,8 +21,12 @@ class DependencyException(Exception):
         super().__init__(self.message)
 
 
-async def raises_mock(r: Request, d):
+async def raises_mock(r: Request, d: DataAccessLayer = Depends(DataAccessLayer)):
     raise DependencyException("Hit dependency")
+
+
+def mock_items(r: Request, dal: DataAccessLayer = Depends(get_data_access_layer)):
+    raise DependencyException("hit dep")
 
 
 @pytest.mark.asyncio
@@ -112,11 +117,13 @@ class TestConfigRouter(BaseTestRouter):
                                                     user_list,
                                                     app_client_pair,
                                                     endpoint):
-        assert NotImplemented
         app, client_instance = app_client_pair
-        app.dependency_overrides[validate_items] = validate_items
-        # with pytest.raises(DependencyException) as e:
-        response = await client_instance.put(endpoint)
+
+        app.dependency_overrides[parse_and_auth_request] = lambda r: Request({})
+        app.dependency_overrides[validate_items] = mock_items
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.put(endpoint, headers=headers)
         del app.dependency_overrides[parse_and_auth_request]
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
@@ -128,7 +135,8 @@ class TestConfigRouter(BaseTestRouter):
                                                       app_client_pair,
                                                       endpoint):
         app, client_instance = app_client_pair
-        app.dependency_overrides[validate_items] = validate_items
+        app.dependency_overrides[parse_and_auth_request] = lambda r: Request({})
+        app.dependency_overrides[validate_items] = mock_items
         with pytest.raises(DependencyException) as e:
             response = await client_instance.patch(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
@@ -140,16 +148,22 @@ class TestConfigRouter(BaseTestRouter):
                                                 user_list,
                                                 client,
                                                 endpoint):
+        assert NotImplemented
         pass
 
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     async def test_max_lists_dependency_success(self,
-                                                middleware_handler,
-                                                get_token_claims,
-                                                arborist,
                                                 user_list,
-                                                client,
+                                                app_client_pair,
                                                 endpoint):
-        pass
+        app, client_instance = app_client_pair
+        app.dependency_overrides[parse_and_auth_request] = lambda r: Request({})
+        app.dependency_overrides[validate_items] = lambda r, d: Request({})
+        app.dependency_overrides[validate_lists] = mock_items
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.put(endpoint)
+        del app.dependency_overrides[parse_and_auth_request]
 
     async def test_max_lists_dependency_failure(self,
                                                 middleware_handler,
@@ -158,4 +172,5 @@ class TestConfigRouter(BaseTestRouter):
                                                 user_list,
                                                 client,
                                                 endpoint):
+        assert NotImplemented
         pass
