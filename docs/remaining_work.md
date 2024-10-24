@@ -18,23 +18,6 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
 
 ## Tests
 
--  test authorize request for all endpoints 
--  test that we don't get ids from other creators when we request a list
-- test validate_user_list_item
--  test that the time updated gets changed when list updates
-- finish unfinished tests in tests_lists (and maybe by id?)
-- test that the Models ensure the extra/invalid fields don't work
-- test create and update list with empty, should be 200
-- teste append with empty, should be 400
-- fix `test_max_limits` so that i can test config without affecting other tests
-  right now I have to set the config at the end, seems wrong
-  - NOTE: use monkeypatch?
-- tests should probably rearranged, specifically middleware
-- test max items is not bypassed
-- test validation of items against all endpoints
-- add a test that checks that all endpoints have a definition for auth and validation
-
-
 ## Auth Work
 -  remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}} 
 

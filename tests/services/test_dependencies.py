@@ -174,3 +174,8 @@ class TestConfigRouter(BaseTestRouter):
                                                 endpoint):
         assert NotImplemented
         pass
+
+
+def test_validate_user_list_item():
+    assert NotImplemented
+    assert False

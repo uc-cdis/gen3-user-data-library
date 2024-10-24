@@ -484,3 +484,6 @@ class TestUserListsRouter(BaseTestRouter):
         assert response_4.status_code == 200
 
     # endregion
+
+    def test_last_updated_changes_automatically(self):
+        assert NotImplemented

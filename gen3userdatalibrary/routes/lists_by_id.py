@@ -34,8 +34,6 @@ async def get_list_by_id(ID: UUID,
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    await authorize_request(request=request, authz_access_method="read",
-                            authz_resources=["/gen3_data_library/service_info/status"])
     status_text = "OK"
 
     succeeded, get_result = await make_db_request_or_return_500(lambda: data_access_layer.get_list(ID))
@@ -110,6 +108,8 @@ async def append_items_to_list(request: Request,
         :param item_list: the items to be appended
         :return: JSONResponse: json response with info about the request outcome
     """
+    if not item_list:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to append!")
     user_list = await data_access_layer.get_list(ID)
     list_exists = user_list is not None
     if not list_exists:

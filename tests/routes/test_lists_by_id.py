@@ -134,6 +134,9 @@ class TestUserListsRouter(BaseTestRouter):
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        ul_id = get_id_from_response(create_outcome)
+        response = await client.patch(f"/lists/{ul_id}", headers=headers, json={})
+        assert response.status_code == 400
         body = {
             "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65": {
                 "dataset_guid": "phs000001.v1.p1.c1",
