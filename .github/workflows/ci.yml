@@ -20,7 +20,7 @@ jobs:
     name: Python Unit Test with Postgres
     uses: uc-cdis/.github/.github/workflows/python_unit_test.yaml@master
     with:
-       test-script: 'test.sh'
+       test-script: 'bin/test.sh'
        python-version: '3.9'
        use-cache: true
 
