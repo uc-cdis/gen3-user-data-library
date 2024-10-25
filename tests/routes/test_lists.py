@@ -485,5 +485,22 @@ class TestUserListsRouter(BaseTestRouter):
 
     # endregion
 
-    def test_last_updated_changes_automatically(self):
-        assert NotImplemented
+    @pytest.mark.parametrize("endpoint", ["/lists"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_last_updated_changes_automatically(self, get_token_claims, arborist, endpoint, client):
+        arborist.auth_request.return_value = True
+        user_id = "fsemr"
+        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        response_1 = await client.put(endpoint, headers=headers, json={"lists": [VALID_LIST_A]})
+        get_list_info = lambda r: list(json.loads(r.text)["lists"].items())[0][1]
+        res_1_info = get_list_info(response_1)
+        assert res_1_info["created_time"] == res_1_info["updated_time"]
+        updated_list_a = VALID_LIST_A
+        updated_list_a["items"] = VALID_LIST_C["items"]
+        response_2 = await client.put(endpoint, headers=headers, json={"lists": [updated_list_a]})
+        res_2_info = get_list_info(response_2)
+        assert ((res_1_info["created_time"] == res_2_info["created_time"])
+                and res_1_info["updated_time"] != res_2_info["updated_time"]
+                and res_2_info["created_time"] != res_2_info["updated_time"])
