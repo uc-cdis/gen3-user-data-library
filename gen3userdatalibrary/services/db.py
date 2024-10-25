@@ -36,6 +36,7 @@ from sqlalchemy import text, delete, func, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import make_transient
+from starlette import status
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.models.user_list import UserList
@@ -57,17 +58,16 @@ class DataAccessLayer:
         self.db_session = db_session
 
     async def ensure_user_has_not_reached_max_lists(self, creator_id, lists_to_add=0):
-        new_list = UserList.id is None
-        if new_list:
-            lists_so_far = await self.get_list_count_for_creator(creator_id)
-            if lists_so_far + lists_to_add >= config.MAX_LISTS:
-                raise HTTPException(status_code=500, detail="Max number of lists reached!")
+        lists_so_far = await self.get_list_count_for_creator(creator_id)
+        total = lists_so_far + lists_to_add
+        if total > config.MAX_LISTS:
+            raise HTTPException(status_code=status.HTTP_507_INSUFFICIENT_STORAGE, detail="Max number of lists reached!")
 
     async def persist_user_list(self, user_id, user_list: UserList):
         """
         Save user list to db as well as update authz
         """
-        await self.ensure_user_has_not_reached_max_lists(user_list.creator)
+        # await self.ensure_user_has_not_reached_max_lists(user_list.creator)
         self.db_session.add(user_list)
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()

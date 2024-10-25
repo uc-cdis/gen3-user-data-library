@@ -5,11 +5,13 @@ import pytest
 from fastapi import Request, Depends
 from fastapi.routing import APIRoute
 
+from gen3userdatalibrary import config
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request, \
     validate_items, validate_lists
-from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B
+from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B, VALID_LIST_C, VALID_LIST_D
+from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
 
 
@@ -141,41 +143,106 @@ class TestConfigRouter(BaseTestRouter):
             response = await client_instance.patch(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
 
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_max_configs(self,
+                               get_token_claims,
+                               arborist,
+                               user_list,
+                               client):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        # todo: remove in favor of the other tests
+        # config.MAX_LIST_ITEMS = 24
+        # config.MAX_LISTS = 1
+        # arborist.auth_request.return_value = True
+        # resp2 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        # resp3 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_C]})
+        # assert resp2.status_code == 201 and resp3.status_code == 507
+        # config.MAX_LISTS = 2
+        # user_list["items"] = VALID_LIST_C["items"]
+        # resp4 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
+        # assert resp4.status_code == 201
+        # config.MAX_LISTS = 12
+        # config.MAX_LIST_ITEMS = 24
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_max_lists_against_two_different_users(self,
+                                                         get_token_claims,
+                                                         arborist,
+                                                         user_list,
+                                                         client):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        config.MAX_LISTS = 1
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1"}
+        resp1 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        resp2 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_C]})
+        assert resp2.status_code == 507
+        resp3 = await create_basic_list(arborist, get_token_claims, client, user_list, headers, "2")
+        assert resp3.status_code == 201
+        config.MAX_LISTS = 12
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_max_items_dependency_failure(self,
-                                                middleware_handler,
                                                 get_token_claims,
-                                                arborist,
                                                 user_list,
                                                 client,
                                                 endpoint):
-        assert NotImplemented
-        pass
+        config.MAX_LIST_ITEMS = 1
+        get_token_claims.return_value = {"sub": "1"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        resp1 = await client.put(endpoint, headers=headers, json={"lists": [user_list]})
+        assert resp1.status_code == 507 and resp1.text == '{"detail":"Too many items in list"}'
+        config.MAX_LIST_ITEMS = 24
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_max_lists_dependency_success(self,
-                                                user_list,
-                                                app_client_pair,
-                                                endpoint):
-        app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = lambda r: Request({})
-        app.dependency_overrides[validate_items] = lambda r, d: Request({})
-        app.dependency_overrides[validate_lists] = mock_items
-        with pytest.raises(DependencyException) as e:
-            response = await client_instance.put(endpoint)
-        del app.dependency_overrides[parse_and_auth_request]
-
-    async def test_max_lists_dependency_failure(self,
-                                                middleware_handler,
                                                 get_token_claims,
                                                 arborist,
                                                 user_list,
                                                 client,
                                                 endpoint):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        config.MAX_LISTS = 12
+        arborist.auth_request.return_value = True
+        resp1 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        resp2 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_C]})
+        assert resp2.status_code == 201
+        user_list["items"] = VALID_LIST_C["items"]
+        resp3 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_D]})
+        assert resp3.status_code == 201
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_max_lists_dependency_failure(self,
+                                                get_token_claims,
+                                                arborist,
+                                                user_list,
+                                                client,
+                                                endpoint):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        config.MAX_LISTS = 1
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1"}
+        resp1 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        resp2 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_B]})
+        assert resp1.status_code == 201 and resp2.status_code == 507
+        get_token_claims.return_value = {"sub": "2"}
+        # pick up here: why 400 with diff id?
+        resp3 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        resp4 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_C]})
+        assert resp3.status_code == 201 and resp4.status_code == 507
+
+    async def test_validate_user_list_item(self):
         assert NotImplemented
-        pass
-
-
-def test_validate_user_list_item():
-    assert NotImplemented
-    assert False
+        assert False

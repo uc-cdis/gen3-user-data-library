@@ -99,7 +99,7 @@ async def validate_items(request: Request, dal: DataAccessLayer = Depends(get_da
             identifier = (list_to_update.creator, list_to_update.name)
             new_version_of_list = unique_list_identifiers.get(identifier, None)
             assert new_version_of_list is not None
-            ensure_items_less_than_max(len(new_version_of_list.items), len(list_to_update.items))
+            ensure_items_less_than_max(len(new_version_of_list.items))
         for item_to_create in lists_to_create:
             ensure_items_less_than_max(len(item_to_create.items))
     elif route_function == 'append_items_to_list':
