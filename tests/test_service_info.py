@@ -1,3 +1,4 @@
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -96,5 +97,6 @@ class TestAuthRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofbadnews"}
         response = await client.get(endpoint, headers=headers)
+        resp_text = json.loads(response.text)
         assert response.status_code == 401
-        assert 'Unauthorized' in response.text
+        assert resp_text["detail"] == "Could not verify, parse, and/or validate scope from provided access token."

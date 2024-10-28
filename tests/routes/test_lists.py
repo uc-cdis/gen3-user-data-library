@@ -494,7 +494,10 @@ class TestUserListsRouter(BaseTestRouter):
         res_1_info = get_list_info(response_1)
         assert res_1_info["created_time"] == res_1_info["updated_time"]
         updated_list_a = VALID_LIST_A
-        updated_list_a["items"] = VALID_LIST_C["items"]
+        updated_list_a["items"] = {"drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a04": {
+            "dataset_guid": "phs000001.v1.p1.c1",
+            "type": "GA4GH_DRS",
+        }}
         response_2 = await client.put(endpoint, headers=headers, json={"lists": [updated_list_a]})
         res_2_info = get_list_info(response_2)
         assert ((res_1_info["created_time"] == res_2_info["created_time"])

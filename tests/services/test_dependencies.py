@@ -23,6 +23,10 @@ class DependencyException(Exception):
         super().__init__(self.message)
 
 
+async def raises_mock_simple(r: Request):
+    raise DependencyException("Hit dependency")
+
+
 async def raises_mock(r: Request, d: DataAccessLayer = Depends(DataAccessLayer)):
     raise DependencyException("Hit dependency")
 
@@ -63,7 +67,7 @@ class TestConfigRouter(BaseTestRouter):
         # bonus: test auth request gets correct data instead of just getting hit
         app, client_instance = app_client_pair
         get_token_claims.return_value = {"sub": "foo"}
-        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
         with pytest.raises(DependencyException) as e:
             response = await client_instance.get(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
@@ -76,7 +80,7 @@ class TestConfigRouter(BaseTestRouter):
                                         app_client_pair,
                                         endpoint):
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(DependencyException) as e:
             response = await client_instance.patch(endpoint, headers=headers, json=PATCH_BODY)
@@ -91,7 +95,7 @@ class TestConfigRouter(BaseTestRouter):
                                             app_client_pair,
                                             endpoint):
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(DependencyException) as e:
             response = await client_instance.put(endpoint, headers=headers, json=PATCH_BODY)
@@ -106,7 +110,7 @@ class TestConfigRouter(BaseTestRouter):
                                          app_client_pair,
                                          endpoint):
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
         with pytest.raises(DependencyException) as e:
             response = await client_instance.delete(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
@@ -215,7 +219,7 @@ class TestConfigRouter(BaseTestRouter):
         resp2 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_B]})
         assert resp1.status_code == 201 and resp2.status_code == 507
         get_token_claims.return_value = {"sub": "2"}
-        # todo: pick up here: why 400 with diff id?
-        resp3 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
+        resp3 = await create_basic_list(arborist, get_token_claims, client, user_list, headers, user_id="2")
         resp4 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_C]})
         assert resp3.status_code == 201 and resp4.status_code == 507
+        config.MAX_LISTS = 12
