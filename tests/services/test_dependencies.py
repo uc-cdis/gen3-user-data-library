@@ -9,7 +9,7 @@ from gen3userdatalibrary import config
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request, \
-    validate_items, validate_lists
+    validate_items
 from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B, VALID_LIST_C, VALID_LIST_D
 from tests.helpers import create_basic_list
 from tests.routes.conftest import BaseTestRouter
@@ -60,7 +60,7 @@ class TestConfigRouter(BaseTestRouter):
                                                     app_client_pair,
                                                     endpoint,
                                                     ):
-        # todo bonus: test auth request gets correct data instead of just getting hit
+        # bonus: test auth request gets correct data instead of just getting hit
         app, client_instance = app_client_pair
         get_token_claims.return_value = {"sub": "foo"}
         app.dependency_overrides[parse_and_auth_request] = raises_mock
@@ -146,29 +146,6 @@ class TestConfigRouter(BaseTestRouter):
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_max_configs(self,
-                               get_token_claims,
-                               arborist,
-                               user_list,
-                               client):
-        headers = {"Authorization": "Bearer ofa.valid.token"}
-        # todo: remove in favor of the other tests
-        # config.MAX_LIST_ITEMS = 24
-        # config.MAX_LISTS = 1
-        # arborist.auth_request.return_value = True
-        # resp2 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        # resp3 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_C]})
-        # assert resp2.status_code == 201 and resp3.status_code == 507
-        # config.MAX_LISTS = 2
-        # user_list["items"] = VALID_LIST_C["items"]
-        # resp4 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
-        # assert resp4.status_code == 201
-        # config.MAX_LISTS = 12
-        # config.MAX_LIST_ITEMS = 24
-
-    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_max_lists_against_two_different_users(self,
                                                          get_token_claims,
                                                          arborist,
@@ -238,11 +215,7 @@ class TestConfigRouter(BaseTestRouter):
         resp2 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_B]})
         assert resp1.status_code == 201 and resp2.status_code == 507
         get_token_claims.return_value = {"sub": "2"}
-        # pick up here: why 400 with diff id?
+        # todo: pick up here: why 400 with diff id?
         resp3 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
         resp4 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_C]})
         assert resp3.status_code == 201 and resp4.status_code == 507
-
-    async def test_validate_user_list_item(self):
-        assert NotImplemented
-        assert False

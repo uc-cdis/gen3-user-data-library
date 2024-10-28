@@ -86,9 +86,7 @@ class TestAuthRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_status_no_token(self,
-                                   get_token_claims,
                                    arborist,
                                    endpoint,
                                    client):

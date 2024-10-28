@@ -226,7 +226,6 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        # with pytest.raises(HTTPException) as e:
         response = await client.put(endpoint, headers=headers, json={"lists": [input_body]})
         assert response.status_code == 400
 
@@ -274,8 +273,6 @@ class TestUserListsRouter(BaseTestRouter):
         Test db.create_lists raising some error other than unique constraint, ensure 400
         """
 
-        # malformed body
-
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
@@ -299,7 +296,6 @@ class TestUserListsRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        # todo: was this supposed to be 200 or 400?
         response_1 = await client.get("/lists", headers=headers)
         r1 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_A, headers)
         r2 = await create_basic_list(arborist, get_token_claims, client, VALID_LIST_B, headers)
