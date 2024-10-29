@@ -166,18 +166,29 @@ class TestConfigRouter(BaseTestRouter):
         assert resp3.status_code == 201
         config.MAX_LISTS = 12
 
-    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_max_items_dependency_failure(self,
                                                 get_token_claims,
-                                                user_list,
+                                                arborist,
                                                 client,
                                                 endpoint):
         config.MAX_LIST_ITEMS = 1
         get_token_claims.return_value = {"sub": "1"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        resp1 = await client.put(endpoint, headers=headers, json={"lists": [user_list]})
+        arborist.auth_request.return_value = True
+        local_test_list = {
+            "name": "õ(*&!@#)(*$%)() 2",
+            "items": {
+                "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a64": {
+                    "dataset_guid": "phs000001.v1.p1.c1",
+                    "type": "GA4GH_DRS",
+                },
+                "drs://dg.TEST:3418077e-0779-4715-8195-7b60565172f5": {
+                    "dataset_guid": "phs000002.v2.p2.c2",
+                    "type": "GA4GH_DRS"}}}
+        resp1 = await client.put(endpoint, headers=headers, json={"lists": [local_test_list]})
         assert resp1.status_code == 507 and resp1.text == '{"detail":"Too many items in list"}'
         config.MAX_LIST_ITEMS = 24
 
