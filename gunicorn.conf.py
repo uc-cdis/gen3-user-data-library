@@ -45,7 +45,7 @@ class CustomLogger(gunicorn.glogging.Logger):
 
 logger_class = CustomLogger
 
-wsgi_app = "gen3userdatalibrary.main:app"
+wsgi_app = "gen3userdatalibrary.main:app_instanc"
 bind = "0.0.0.0:8000"
 
 # NOTE: This is always more than 2

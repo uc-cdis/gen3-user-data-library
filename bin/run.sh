@@ -10,7 +10,7 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${CURRENT_DIR}/_common_setup.sh"
 
 poetry run gunicorn \
-  gen3userdatalibrary.main:app \
+  gen3userdatalibrary.main:app_instance \
   -k uvicorn.workers.UvicornWorker \
   -c gunicorn.conf.py \
   --reload \

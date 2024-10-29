@@ -113,6 +113,9 @@ async def validate_items(request: Request, dal: DataAccessLayer = Depends(get_da
             list_to_append = await dal.get_existing_list_or_throw(list_id)
         except ValueError:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!")
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Something went wrong while validating request!")
         ensure_items_less_than_max(len(conformed_body["items"]), len(list_to_append.items))
 
 

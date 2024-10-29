@@ -16,8 +16,6 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
 - Do we really want to throw if they add extra unused params? fastapi doesn't
 
 
-## Tests
-
 ## Auth Work
 -  remember to check authz for /users/{{subject_id}}/user-data-library/lists/{{ID_0}} 
 
@@ -32,7 +30,6 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
 
 
 ## Minor Issues 
-- fix get_data_access_layer in main.py (type thing)
 - fix `test_get_token` yellow bits
 - 
 
@@ -40,6 +37,3 @@ as they get created/deleted -> for `TOTAL_USER_LIST_GAUGE`
 - refactor dependencies
 
 ## Needs Implemented
-
-- Add the auth endpoint hit for specific lists. The endpoint that ensure user has access to
-  the specific lists.

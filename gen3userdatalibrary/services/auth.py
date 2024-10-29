@@ -1,4 +1,4 @@
-from typing import Union, Any
+from typing import Union, Any, Optional
 
 from authutils.token.fastapi import access_token
 from fastapi import HTTPException, Request
@@ -140,7 +140,7 @@ async def _get_token_claims(token: HTTPAuthorizationCredentials = None, request:
     return token_claims
 
 
-async def _get_token(token, request):
+async def _get_token(token: Union[HTTPAuthorizationCredentials, str], request: Optional[Request]):
     """
     Retrieves the token from the request's Bearer header or if there's no request, returns token
 

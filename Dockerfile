@@ -48,4 +48,4 @@ WORKDIR /$appname
 
 USER appuser
 
-CMD ["poetry", "run", "gunicorn", "gen3userdatalibrary.main:app", "-k", "uvicorn.workers.UvicornWorker", "-c", "gunicorn.conf.py", "--user", "appuser", "--group", "appuser"]
+CMD ["poetry", "run", "gunicorn", "gen3userdatalibrary.main:app_instance", "-k", "uvicorn.workers.UvicornWorker", "-c", "gunicorn.conf.py", "--user", "appuser", "--group", "appuser"]

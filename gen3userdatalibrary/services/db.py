@@ -27,7 +27,7 @@ What do we do in this file?
   a fresh session from the session maker factory
     - This is what gets injected into endpoint code using FastAPI's dep injections
 """
-
+from collections.abc import AsyncIterable
 from typing import List, Optional, Tuple, Union
 from uuid import UUID
 
@@ -192,7 +192,7 @@ class DataAccessLayer:
         return from_sequence_to_list
 
 
-async def get_data_access_layer() -> DataAccessLayer:
+async def get_data_access_layer() -> AsyncIterable[DataAccessLayer]:
     """
     Create an AsyncSession and yield an instance of the Data Access Layer,
     which acts as an abstract interface to manipulate the database.
