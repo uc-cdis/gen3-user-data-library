@@ -75,7 +75,8 @@ def conform_to_item_update(items_to_update_as_dict) -> ItemToUpdateModel:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Bad data structure, cannot process")
 
 
-async def validate_items(request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)):
+async def validate_items(request: Request,
+                         dal: DataAccessLayer = Depends(get_data_access_layer)):
     route_function = request.scope["route"].name
     endpoint_context = endpoints_to_context.get(route_function, {})
     conformed_body = json.loads(await request.body())

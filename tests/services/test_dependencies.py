@@ -234,3 +234,17 @@ class TestConfigRouter(BaseTestRouter):
         resp4 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_C]})
         assert resp3.status_code == 201 and resp4.status_code == 507
         config.MAX_LISTS = 12
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    async def test_validate_id(self, get_token_claims, arborist, user_list, client):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1"}
+        l_id = "550e8400-e29b-41d4-a716-446655440000"
+        resp_1 = await client.get(f"/lists/{l_id}", headers=headers)
+        assert resp_1.status_code == 404
+        l_id = "1"
+        resp_2 = await client.get(f"/lists/{l_id}", headers=headers)
+        assert resp_2.status_code == 422
