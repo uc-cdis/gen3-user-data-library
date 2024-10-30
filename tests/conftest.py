@@ -42,7 +42,9 @@ async def engine():
     """
     Non-session scoped engine which recreates the database, yields, then drops the tables
     """
-    engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=False, future=True)
+    engine = create_async_engine(
+        str(config.DB_CONNECTION_STRING), echo=False, future=True
+    )
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -63,7 +65,9 @@ async def session(engine):
     It rolls back the nested transaction after yield.
     """
     event_loop = asyncio.get_running_loop()
-    session_maker = async_sessionmaker(engine, expire_on_commit=False, autocommit=False, autoflush=False)
+    session_maker = async_sessionmaker(
+        engine, expire_on_commit=False, autocommit=False, autoflush=False
+    )
 
     async with engine.connect() as conn:
         tsx = await conn.begin()

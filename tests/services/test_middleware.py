@@ -19,7 +19,8 @@ class TestConfigRouter(BaseTestRouter):
         """
         endpoint_method_to_access_method = {
             "^/lists$": {"GET": "red"},
-            rf"^/lists/{uuid4_regex_pattern}$": {"GET": "blue"}}
+            rf"^/lists/{uuid4_regex_pattern}$": {"GET": "blue"},
+        }
 
         matcher = lambda k: re.match(k, "/lists/123e4567-e89b-12d3-a456-426614174000")
 

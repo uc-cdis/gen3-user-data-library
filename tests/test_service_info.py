@@ -15,11 +15,7 @@ class TestAuthRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_version(self,
-                           get_token_claims,
-                           arborist,
-                           endpoint,
-                           client):
+    async def test_version(self, get_token_claims, arborist, endpoint, client):
         """
         Test that the version endpoint returns a non-empty version
         """
@@ -34,11 +30,7 @@ class TestAuthRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_version_no_token(self,
-                                    get_token_claims,
-                                    arborist,
-                                    endpoint,
-                                    client):
+    async def test_version_no_token(self, get_token_claims, arborist, endpoint, client):
         """
         Test that the version endpoint returns a 401 with details when no token is provided
         """
@@ -47,14 +39,14 @@ class TestAuthRouter(BaseTestRouter):
         response = await client.get(endpoint)
         assert response.status_code == 401
 
-    @pytest.mark.parametrize("endpoint", ["/_version", "/_version/", "/_status", "/_status/"])
+    @pytest.mark.parametrize(
+        "endpoint", ["/_version", "/_version/", "/_status", "/_status/"]
+    )
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_version_and_status_unauthorized(self,
-                                                   get_token_claims,
-                                                   arborist,
-                                                   endpoint,
-                                                   client):
+    async def test_version_and_status_unauthorized(
+        self, get_token_claims, arborist, endpoint, client
+    ):
         """
         Test accessing the endpoint when authorized
         """
@@ -64,16 +56,12 @@ class TestAuthRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofbadnews"}
         response = await client.get(endpoint, headers=headers)
         assert response.status_code == 403
-        assert 'Forbidden' in response.text
+        assert "Forbidden" in response.text
 
     @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_status(self,
-                          get_token_claims,
-                          arborist,
-                          endpoint,
-                          client):
+    async def test_status(self, get_token_claims, arborist, endpoint, client):
         """
         Test that the status endpoint returns a non-empty status
         """
@@ -87,10 +75,7 @@ class TestAuthRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    async def test_status_no_token(self,
-                                   arborist,
-                                   endpoint,
-                                   client):
+    async def test_status_no_token(self, arborist, endpoint, client):
         """
         Test that the status endpoint returns a 401 with details when no token is provided
         """
@@ -99,4 +84,7 @@ class TestAuthRouter(BaseTestRouter):
         response = await client.get(endpoint, headers=headers)
         resp_text = json.loads(response.text)
         assert response.status_code == 401
-        assert resp_text["detail"] == "Could not verify, parse, and/or validate scope from provided access token."
+        assert (
+            resp_text["detail"]
+            == "Could not verify, parse, and/or validate scope from provided access token."
+        )
