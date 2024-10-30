@@ -6,7 +6,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from gen3userdatalibrary.routes import route_aggregator
-from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B
+from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_PATCH_BODY, VALID_LIST_C
+from tests.helpers import get_id_from_response
 from tests.routes.conftest import BaseTestRouter
 
 
@@ -14,26 +15,31 @@ from tests.routes.conftest import BaseTestRouter
 class TestUserListsRouter(BaseTestRouter):
     router = route_aggregator
 
-    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_full_successful_walkthrough(self, get_token_claims, arborist, user_list, client):
-        assert NotImplemented
-        # # delete by id
-        # resp1 = requests.put(basic_url, headers=headers, json=make_body(5)),
-        # l_id = get_id_from_response(resp1[0])
-        # id_url = f"http://0.0.0.0:8000/lists/{l_id}"
-        # resp2 = requests.get(id_url, headers=headers),
-        # resp3 = requests.patch(id_url, headers=headers, json=patch_body),
-        # resp4 = requests.delete(id_url, headers=headers, auth=auth)
-        # print(resp4)
-        #
-        # # delete all
-        # resp5 = requests.put(basic_url, headers=headers, json=make_body(1)),
-        # resp6 = requests.put(basic_url, headers=headers, json=make_body(2)),
-        # l_id = get_id_from_response(resp6[0])
-        # id_url = f"http://0.0.0.0:8000/lists/{l_id}"
-        # resp7 = requests.get(id_url, headers=headers),
-        # resp8 = requests.patch(id_url, headers=headers, json=patch_body),
-        # resp9 = requests.delete(basic_url, headers=headers, auth=auth)
-        # print(resp9)
+    async def test_full_successful_walkthrough(self, get_token_claims, arborist, client):
+        get_token_claims.return_value = {"sub": "1"}
+        arborist.auth_request.return_value = True
+        basic_url = "/lists"
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        resp1 = await client.put(basic_url, headers=headers, json={"lists": [VALID_LIST_A]}),
+        l_id = get_id_from_response(resp1[0])
+        id_url = f"/lists/{l_id}"
+        resp2 = await client.get(id_url, headers=headers),
+        resp3 = await client.patch(id_url, headers=headers, json=VALID_PATCH_BODY),
+        resp4 = await client.delete(id_url, headers=headers)
+        get_token_claims.return_value = {"sub": "2"}
+        resp5 = await client.put(basic_url, headers=headers, json={"lists": [VALID_LIST_A]}),
+        resp6 = await client.put(basic_url, headers=headers, json={"lists": [VALID_LIST_B]}),
+        l_id = get_id_from_response(resp6[0])
+        id_url = f"http://0.0.0.0:8000/lists/{l_id}"
+        resp7 = await client.get(id_url, headers=headers),
+        resp8 = await client.patch(id_url, headers=headers, json=VALID_PATCH_BODY),
+        resp9 = await client.delete(basic_url, headers=headers)
+        get_code = lambda r: r[0].status_code
+        two_hundred_codes = set(map(get_code, [resp2, resp3, resp7, resp8])).union({resp4.status_code})
+        two_o_one_codes = set(map(get_code, [resp1, resp5, resp6]))
+        two_o_four = {resp9.status_code}
+        assert (two_hundred_codes == {200} and
+                two_o_one_codes == {201} and
+                two_o_four == {204})
