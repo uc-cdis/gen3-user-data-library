@@ -20,9 +20,7 @@ def mutate_values(mutator, provided_dict: dict):
 
 
 def filter_keys(filter_func, differences):
-    return {k: v
-            for k, v in differences.items()
-            if filter_func(k, v)}
+    return {k: v for k, v in differences.items() if filter_func(k, v)}
 
 
 def reg_match_key(matcher, dictionary_to_match):
@@ -40,17 +38,19 @@ def reg_match_key(matcher, dictionary_to_match):
 
 
 def add_to_dict_set(dict_list, key, value):
-    """ If I want to add to a default dict set, I want to append and then return the list """
+    """If I want to add to a default dict set, I want to append and then return the list"""
     dict_list[key].add(value)
     return dict_list
 
 
 def map_values(mutator, keys_to_old_values: Dict):
-    """ Quick way to update dict values while preserving relationship """
+    """Quick way to update dict values while preserving relationship"""
     return {key: mutator(value) for key, value in keys_to_old_values.items()}
 
 
-def find_differences(object_to_update: object, new_object: object) -> Dict[str, Tuple[str, str]]:
+def find_differences(
+    object_to_update: object, new_object: object
+) -> Dict[str, Tuple[str, str]]:
     """
     Finds differences in attributes between two objects
     NOTE: Objects must be of the same type!
@@ -70,12 +70,17 @@ def find_differences(object_to_update: object, new_object: object) -> Dict[str, 
 
 
 def remove_keys(d: dict, keys: set):
-    """ Given a dictionary d and set of keys k, remove all k in d """
+    """Given a dictionary d and set of keys k, remove all k in d"""
     return {k: v for k, v in d.items() if k not in keys}
 
 
-def add_user_list_metric(fastapi_app: Request, action: str, user_lists: List[ItemToUpdateModel],
-                         response_time_seconds: float, user_id: str) -> None:
+def add_user_list_metric(
+    fastapi_app: Request,
+    action: str,
+    user_lists: List[ItemToUpdateModel],
+    response_time_seconds: float,
+    user_id: str,
+) -> None:
     """
     Add a metric to the Metrics() instance on the specified FastAPI app for managing user lists.
 
@@ -92,16 +97,22 @@ def add_user_list_metric(fastapi_app: Request, action: str, user_lists: List[Ite
         return
 
     for user_list in user_lists:
-        fastapi_app.state.metrics.add_user_list_counter(action=action, user_id=user_id,
-                                                        response_time_seconds=response_time_seconds)
+        fastapi_app.state.metrics.add_user_list_counter(
+            action=action, user_id=user_id, response_time_seconds=response_time_seconds
+        )
         for item_id, item in (user_list.items or {}).items():
-            fastapi_app.state.metrics.add_user_list_item_counter(action=action, user_id=user_id,
-                                                                 type=item.get("type", "Unknown"),
-                                                                 schema_version=item.get("schema_version", "Unknown"),
-                                                                 response_time_seconds=response_time_seconds, )
+            fastapi_app.state.metrics.add_user_list_item_counter(
+                action=action,
+                user_id=user_id,
+                type=item.get("type", "Unknown"),
+                schema_version=item.get("schema_version", "Unknown"),
+                response_time_seconds=response_time_seconds,
+            )
 
 
-def get_from_cfg_metadata(field: str, metadata: Dict[str, Any], default: Any, type_: Any) -> Any:
+def get_from_cfg_metadata(
+    field: str, metadata: Dict[str, Any], default: Any, type_: Any
+) -> Any:
     """
     Return `field` from `metadata` dict (or `default` if not available)
     and cast it to `type_`. If we cannot cast `default`, return as-is.
@@ -120,9 +131,11 @@ def get_from_cfg_metadata(field: str, metadata: Dict[str, Any], default: Any, ty
         configured_value = type_(metadata.get(field, default))
     except (TypeError, ValueError):
         configured_value = default
-        logging.error(f"invalid configuration: "
-                      f"{metadata.get(field)}. Cannot convert to {type_}. "
-                      f"Defaulting to {default} and continuing...")
+        logging.error(
+            f"invalid configuration: "
+            f"{metadata.get(field)}. Cannot convert to {type_}. "
+            f"Defaulting to {default} and continuing..."
+        )
     return configured_value
 
 

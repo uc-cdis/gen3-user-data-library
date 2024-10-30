@@ -11,7 +11,7 @@ VALID_LIST_A = {
             "schema_version": "c246d0f",
             "data": {
                 "query": "query ($filter: JSON) { _aggregation { subject (filter: $filter) "
-                         "{ file_count { histogram { sum } } } } }",
+                "{ file_count { histogram { sum } } } } }",
                 "variables": {
                     "filter": {
                         "AND": [
@@ -35,11 +35,11 @@ VALID_LIST_B = {
             "schema_version": "aacc222",
             "data": {
                 "query": "query ($filter: JSON,) {\n"
-                         "    subject (accessibility: accessible, offset: 0, first: 20, , filter: $filter,) {\n"
-                         "      \n    project_id\n    \n\n    data_format\n    \n\n    race\n    \n\n"
-                         "    annotated_sex\n    \n\n    ethnicity\n    \n\n    hdl\n    \n\n    ldl\n    \n    }\n"
-                         "    _aggregation {\n      subject (filter: $filter, accessibility: accessible) {\n"
-                         "        _totalCount\n      }\n    }\n  }",
+                "    subject (accessibility: accessible, offset: 0, first: 20, , filter: $filter,) {\n"
+                "      \n    project_id\n    \n\n    data_format\n    \n\n    race\n    \n\n"
+                "    annotated_sex\n    \n\n    ethnicity\n    \n\n    hdl\n    \n\n    ldl\n    \n    }\n"
+                "    _aggregation {\n      subject (filter: $filter, accessibility: accessible) {\n"
+                "        _totalCount\n      }\n    }\n  }",
                 "variables": {
                     "filter": {
                         "AND": [
@@ -74,7 +74,7 @@ VALID_LIST_C = {
             "schema_version": "c246d0f",
             "data": {
                 "query": "query ($filter: JSON) { _aggregation { subject (filter: $filter) "
-                         "{ file_count { histogram { sum } } } } }",
+                "{ file_count { histogram { sum } } } } }",
                 "variables": {
                     "filter": {
                         "AND": [
@@ -85,7 +85,9 @@ VALID_LIST_C = {
                     }
                 },
             },
-        }}}
+        }
+    },
+}
 
 VALID_LIST_D = {
     "name": "My Saved List D",
@@ -114,7 +116,7 @@ VALID_REPLACEMENT_LIST = {
     "items": {
         "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65": {
             "dataset_guid": "phs000001.v1.p1.c1",
-            "type": "GA4GH_DRS"
+            "type": "GA4GH_DRS",
         },
         "CF_2": {
             "name": "Cohort Filter 1",
@@ -123,27 +125,45 @@ VALID_REPLACEMENT_LIST = {
             "data": {
                 "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
             histogram { sum } } } } }""",
-                "variables": {"filter": {
-                    "AND": [{"IN": {"annotated_sex": ["male"]}}, {"IN": {"data_type": ["Aligned Reads"]}},
-                            {"IN": {"data_format": ["CRAM"]}}, {"IN": {"race": ["[\"hispanic\"]"]}}]}}}
-        }
-    }
+                "variables": {
+                    "filter": {
+                        "AND": [
+                            {"IN": {"annotated_sex": ["male"]}},
+                            {"IN": {"data_type": ["Aligned Reads"]}},
+                            {"IN": {"data_format": ["CRAM"]}},
+                            {"IN": {"race": ['["hispanic"]']}},
+                        ]
+                    }
+                },
+            },
+        },
+    },
 }
 
 VALID_MULTI_LIST_BODY = {"lists": [VALID_LIST_A, VALID_LIST_B]}
 
 PATCH_BODY = {
-            "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a99": {
-                "dataset_guid": "phs000001.v1.p1.c1",
-                "type": "GA4GH_DRS"
-            },
-            "CF_2": {
-                "name": "Cohort Filter 1",
-                "type": "Gen3GraphQL",
-                "schema_version": "c246d0f",
-                "data": {
-                    "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
+    "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a99": {
+        "dataset_guid": "phs000001.v1.p1.c1",
+        "type": "GA4GH_DRS",
+    },
+    "CF_2": {
+        "name": "Cohort Filter 1",
+        "type": "Gen3GraphQL",
+        "schema_version": "c246d0f",
+        "data": {
+            "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
                 histogram { sum } } } } }""",
-                    "variables": {"filter": {
-                        "AND": [{"IN": {"annotated_sex": ["male"]}}, {"IN": {"data_type": ["Aligned Reads"]}},
-                                {"IN": {"data_format": ["CRAM"]}}, {"IN": {"race": ["[\"hispanic\"]"]}}]}}}}}
+            "variables": {
+                "filter": {
+                    "AND": [
+                        {"IN": {"annotated_sex": ["male"]}},
+                        {"IN": {"data_type": ["Aligned Reads"]}},
+                        {"IN": {"data_format": ["CRAM"]}},
+                        {"IN": {"race": ['["hispanic"]']}},
+                    ]
+                }
+            },
+        },
+    },
+}

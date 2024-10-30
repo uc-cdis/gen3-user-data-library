@@ -19,14 +19,26 @@ async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList
     try:
         list_as_orm = await create_user_list_instance(user_id, user_list)
     except IntegrityError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name"
+        )
     except ValidationError:
-        config.logging.debug(f"Invalid user-provided data when trying to create lists for user {user_id}.")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid list information provided")
+        config.logging.debug(
+            f"Invalid user-provided data when trying to create lists for user {user_id}."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid list information provided",
+        )
     except Exception as exc:
-        config.logging.exception(f"Unknown exception {type(exc)} when trying to create lists for user {user_id}.")
+        config.logging.exception(
+            f"Unknown exception {type(exc)} when trying to create lists for user {user_id}."
+        )
         config.logging.debug(f"Details: {exc}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid list information provided")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid list information provided",
+        )
     return list_as_orm
 
 
@@ -42,8 +54,14 @@ async def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
     name = user_list.name or f"Saved List {now}"
     user_list_items = user_list.items or {}
 
-    new_list = UserList(version=0, creator=str(user_id),
-                        # temporarily set authz without the list ID since we haven't created the list in the db yet
-                        authz={"version": 0, "authz": [get_lists_endpoint(user_id)]}, name=name, created_time=now,
-                        updated_time=now, items=user_list_items)
+    new_list = UserList(
+        version=0,
+        creator=str(user_id),
+        # temporarily set authz without the list ID since we haven't created the list in the db yet
+        authz={"version": 0, "authz": [get_lists_endpoint(user_id)]},
+        name=name,
+        created_time=now,
+        updated_time=now,
+        items=user_list_items,
+    )
     return new_list

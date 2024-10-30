@@ -37,10 +37,15 @@ class CustomLogger(gunicorn.glogging.Logger):
         super().__init__(cfg)
 
         self._remove_handlers(logging.getLogger())
-        cdislogging.get_logger(None, log_level="debug" if gen3userdatalibrary.config.DEBUG else "warn")
+        cdislogging.get_logger(
+            None, log_level="debug" if gen3userdatalibrary.config.DEBUG else "warn"
+        )
         for logger_name in ["gunicorn", "gunicorn.error", "gunicorn.access"]:
             self._remove_handlers(logging.getLogger(logger_name))
-            cdislogging.get_logger(logger_name, log_level="debug" if gen3userdatalibrary.config.DEBUG else "info", )
+            cdislogging.get_logger(
+                logger_name,
+                log_level="debug" if gen3userdatalibrary.config.DEBUG else "info",
+            )
 
 
 logger_class = CustomLogger

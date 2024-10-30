@@ -61,7 +61,9 @@ class DataAccessLayer:
         if new_list:
             lists_so_far = await self.get_list_count_for_creator(creator_id)
             if lists_so_far + lists_to_add >= config.MAX_LISTS:
-                raise HTTPException(status_code=500, detail="Max number of lists reached!")
+                raise HTTPException(
+                    status_code=500, detail="Max number of lists reached!"
+                )
 
     async def persist_user_list(self, user_id, user_list: UserList):
         """
@@ -72,7 +74,10 @@ class DataAccessLayer:
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()
 
-        authz = {"version": 0, "authz": [get_list_by_id_endpoint(user_id, user_list.id)], }
+        authz = {
+            "version": 0,
+            "authz": [get_list_by_id_endpoint(user_id, user_list.id)],
+        }
         user_list.authz = authz
         return user_list
 
@@ -80,16 +85,22 @@ class DataAccessLayer:
         """
         Return all known lists
         """
-        query = select(UserList).order_by(UserList.id).where(UserList.creator == creator_id)
+        query = (
+            select(UserList).order_by(UserList.id).where(UserList.creator == creator_id)
+        )
         result = await self.db_session.execute(query)
         return list(result.scalars().all())
 
-    async def get_list(self, identifier: Union[UUID, Tuple[str, str]], by="id") -> Optional[UserList]:
+    async def get_list(
+        self, identifier: Union[UUID, Tuple[str, str]], by="id"
+    ) -> Optional[UserList]:
         """
         Get a list by either unique id or unique (creator, name) combo
         """
         if by == "name":  # assume identifier is (creator, name)
-            query = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_([identifier]))
+            query = select(UserList).filter(
+                tuple_(UserList.creator, UserList.name).in_([identifier])
+            )
         else:  # by id
             query = select(UserList).where(UserList.id == identifier)
         result = await self.db_session.execute(query)
@@ -105,14 +116,20 @@ class DataAccessLayer:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record
 
-    async def update_and_persist_list(self, list_to_update_id, changes_to_make) -> UserList:
+    async def update_and_persist_list(
+        self, list_to_update_id, changes_to_make
+    ) -> UserList:
         """
         Given an id and list of changes to make, it'll update the list orm with those changes.
         IMPORTANT! Does not check that the attributes are safe to change.
         Refer to the WHITELIST variable in data.py for unsafe properties
         """
         db_list_to_update = await self.get_existing_list_or_throw(list_to_update_id)
-        changes_that_can_be_made = list(filter(lambda kvp: hasattr(db_list_to_update, kvp[0]), changes_to_make.items()))
+        changes_that_can_be_made = list(
+            filter(
+                lambda kvp: hasattr(db_list_to_update, kvp[0]), changes_to_make.items()
+            )
+        )
         for key, value in changes_that_can_be_made:
             setattr(db_list_to_update, key, value)
         await self.db_session.commit()
@@ -122,7 +139,11 @@ class DataAccessLayer:
         await self.db_session.execute(text("SELECT 1;"))
 
     async def get_list_count_for_creator(self, creator_id):
-        query = select(func.count()).select_from(UserList).where(UserList.creator == creator_id)
+        query = (
+            select(func.count())
+            .select_from(UserList)
+            .where(UserList.creator == creator_id)
+        )
         result = await self.db_session.execute(query)
         count = result.scalar()
         count = count or 0
@@ -143,7 +164,9 @@ class DataAccessLayer:
         """
         Delete a specific list given its ID
         """
-        count_query = select(func.count()).select_from(UserList).where(UserList.id == list_id)
+        count_query = (
+            select(func.count()).select_from(UserList).where(UserList.id == list_id)
+        )
         count_result = await self.db_session.execute(count_query)
         count = count_result.scalar()
         del_query = delete(UserList).where(UserList.id == list_id)
@@ -177,13 +200,26 @@ class DataAccessLayer:
         await self.db_session.commit()
         return user_list
 
-    async def grab_all_lists_that_exist(self, by, identifier_list: Union[List[int], List[Tuple[str, str,]]]) \
-            -> List[UserList]:
+    async def grab_all_lists_that_exist(
+        self,
+        by,
+        identifier_list: Union[
+            List[int],
+            List[
+                Tuple[
+                    str,
+                    str,
+                ]
+            ],
+        ],
+    ) -> List[UserList]:
         """
         Get all lists that match the identifier list, whether that be the ids or creator/name combo
         """
         if by == "name":  # assume identifier list = [(creator1, name1), ...]
-            q = select(UserList).filter(tuple_(UserList.creator, UserList.name).in_(identifier_list))
+            q = select(UserList).filter(
+                tuple_(UserList.creator, UserList.name).in_(identifier_list)
+            )
         else:  # assume it's by id
             q = select(UserList).filter(UserList.id.in_(identifier_list))
         query_result = await self.db_session.execute(q)

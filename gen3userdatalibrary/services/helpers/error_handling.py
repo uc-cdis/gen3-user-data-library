@@ -11,7 +11,9 @@ def build_generic_500_response():
     return JSONResponse(status_code=return_status, content=response)
 
 
-async def make_db_request_or_return_500(primed_db_query, fail_handler=build_generic_500_response):
+async def make_db_request_or_return_500(
+    primed_db_query, fail_handler=build_generic_500_response
+):
     try:
         outcome = await primed_db_query()
         return True, outcome

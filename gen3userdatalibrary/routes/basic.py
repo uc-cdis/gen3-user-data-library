@@ -13,9 +13,9 @@ from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_req
 basic_router = APIRouter()
 
 
-@basic_router.get("/",
-                  include_in_schema=False,
-                  dependencies=[Depends(parse_and_auth_request)])
+@basic_router.get(
+    "/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
+)
 async def redirect_to_docs():
     """
     Redirects to the API docs if they hit the base endpoint.
@@ -23,10 +23,10 @@ async def redirect_to_docs():
     return RedirectResponse(url="/redoc")
 
 
-@basic_router.get("/_version/",
-                  dependencies=[Depends(parse_and_auth_request)])
-@basic_router.get("/_version", include_in_schema=False,
-                  dependencies=[Depends(parse_and_auth_request)])
+@basic_router.get("/_version/", dependencies=[Depends(parse_and_auth_request)])
+@basic_router.get(
+    "/_version", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
+)
 async def get_version(request: Request) -> dict:
     """
     Return the version of the running service
@@ -43,12 +43,14 @@ async def get_version(request: Request) -> dict:
     return {"version": service_version}
 
 
-@basic_router.get("/_status/",
-                  dependencies=[Depends(parse_and_auth_request)])
-@basic_router.get("/_status", include_in_schema=False,
-                  dependencies=[Depends(parse_and_auth_request)])
-async def get_status(request: Request,
-                     data_access_layer: DataAccessLayer = Depends(get_data_access_layer)) -> JSONResponse:
+@basic_router.get("/_status/", dependencies=[Depends(parse_and_auth_request)])
+@basic_router.get(
+    "/_status", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
+)
+async def get_status(
+    request: Request,
+    data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
+) -> JSONResponse:
     """
     Return the status of the running service
 
@@ -59,8 +61,11 @@ async def get_status(request: Request,
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    await authorize_request(request=request, authz_access_method="read",
-                            authz_resources=["/gen3_data_library/service_info/status"])
+    await authorize_request(
+        request=request,
+        authz_access_method="read",
+        authz_resources=["/gen3_data_library/service_info/status"],
+    )
 
     return_status = status.HTTP_201_CREATED
     status_text = "OK"

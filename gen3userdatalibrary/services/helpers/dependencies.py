@@ -22,7 +22,9 @@ def validate_user_list_item(item_contents: dict):
     matching_schema = config.ITEM_SCHEMAS.get(content_type, None)
     if matching_schema is None:
         config.logging.error("No matching schema for type, aborting!")
-        raise HTTPException(status_code=400, detail="No matching schema identified for items, aborting!")
+        raise HTTPException(
+            status_code=400, detail="No matching schema identified for items, aborting!"
+        )
     validate(instance=item_contents, schema=matching_schema)
 
 
@@ -49,10 +51,14 @@ async def parse_and_auth_request(request: Request):
     path_params = request.scope["path_params"]
     route_function = request.scope["route"].name
     endpoint_context = endpoints_to_context.get(route_function, {})
-    resource = get_resource_from_endpoint_context(endpoint_context, user_id, path_params)
-    auth_outcome = await authorize_request(request=request,
-                                           authz_access_method=endpoint_context["method"],
-                                           authz_resources=[resource])
+    resource = get_resource_from_endpoint_context(
+        endpoint_context, user_id, path_params
+    )
+    auth_outcome = await authorize_request(
+        request=request,
+        authz_access_method=endpoint_context["method"],
+        authz_resources=[resource],
+    )
 
 
 def ensure_any_items_match_schema(endpoint_context, conformed_body):
@@ -72,10 +78,15 @@ def conform_to_item_update(items_to_update_as_dict) -> ItemToUpdateModel:
         validated_data = ItemToUpdateModel(**items_to_update_as_dict)
         return validated_data
     except ValidationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Bad data structure, cannot process")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bad data structure, cannot process",
+        )
 
 
-async def validate_items(request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)):
+async def validate_items(
+    request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
+):
     route_function = request.scope["route"].name
     endpoint_context = endpoints_to_context.get(route_function, {})
     conformed_body = json.loads(await request.body())
@@ -85,57 +96,85 @@ async def validate_items(request: Request, dal: DataAccessLayer = Depends(get_da
     try:
         ensure_any_items_match_schema(endpoint_context, conformed_body)
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Problem trying to validate body. Is your body formatted "
-                                                    "correctly?")
-    if route_function == 'upsert_user_lists':
+        raise HTTPException(
+            status_code=400,
+            detail="Problem trying to validate body. Is your body formatted "
+            "correctly?",
+        )
+    if route_function == "upsert_user_lists":
         raw_lists = conformed_body["lists"]
-        new_lists_as_orm = [await try_conforming_list(user_id, conform_to_item_update(user_list))
-                            for user_list in raw_lists]
-        unique_list_identifiers = {(user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm}
-        lists_to_create, lists_to_update = await sort_lists_into_create_or_update(dal,
-                                                                                  unique_list_identifiers,
-                                                                                  new_lists_as_orm)
+        new_lists_as_orm = [
+            await try_conforming_list(user_id, conform_to_item_update(user_list))
+            for user_list in raw_lists
+        ]
+        unique_list_identifiers = {
+            (user_list.creator, user_list.name): user_list
+            for user_list in new_lists_as_orm
+        }
+        lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
+            dal, unique_list_identifiers, new_lists_as_orm
+        )
         for list_to_update in lists_to_update:
             identifier = (list_to_update.creator, list_to_update.name)
             new_version_of_list = unique_list_identifiers.get(identifier, None)
             assert new_version_of_list is not None
-            ensure_items_less_than_max(len(new_version_of_list.items), len(list_to_update.items))
+            ensure_items_less_than_max(
+                len(new_version_of_list.items), len(list_to_update.items)
+            )
         for item_to_create in lists_to_create:
             ensure_items_less_than_max(len(item_to_create.items))
-    elif route_function == 'append_items_to_list':
+    elif route_function == "append_items_to_list":
         try:
             list_to_append = await dal.get_existing_list_or_throw(list_id)
         except ValueError:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
+            )
         ensure_items_less_than_max(len(conformed_body), len(list_to_append.items))
     else:  # 'update_list_by_id'
         try:
             list_to_append = await dal.get_existing_list_or_throw(list_id)
         except ValueError:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!")
-        ensure_items_less_than_max(len(conformed_body["items"]), len(list_to_append.items))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
+            )
+        ensure_items_less_than_max(
+            len(conformed_body["items"]), len(list_to_append.items)
+        )
 
 
 def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
-    more_items_than_max = existing_item_count + number_of_new_items > config.MAX_LIST_ITEMS
+    more_items_than_max = (
+        existing_item_count + number_of_new_items > config.MAX_LIST_ITEMS
+    )
     if more_items_than_max:
-        raise HTTPException(status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
-                            detail="Too many items in list")
+        raise HTTPException(
+            status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+            detail="Too many items in list",
+        )
 
 
-async def validate_lists(request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)):
+async def validate_lists(
+    request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
+):
     user_id = await get_user_id(request=request)
     conformed_body = json.loads(await request.body())
     raw_lists = conformed_body["lists"]
-    new_lists_as_orm = [await try_conforming_list(user_id, conform_to_item_update(user_list))
-                        for user_list in raw_lists]
-    unique_list_identifiers = {(user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm}
-    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(dal,
-                                                                              unique_list_identifiers,
-                                                                              new_lists_as_orm)
+    new_lists_as_orm = [
+        await try_conforming_list(user_id, conform_to_item_update(user_list))
+        for user_list in raw_lists
+    ]
+    unique_list_identifiers = {
+        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
+    }
+    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
+        dal, unique_list_identifiers, new_lists_as_orm
+    )
     for item_to_create in lists_to_create:
         if len(item_to_create.items) == 0:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=f"No items provided for list for user: {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No items provided for list for user: {user_id}",
+            )
         ensure_items_less_than_max(len(item_to_create.items))
     await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))

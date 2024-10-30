@@ -12,7 +12,7 @@ class BaseTestRouter:
     @property
     @abstractmethod
     def router(self):
-        """ Router should be defined for all children classes """
+        """Router should be defined for all children classes"""
         raise NotImplemented()
 
     @pytest_asyncio.fixture(scope="function")
@@ -23,7 +23,9 @@ class BaseTestRouter:
         """
         app = get_app()
         app.include_router(self.router)
-        app.dependency_overrides[get_data_access_layer] = lambda: DataAccessLayer(session)
+        app.dependency_overrides[get_data_access_layer] = lambda: DataAccessLayer(
+            session
+        )
 
         app.state.metrics = MagicMock()
         app.state.arborist_client = MagicMock()
@@ -39,7 +41,9 @@ class BaseTestRouter:
         """
         app = get_app()
         app.include_router(self.router)
-        app.dependency_overrides[get_data_access_layer] = lambda: DataAccessLayer(session)
+        app.dependency_overrides[get_data_access_layer] = lambda: DataAccessLayer(
+            session
+        )
 
         app.state.metrics = MagicMock()
         app.state.arborist_client = MagicMock()

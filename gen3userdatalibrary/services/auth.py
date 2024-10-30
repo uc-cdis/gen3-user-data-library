@@ -14,11 +14,17 @@ arborist = ArboristClient()
 
 get_user_data_library_endpoint = lambda user_id: f"/users/{user_id}/user-data-library"
 get_lists_endpoint = lambda user_id: f"/users/{user_id}/user-data-library/lists"
-get_list_by_id_endpoint = lambda user_id, list_id: f"/users/{user_id}/user-data-library/lists/{list_id}"
+get_list_by_id_endpoint = (
+    lambda user_id, list_id: f"/users/{user_id}/user-data-library/lists/{list_id}"
+)
 
 
-async def authorize_request(authz_access_method: str = "access", authz_resources: list[str] = None,
-                            token: HTTPAuthorizationCredentials = None, request: Request = None):
+async def authorize_request(
+    authz_access_method: str = "access",
+    authz_resources: list[str] = None,
+    token: HTTPAuthorizationCredentials = None,
+    request: Request = None,
+):
     """
     Authorizes the incoming request based on the provided token and Arborist access policies.
 
@@ -37,7 +43,9 @@ async def authorize_request(authz_access_method: str = "access", authz_resources
         and no token is provided, the check is also bypassed.
     """
     if config.DEBUG_SKIP_AUTH and not token:
-        logging.warning("DEBUG_SKIP_AUTH mode is on and no token was provided, BYPASSING authorization check")
+        logging.warning(
+            "DEBUG_SKIP_AUTH mode is on and no token was provided, BYPASSING authorization check"
+        )
         return
 
     token = await _get_token(token, request)
@@ -50,24 +58,34 @@ async def authorize_request(authz_access_method: str = "access", authz_resources
     try:
         user_id = await get_user_id(token, request)
     except HTTPException as exc:
-        logging.debug(f"Unable to determine user_id. Defaulting to `Unknown`. Exc: {exc}")
+        logging.debug(
+            f"Unable to determine user_id. Defaulting to `Unknown`. Exc: {exc}"
+        )
         user_id = "Unknown"
 
     is_authorized = False
     try:
-        is_authorized = await arborist.auth_request(token.credentials, service="gen3_data_library",
-                                                    methods=authz_access_method, resources=authz_resources)
+        is_authorized = await arborist.auth_request(
+            token.credentials,
+            service="gen3_data_library",
+            methods=authz_access_method,
+            resources=authz_resources,
+        )
     except Exception as exc:
         logging.error(f"arborist.auth_request failed, exc: {exc}")
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
     if not is_authorized:
-        logging.debug(f"user `{user_id}` does not have `{authz_access_method}` access "
-                      f"on `{authz_resources}`")
+        logging.debug(
+            f"user `{user_id}` does not have `{authz_access_method}` access "
+            f"on `{authz_resources}`"
+        )
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
 
 
-async def get_user_id(token: HTTPAuthorizationCredentials = None, request: Request = None) -> Union[int, Any]:
+async def get_user_id(
+    token: HTTPAuthorizationCredentials = None, request: Request = None
+) -> Union[int, Any]:
     """
     Retrieves the user ID from the provided token/request
 
@@ -86,7 +104,9 @@ async def get_user_id(token: HTTPAuthorizationCredentials = None, request: Reque
         If `DEBUG_SKIP_AUTH` is enabled and no token is provided, user_id is set to "0".
     """
     if config.DEBUG_SKIP_AUTH and not token:
-        logging.warning("DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING user_id = 0")
+        logging.warning(
+            "DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING user_id = 0"
+        )
         return "0"
 
     token_claims = await _get_token_claims(token, request)
@@ -96,7 +116,10 @@ async def get_user_id(token: HTTPAuthorizationCredentials = None, request: Reque
     return token_claims["sub"]
 
 
-async def _get_token_claims(token: HTTPAuthorizationCredentials = None, request: Request = None, ) -> dict:
+async def _get_token_claims(
+    token: HTTPAuthorizationCredentials = None,
+    request: Request = None,
+) -> dict:
     """
     Retrieves and validates token claims from the provided token.
 
@@ -123,19 +146,24 @@ async def _get_token_claims(token: HTTPAuthorizationCredentials = None, request:
         audience = f"https://{request.base_url.netloc}/user"
     else:
         logging.warning(
-            "Unable to determine expected audience b/c request context was not provided... setting audience to `None`.")
+            "Unable to determine expected audience b/c request context was not provided... setting audience to `None`."
+        )
         audience = None
 
     try:
         # NOTE: token can be None if no Authorization header was provided, we expect
         #       this to cause a downstream exception since it is invalid
-        logging.debug(f"checking access token for scopes: `user` and `openid` and audience: `{audience}`")
+        logging.debug(
+            f"checking access token for scopes: `user` and `openid` and audience: `{audience}`"
+        )
         g = access_token("user", "openid", audience=audience, purpose="access")
         token_claims = await g(token)
     except Exception as exc:
         logging.error(exc.detail if hasattr(exc, "detail") else exc, exc_info=True)
-        raise HTTPException(HTTP_401_UNAUTHENTICATED,
-                            "Could not verify, parse, and/or validate scope from provided access token.", ) from exc
+        raise HTTPException(
+            HTTP_401_UNAUTHENTICATED,
+            "Could not verify, parse, and/or validate scope from provided access token.",
+        ) from exc
 
     return token_claims
 

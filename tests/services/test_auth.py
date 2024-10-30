@@ -12,11 +12,18 @@ from tests.routes.conftest import BaseTestRouter
 class TestAuthRouter(BaseTestRouter):
     router = route_aggregator
 
-    @pytest.mark.parametrize("endpoint", ["/lists", "/lists/", "/_version", "/_version/", "/_status", "/_status/", ], )
-    async def test_debug_skip_auth_gets(self,
-                                        monkeypatch,
-                                        endpoint,
-                                        client):
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/lists",
+            "/lists/",
+            "/_version",
+            "/_version/",
+            "/_status",
+            "/_status/",
+        ],
+    )
+    async def test_debug_skip_auth_gets(self, monkeypatch, endpoint, client):
         """
         Test that DEBUG_SKIP_AUTH configuration allows access to endpoints without auth
         """
