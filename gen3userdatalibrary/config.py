@@ -5,14 +5,13 @@ import cdislogging
 from starlette.config import Config
 from starlette.datastructures import Secret
 
-env = os.getenv('ENV', 'production')
-
+env = os.getenv('ENV', 'test')
+CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 if env == 'test':
-    path = "./tests/.env"
+    path = "/../tests/.env"
 else:
-    path = ".env"
-config = Config(path)
-
+    path = "/../.env"
+config = Config(CURRENT_DIR + path)
 DEBUG = config("DEBUG", cast=bool, default=False)
 VERBOSE_LLM_LOGS = config("VERBOSE_LLM_LOGS", cast=bool, default=False)
 
@@ -32,7 +31,7 @@ if DEBUG_SKIP_AUTH:
 
 # postgresql://username:password@hostname:port/database_name
 DB_CONNECTION_STRING = config("DB_CONNECTION_STRING", cast=Secret,
-                              default="postgresql+asyncpg://postgres:postgres@localhost:5432/testgen3datalibrary", )
+                              default="postgresql+asyncpg://postgres:postgres@localhost:5432/testgen3datalibrary")
 
 URL_PREFIX = config("URL_PREFIX", default=None)
 
@@ -70,7 +69,8 @@ def read_json_if_exists(file_path):
             return None
 
 
-SCHEMAS_LOCATION = config("SCHEMAS_LOCATION", cast=str, default="./config/item_schemas.json")
+DEFAULT_CONFIG_PATH = "/../config/item_schemas.json"
+SCHEMAS_LOCATION = CURRENT_DIR + config("SCHEMAS_LOCATION", cast=str, default=DEFAULT_CONFIG_PATH)
 ITEM_SCHEMAS = read_json_if_exists(SCHEMAS_LOCATION)
 if ITEM_SCHEMAS is None:
     logging.error(f"No item schema! Schema location: {SCHEMAS_LOCATION}")

@@ -2,10 +2,11 @@ from sre_parse import parse
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi import Request
+from fastapi import Request, Depends
 from fastapi.routing import APIRoute
 
 from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.helpers.dependencies import parse_and_auth_request, \
     validate_items
 from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B
@@ -20,8 +21,16 @@ class DependencyException(Exception):
         super().__init__(self.message)
 
 
-async def raises_mock(r: Request, d):
+async def raises_mock_simple(r: Request):
     raise DependencyException("Hit dependency")
+
+
+async def raises_mock(r: Request, d: DataAccessLayer = Depends(DataAccessLayer)):
+    raise DependencyException("Hit dependency")
+
+
+def mock_items(r: Request, dal: DataAccessLayer = Depends(get_data_access_layer)):
+    raise DependencyException("hit dep")
 
 
 @pytest.mark.asyncio
@@ -53,10 +62,10 @@ class TestConfigRouter(BaseTestRouter):
                                                     app_client_pair,
                                                     endpoint,
                                                     ):
-        # todo bonus: test auth request gets correct data instead of just getting hit
+        # bonus: test auth request gets correct data instead of just getting hit
         app, client_instance = app_client_pair
         get_token_claims.return_value = {"sub": "foo"}
-        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
         with pytest.raises(DependencyException) as e:
             response = await client_instance.get(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
@@ -69,7 +78,7 @@ class TestConfigRouter(BaseTestRouter):
                                         app_client_pair,
                                         endpoint):
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(DependencyException) as e:
             response = await client_instance.patch(endpoint, headers=headers, json=PATCH_BODY)
@@ -84,7 +93,7 @@ class TestConfigRouter(BaseTestRouter):
                                             app_client_pair,
                                             endpoint):
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(DependencyException) as e:
             response = await client_instance.put(endpoint, headers=headers, json=PATCH_BODY)
@@ -99,7 +108,7 @@ class TestConfigRouter(BaseTestRouter):
                                          app_client_pair,
                                          endpoint):
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
         with pytest.raises(DependencyException) as e:
             response = await client_instance.delete(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
@@ -112,11 +121,13 @@ class TestConfigRouter(BaseTestRouter):
                                                     user_list,
                                                     app_client_pair,
                                                     endpoint):
-        assert NotImplemented
         app, client_instance = app_client_pair
-        app.dependency_overrides[validate_items] = validate_items
-        # with pytest.raises(DependencyException) as e:
-        response = await client_instance.put(endpoint)
+
+        app.dependency_overrides[parse_and_auth_request] = lambda r: Request({})
+        app.dependency_overrides[validate_items] = mock_items
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.put(endpoint, headers=headers)
         del app.dependency_overrides[parse_and_auth_request]
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
@@ -128,34 +139,10 @@ class TestConfigRouter(BaseTestRouter):
                                                       app_client_pair,
                                                       endpoint):
         app, client_instance = app_client_pair
-        app.dependency_overrides[validate_items] = validate_items
+        app.dependency_overrides[parse_and_auth_request] = lambda r: Request({})
+        app.dependency_overrides[validate_items] = mock_items
         with pytest.raises(DependencyException) as e:
             response = await client_instance.patch(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
 
-    async def test_max_items_dependency_failure(self,
-                                                middleware_handler,
-                                                get_token_claims,
-                                                arborist,
-                                                user_list,
-                                                client,
-                                                endpoint):
-        pass
-
-    async def test_max_lists_dependency_success(self,
-                                                middleware_handler,
-                                                get_token_claims,
-                                                arborist,
-                                                user_list,
-                                                client,
-                                                endpoint):
-        pass
-
-    async def test_max_lists_dependency_failure(self,
-                                                middleware_handler,
-                                                get_token_claims,
-                                                arborist,
-                                                user_list,
-                                                client,
-                                                endpoint):
-        pass
+    # todo: add max config tests
