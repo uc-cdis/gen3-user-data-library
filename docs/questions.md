@@ -10,10 +10,4 @@ Endpoints can only be hit if a client has a valid token. To have a valid token, 
 
 As a part of our authorization process, we get the user's id. For all requests the user can make
 the user can only access lists that are associated with that user id.
-
-## I'm getting an arborist unavailable error?
-
-Error:
-`arborist unavailable; got requests exception: [Errno 8] nodename nor servname provided, or not known`
-
-This is because `DEBUG_SKIP_AUTH` is set to `False`
+`
