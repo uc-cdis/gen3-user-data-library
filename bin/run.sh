@@ -7,6 +7,8 @@ set -e
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+export ENV="production"
+source "${CURRENT_DIR}/../.env"
 source "${CURRENT_DIR}/_common_setup.sh"
 
 poetry run gunicorn \
@@ -16,4 +18,3 @@ poetry run gunicorn \
   --reload \
   --access-logfile - \
   --error-logfile -
-
