@@ -29,7 +29,7 @@ cdispyutils = { git = "https://github.com/uc-cdis/cdis-python-utils/", rev = "fe
 # foobar = {git = "https://github.com/uc-cdis/some-repo", rev = "feat/test"}
 httpx = "0.23.3"
 #pyyaml = ">=6.0.1"
-#pytest-asyncio = ">=0.23.8"
+pytest-asyncio = ">=0.23.8"
 jsonschema = "3.2.0"
 
 
