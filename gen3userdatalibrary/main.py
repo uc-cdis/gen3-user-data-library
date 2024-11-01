@@ -40,7 +40,7 @@ async def lifespan(app: Request):
         )
         dals = get_data_access_layer()
         async for data_access_layer in dals:
-            # await data_access_layer.test_connection()
+            await data_access_layer.test_connection()
             logging.debug("Startup database connection test PASSED.")
     except Exception as exc:
         logging.exception(
