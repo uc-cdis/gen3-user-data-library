@@ -5,12 +5,13 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from black.trans import defaultdict
 
+from gen3userdatalibrary import config
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
 from gen3userdatalibrary.services.helpers.core import map_creator_to_list_ids
+from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
-from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
 
 
 @pytest.mark.asyncio
@@ -21,23 +22,31 @@ class TestUserListsRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    async def test_lists_no_token(self, endpoint, user_list, client):
+    async def test_lists_no_token(self, endpoint, user_list, client, monkeypatch):
         """
         Test that the lists endpoint returns a 401 with details when no token is provided
         """
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         valid_single_list_body = {"lists": [user_list]}
         response = await client.put(endpoint, json=valid_single_list_body)
         assert response
         assert response.status_code == 401
         assert response.json().get("detail")
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    async def test_lists_invalid_token(self, arborist, endpoint, user_list, client):
+    async def test_lists_invalid_token(
+        self, arborist, endpoint, user_list, client, monkeypatch
+    ):
         """
         Test accessing the endpoint when the token provided is invalid
         """
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+
         # Simulate an unauthorized request
         arborist.auth_request.return_value = False
         # not a valid token
@@ -52,6 +61,7 @@ class TestUserListsRouter(BaseTestRouter):
             "Could not verify, parse, and/or validate scope from provided access token."
             in response.text
         )
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
@@ -59,11 +69,15 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_lists_unauthorized(
-        self, get_token_claims, arborist, method, user_list, endpoint, client
+        self, get_token_claims, arborist, method, user_list, endpoint, client,
+            monkeypatch
     ):
         """
         Test accessing the endpoint when unauthorized
         """
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+
         # Simulate an unauthorized request but a valid token
         arborist.auth_request.return_value = False
         get_token_claims.return_value = {"sub": "foo"}
@@ -85,6 +99,7 @@ class TestUserListsRouter(BaseTestRouter):
             response = None
         assert response.status_code == 403
         assert "Forbidden" in response.text
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     # endregion
 
@@ -95,11 +110,14 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_single_valid_list(
-        self, get_token_claims, arborist, endpoint, user_list, client
+        self, get_token_claims, arborist, endpoint, user_list, client,
+            monkeypatch
     ):
         """
         Test the response for creating a single valid list
         """
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
         user_id = "79"
@@ -135,13 +153,16 @@ class TestUserListsRouter(BaseTestRouter):
             else:
                 # fail if the list is neither A or B
                 assert False
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_multiple_valid_lists(
-        self, get_token_claims, arborist, endpoint, client
+        self, get_token_claims, arborist, endpoint, client, monkeypatch
     ):
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
         user_id = "79"
@@ -186,12 +207,13 @@ class TestUserListsRouter(BaseTestRouter):
             else:
                 # fail if the list is neither A or B
                 assert False
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_list_non_unique_name_diff_user(
-        self, get_token_claims, arborist, client, endpoint
+        self, get_token_claims, arborist, client, endpoint, monkeypatch
     ):
         """
         Test creating a list with a non-unique name for different user, ensure 200
@@ -201,6 +223,8 @@ class TestUserListsRouter(BaseTestRouter):
         :param endpoint: which route to hit
         :param client: router
         """
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
@@ -213,13 +237,14 @@ class TestUserListsRouter(BaseTestRouter):
         # Simulating second user
         arborist.auth_request.return_value = True
         user_id = "80"
-        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+        get_token_claims.return_value = {"sub": user_id}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response_2 = await client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
         assert response_2.status_code == 201
         assert "lists" in response_2.json()
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
@@ -335,10 +360,14 @@ class TestUserListsRouter(BaseTestRouter):
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_reading_lists_success(self, get_token_claims, arborist, client):
+    async def test_reading_lists_success(
+        self, get_token_claims, arborist, client, monkeypatch
+    ):
         """
         Test I'm able to get back all lists for a user
         """
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -386,6 +415,7 @@ class TestUserListsRouter(BaseTestRouter):
         two_matches = creator_to_list_ids["2"] == {id_3, id_4}
         three_matches = creator_to_list_ids["3"] == {id_5}
         assert one_matches and two_matches and three_matches
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
@@ -413,8 +443,10 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_creating_and_updating_lists(
-        self, get_token_claims, arborist, endpoint, client
+        self, get_token_claims, arborist, endpoint, client, monkeypatch
     ):
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
         user_id = "fsemr"
@@ -470,13 +502,16 @@ class TestUserListsRouter(BaseTestRouter):
             else:
                 # fail if the list is neither A nor B
                 assert False
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_updating_two_lists_twice(
-        self, get_token_claims, arborist, endpoint, client
+        self, get_token_claims, arborist, endpoint, client, monkeypatch
     ):
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         # update one list, update two lists
         # update twice
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -499,6 +534,7 @@ class TestUserListsRouter(BaseTestRouter):
         updated_lists = json.loads(response_2.text).get("lists", {})
         has_cf_3 = lambda d: d["items"].get("CF_3", None) is not None
         assert [has_cf_3(user_list) for user_list in list(updated_lists.values())]
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
@@ -562,8 +598,11 @@ class TestUserListsRouter(BaseTestRouter):
 
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
-    async def test_deleting_lists_failures(self, get_token_claims, arborist, client):
-
+    async def test_deleting_lists_failures(
+        self, get_token_claims, arborist, client, monkeypatch
+    ):
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         # what should we do if a user X has no lists but requests a delete?
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -584,6 +623,7 @@ class TestUserListsRouter(BaseTestRouter):
         response_4 = await client.get("/lists", headers=headers)
         assert response_3.status_code == 204
         assert response_4.status_code == 200
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     # endregion
 

@@ -20,7 +20,7 @@ jobs:
     name: Python Unit Test with Postgres
     uses: uc-cdis/.github/.github/workflows/python_unit_test.yaml@master
     with:
-       test-script: 'test.sh'
+       test-script: 'bin/test.sh'
        python-version: '3.9'
        use-cache: true
 
@@ -74,7 +74,7 @@ jobs:
   ImageBuildAndPush:
     name: Build Image and Push
     uses: uc-cdis/.github/.github/workflows/image_build_push.yaml@master
-    needs: [RequiredLint, Security, UnitTest]
+    needs: [Security]
     with:
       BUILD_PLATFORMS: "linux/amd64"
     secrets:

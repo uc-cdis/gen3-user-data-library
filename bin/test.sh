@@ -3,31 +3,10 @@ set -e
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Function to run on script exit
-cleanup() {
-    echo "Executing cleanup tasks..."
-    # Restore the original .env if it existed
-    if [[ -f "${CURRENT_DIR}/.env.bak" ]]; then
-        mv "${CURRENT_DIR}/.env.bak" "${CURRENT_DIR}/.env"
-    else
-        rm -f "${CURRENT_DIR}/.env"
-    fi
-}
+echo "Current Directory: ${CURRENT_DIR}"
 
-# Trap the EXIT signal to ensure cleanup is run
-trap cleanup EXIT
-
-# Make a backup of the .env file if it exists
-if [[ -f "${CURRENT_DIR}/.env" ]]; then
-    cp "${CURRENT_DIR}/.env" "${CURRENT_DIR}/.env.bak"
-else
-    touch "${CURRENT_DIR}/.env.bak"
-fi
-
-cp "${CURRENT_DIR}/../tests/.env" "${CURRENT_DIR}/.env"
-
-cat "${CURRENT_DIR}/.env"
-
+export ENV="test"
+source "${CURRENT_DIR}/../tests/.env"
 source "${CURRENT_DIR}/_common_setup.sh"
 
 echo "running tests w/ 'pytest'..."

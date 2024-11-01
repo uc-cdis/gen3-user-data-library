@@ -57,6 +57,12 @@ async def get_status(
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
+    await authorize_request(
+        request=request,
+        authz_access_method="read",
+        authz_resources=["/gen3_data_library/service_info/status"],
+    )
+
     return_status = status.HTTP_201_CREATED
     status_text = "OK"
 
