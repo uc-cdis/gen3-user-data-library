@@ -68,7 +68,7 @@ The general app (by default) expects the same `postgres` user with access to `ge
 The following script will migrate, setup env, and run the service locally:
 
 ```bash
-./run.sh
+./bin/run.sh
 ```
 
 Hit the API:
@@ -81,9 +81,9 @@ Hit the API:
 
 ## Local Dev
 
-You can `bash run.sh` after install to run the app locally.
+You can `bash ./bin/run.sh` after install to run the app locally.
 
-For testing, you can `bash test.sh`.
+For testing, you can `bash ./bin/test.sh`.
 
 The default `pytest` options specified
 in the `pyproject.toml` additionally:
@@ -93,7 +93,7 @@ in the `pyproject.toml` additionally:
 
 #### Automatically format code and run pylint
 
-This quick `bash clean.sh` script is used to run `isort` and `black` over everything if
+This quick `bash ./bin/clean.sh` script is used to run `isort` and `black` over everything if
 you don't integrate those with your editor/IDE.
 
 > NOTE: This requires the beginning of the setup for using Super
@@ -106,7 +106,7 @@ you don't integrate those with your editor/IDE.
 Here's how you can run it:
 
 ```bash
-./clean.sh
+./bin/clean.sh
 ```
 
 > NOTE: GitHub's Super Linter runs more than just `pylint` so it's worth setting that up locally to run before pushing
