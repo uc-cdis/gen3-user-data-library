@@ -1,4 +1,5 @@
 import json
+from functools import reduce
 from json import JSONDecodeError
 from unittest.mock import AsyncMock, patch
 
@@ -8,7 +9,7 @@ from black.trans import defaultdict
 from gen3userdatalibrary import config
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.services.auth import get_list_by_id_endpoint
-from gen3userdatalibrary.services.helpers.core import map_creator_to_list_ids
+from gen3userdatalibrary.services.utils.core import add_to_dict_set
 from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
@@ -634,3 +635,16 @@ class TestUserListsRouter(BaseTestRouter):
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     # endregion
+
+
+# region Helpers
+
+
+def map_creator_to_list_ids(lists: dict):
+    add_id_to_creator = lambda mapping, id_list_pair: add_to_dict_set(
+        mapping, id_list_pair[1]["creator"], id_list_pair[0]
+    )
+    return reduce(add_id_to_creator, lists.items(), defaultdict(set))
+
+
+# endregion

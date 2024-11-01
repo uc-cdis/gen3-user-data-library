@@ -9,16 +9,13 @@ from starlette.responses import JSONResponse
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.services.auth import authorize_request, get_user_id
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.helpers.dependencies import (
+from gen3userdatalibrary.services.dependencies import (
     parse_and_auth_request,
     validate_items,
     ensure_items_less_than_max,
 )
-from gen3userdatalibrary.services.helpers.error_handling import (
-    make_db_request_or_return_500,
-)
-from gen3userdatalibrary.services.helpers.modeling import try_conforming_list
-from gen3userdatalibrary.utils import update
+from gen3userdatalibrary.services.utils.core import update
+from gen3userdatalibrary.services.utils.modeling import try_conforming_list
 
 lists_by_id_router = APIRouter()
 
@@ -206,3 +203,27 @@ async def delete_list_by_id(
     else:
         response = data
     return response
+
+
+# region Helpers
+
+
+def build_generic_500_response():
+    return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+    status_text = "UNHEALTHY"
+    response = {"status": status_text, "timestamp": time.time()}
+    return JSONResponse(status_code=return_status, content=response)
+
+
+async def make_db_request_or_return_500(
+    primed_db_query, fail_handler=build_generic_500_response
+):
+    try:
+        outcome = await primed_db_query()
+        return True, outcome
+    except Exception as e:
+        outcome = fail_handler()
+        return False, outcome
+
+
+# endregion

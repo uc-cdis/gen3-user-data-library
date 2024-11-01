@@ -2,7 +2,7 @@ from gen3userdatalibrary.services.auth import (
     get_lists_endpoint,
     get_list_by_id_endpoint,
 )
-from gen3userdatalibrary.utils import identity
+from gen3userdatalibrary.services.utils.core import identity
 
 WHITELIST = {"items", "name"}
 
