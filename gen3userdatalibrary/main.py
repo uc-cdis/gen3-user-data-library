@@ -8,9 +8,9 @@ from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 from starlette.requests import Request
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.models.metrics import Metrics
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.services.db import get_data_access_layer
+from gen3userdatalibrary.services.metrics import Metrics
 
 
 @asynccontextmanager

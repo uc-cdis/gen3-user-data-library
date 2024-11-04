@@ -15,5 +15,3 @@ Error:
 `arborist unavailable; got requests exception: [Errno 8] nodename nor servname provided, or not known`
 
 This is because `DEBUG_SKIP_AUTH` is set to `False`
-
-

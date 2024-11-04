@@ -136,7 +136,7 @@ class TestUserListsRouter(BaseTestRouter):
                 "type": "Gen3GraphQL",
                 "schema_version": "c246d0f",
                 "data": {
-                    "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
+                    "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count {
                 histogram { sum } } } } }""",
                     "variables": {
                         "filter": {
@@ -208,7 +208,7 @@ class TestUserListsRouter(BaseTestRouter):
                 "type": "Gen3GraphQL",
                 "schema_version": "c246d0f",
                 "data": {
-                    "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
+                    "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count {
                 histogram { sum } } } } }""",
                     "variables": {
                         "filter": {

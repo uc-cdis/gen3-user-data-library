@@ -7,7 +7,7 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.models.data import WHITELIST
+from gen3userdatalibrary.models.data import USER_LIST_UPDATE_ALLOW_LIST
 from gen3userdatalibrary.models.user_list import (
     UserListResponseModel,
     UpdateItemsModel,
@@ -48,8 +48,8 @@ async def read_all_lists(
     Return all lists for user
 
     Args:
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
+        request: FastAPI request (so we can check authorization)
+        data_access_layer: how we interface with db
     """
     user_id = await get_user_id(request=request)
     # dynamically create user policy
@@ -117,10 +117,13 @@ async def upsert_user_lists(
     Create a new list with the provided items, or update any lists that already exist
 
     Args:
-        :param request: (Request) FastAPI request (so we can check authorization)
+        request: (Request) FastAPI request (so we can check authorization)
             {"lists": [RequestedUserListModel]}
-        :param requested_lists: Body from the POST, expects list of entities
-        :param data_access_layer: (DataAccessLayer): Interface for data manipulations
+        requested_lists: requested_lists: Body from the POST, expects list of entities
+        data_access_layer: (DataAccessLayer): Interface for data manipulations
+
+    Returns:
+
     """
     user_id = await get_user_id(request=request)
 
@@ -180,8 +183,8 @@ async def delete_all_lists(
     Delete all lists for a provided user
 
     Args:
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
+        request: FastAPI request (so we can check authorization)
+        data_access_layer: how we interface with db
     """
     start_time = time.time()
     user_id = await get_user_id(request=request)
@@ -228,7 +231,7 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
     """
     properties_to_old_new_difference = find_differences(list_to_update, new_list)
     relevant_differences = filter_keys(
-        lambda k, _: k in WHITELIST, properties_to_old_new_difference
+        lambda k, _: k in USER_LIST_UPDATE_ALLOW_LIST, properties_to_old_new_difference
     )
     has_no_relevant_differences = not relevant_differences or (
         len(relevant_differences) == 1
