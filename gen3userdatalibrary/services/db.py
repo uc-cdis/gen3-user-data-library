@@ -57,6 +57,12 @@ class DataAccessLayer:
         self.db_session = db_session
 
     async def ensure_user_has_not_reached_max_lists(self, creator_id, lists_to_add=0):
+        """
+
+        Args:
+            creator_id: matching name of whoever made the list
+            lists_to_add: number of lists to add to existing user's list set
+        """
         new_list = UserList.id is None
         if new_list:
             lists_so_far = await self.get_list_count_for_creator(creator_id)
@@ -68,8 +74,11 @@ class DataAccessLayer:
     async def persist_user_list(self, user_id, user_list: UserList):
         """
         Save user list to db as well as update authz
+
+        Args:
+            user_id: same as creator id
+            user_list: data object of the UserList type
         """
-        await self.ensure_user_has_not_reached_max_lists(user_list.creator)
         self.db_session.add(user_list)
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()
@@ -84,6 +93,9 @@ class DataAccessLayer:
     async def get_all_lists(self, creator_id) -> List[UserList]:
         """
         Return all known lists
+
+        Args:
+            creator_id: matching name of whoever made the list
         """
         query = (
             select(UserList).order_by(UserList.id).where(UserList.creator == creator_id)
@@ -96,6 +108,10 @@ class DataAccessLayer:
     ) -> Optional[UserList]:
         """
         Get a list by either unique id or unique (creator, name) combo
+
+        Args:
+            identifier: this can either be the list UUID, or a tuple in the form (creator id, list name)
+            by: how do you want to identify the list? currently only checks for "name"
         """
         if by == "name":  # assume identifier is (creator, name)
             query = select(UserList).filter(
@@ -110,6 +126,9 @@ class DataAccessLayer:
     async def get_existing_list_or_throw(self, list_id: UUID) -> UserList:
         """
         List SHOULD exist, so throw if it doesn't
+
+        Args:
+            list_id: UUID of the list
         """
         existing_record = await self.get_list(list_id)
         if existing_record is None:
@@ -122,7 +141,11 @@ class DataAccessLayer:
         """
         Given an id and list of changes to make, it'll update the list orm with those changes.
         IMPORTANT! Does not check that the attributes are safe to change.
-        Refer to the WHITELIST variable in data.py for unsafe properties
+        Refer to the ALLOW_LIST variable in data.py for unsafe properties
+
+        Args:
+            list_to_update_id: uuid of list to update
+            changes_to_make: contents that go into corresponding UserList properties with their associated names
         """
         db_list_to_update = await self.get_existing_list_or_throw(list_to_update_id)
         changes_that_can_be_made = list(
@@ -136,9 +159,19 @@ class DataAccessLayer:
         return db_list_to_update
 
     async def test_connection(self) -> None:
+        """
+        Ensure we can actually communicate with the db
+        """
         await self.db_session.execute(text("SELECT 1;"))
 
     async def get_list_count_for_creator(self, creator_id):
+        """
+        Args:
+            creator_id: matching name of whoever made the list
+
+        Returns:
+            the number of lists associated with that creator
+        """
         query = (
             select(func.count())
             .select_from(UserList)
@@ -152,6 +185,9 @@ class DataAccessLayer:
     async def delete_all_lists(self, sub_id: str):
         """
         Delete all lists for a given list creator, return how many lists were deleted
+
+        Args:
+            sub_id: id of creator
         """
         count = await self.get_list_count_for_creator(sub_id)
         query = delete(UserList).where(UserList.creator == sub_id)
@@ -163,6 +199,9 @@ class DataAccessLayer:
     async def delete_list(self, list_id: UUID):
         """
         Delete a specific list given its ID
+
+        Args:
+            list_id: id of list
         """
         count_query = (
             select(func.count()).select_from(UserList).where(UserList.id == list_id)
@@ -178,9 +217,12 @@ class DataAccessLayer:
     async def replace_list(self, original_list_id, list_as_orm: UserList):
         """
         Delete the original list, replace it with the new one!
+
+        Args:
+            original_list_id: id of original list
+            list_as_orm: new list to replace the old one
         """
         existing_obj = await self.get_existing_list_or_throw(original_list_id)
-        await self.ensure_user_has_not_reached_max_lists(existing_obj.creator)
         await self.db_session.delete(existing_obj)
         await self.db_session.commit()
 
@@ -194,6 +236,10 @@ class DataAccessLayer:
         """
         Gets existing list and adds items to the items property
         # yes, it has automatic sql injection protection
+
+        Args:
+            list_id: id of list
+            item_data: dict of items to add to item component of list
         """
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.update(item_data)
@@ -215,6 +261,10 @@ class DataAccessLayer:
     ) -> List[UserList]:
         """
         Get all lists that match the identifier list, whether that be the ids or creator/name combo
+
+        Args:
+            by: checks only name, but determines how lists are retrieved
+            identifier_list: can be either a list of ids or (creator, name) pairs
         """
         if by == "name":  # assume identifier list = [(creator1, name1), ...]
             q = select(UserList).filter(
