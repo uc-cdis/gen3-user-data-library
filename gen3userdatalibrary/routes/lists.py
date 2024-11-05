@@ -248,8 +248,8 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
 
 
 async def sort_persist_and_get_changed_lists(
-    data_access_layer, raw_lists: List[ItemToUpdateModel], user_id
-):
+    data_access_layer: DataAccessLayer, raw_lists: List[ItemToUpdateModel], user_id: str
+) -> dict[str, dict]:
     """
     Conforms and sorts lists into sets to be updated or created, persists them, and returns an
     id => list (as dict) relationship
