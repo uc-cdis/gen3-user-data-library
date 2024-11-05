@@ -134,7 +134,7 @@ VALID_REPLACEMENT_LIST = {
             "type": "Gen3GraphQL",
             "schema_version": "c246d0f",
             "data": {
-                "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
+                "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count {
             histogram { sum } } } } }""",
                 "variables": {
                     "filter": {
@@ -161,7 +161,7 @@ VALID_PATCH_BODY = {
         "type": "Gen3GraphQL",
         "schema_version": "c246d0f",
         "data": {
-            "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
+            "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count {
                 histogram { sum } } } } }""",
             "variables": {
                 "filter": {
@@ -189,7 +189,7 @@ PATCH_BODY = {
         "type": "Gen3GraphQL",
         "schema_version": "c246d0f",
         "data": {
-            "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count { 
+            "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count {
                 histogram { sum } } } } }""",
             "variables": {
                 "filter": {

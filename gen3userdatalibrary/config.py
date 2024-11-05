@@ -84,6 +84,5 @@ ITEM_SCHEMAS = read_json_if_exists(SCHEMAS_LOCATION)
 if ITEM_SCHEMAS is None:
     logging.error(f"No item schema! Schema location: {SCHEMAS_LOCATION}")
     raise OSError("No item schema json file found!")
-
-if "None" in ITEM_SCHEMAS:
+elif "None" in ITEM_SCHEMAS:
     ITEM_SCHEMAS[None] = ITEM_SCHEMAS["None"]

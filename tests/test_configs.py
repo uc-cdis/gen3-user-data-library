@@ -1,16 +1,14 @@
-import pytest
-
 from unittest.mock import AsyncMock, patch
 
 from jsonschema.exceptions import ValidationError
 
-from gen3userdatalibrary import config
+import pytest
+
 from gen3userdatalibrary.main import route_aggregator
-from gen3userdatalibrary.services.helpers.dependencies import validate_user_list_item
-from gen3userdatalibrary.utils import get_from_cfg_metadata
-from tests.helpers import create_basic_list
+from gen3userdatalibrary.services.dependencies import validate_user_list_item
+from gen3userdatalibrary.services.utils.metrics import get_from_cfg_metadata
+from tests.data.example_lists import VALID_LIST_A
 from tests.routes.conftest import BaseTestRouter
-from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B
 
 
 @pytest.mark.asyncio

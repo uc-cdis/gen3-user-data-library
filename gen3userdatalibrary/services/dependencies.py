@@ -10,8 +10,7 @@ from gen3userdatalibrary.models.data import endpoints_to_context
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.services.auth import get_user_id, authorize_request
 from gen3userdatalibrary.services.db import get_data_access_layer, DataAccessLayer
-from gen3userdatalibrary.services.helpers.db import sort_lists_into_create_or_update
-from gen3userdatalibrary.services.helpers.modeling import try_conforming_list
+from gen3userdatalibrary.services.utils.modeling import try_conforming_list
 
 
 def validate_user_list_item(item_contents: dict):
@@ -183,3 +182,21 @@ async def validate_lists(
             )
         ensure_items_less_than_max(len(item_to_create.items))
     await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
+
+
+async def sort_lists_into_create_or_update(
+    data_access_layer, unique_list_identifiers, new_lists_as_orm
+):
+    lists_to_update = await data_access_layer.grab_all_lists_that_exist(
+        "name", list(unique_list_identifiers.keys())
+    )
+    set_of_existing_identifiers = set(
+        map(lambda ul: (ul.creator, ul.name), lists_to_update)
+    )
+    lists_to_create = list(
+        filter(
+            lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers,
+            new_lists_as_orm,
+        )
+    )
+    return lists_to_create, lists_to_update

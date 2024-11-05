@@ -49,7 +49,8 @@ async def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
     Assumes user list is in the correct structure
 
     """
-    assert user_id is not None, "User must have an ID!"
+    if user_id is None:
+        raise ValueError("User must have an id!")
     now = datetime.datetime.now(datetime.timezone.utc)
     name = user_list.name or f"Saved List {now}"
     user_list_items = user_list.items or {}

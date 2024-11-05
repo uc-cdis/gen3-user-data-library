@@ -2,9 +2,9 @@ from gen3userdatalibrary.services.auth import (
     get_lists_endpoint,
     get_list_by_id_endpoint,
 )
-from gen3userdatalibrary.utils import identity
+from gen3userdatalibrary.services.utils.core import identity
 
-WHITELIST = {"items", "name"}
+USER_LIST_UPDATE_ALLOW_LIST = {"items", "name"}
 
 uuid4_regex_pattern = (
     "([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"

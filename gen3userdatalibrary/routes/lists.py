@@ -1,4 +1,5 @@
 import time
+from typing import List
 
 from fastapi import Request, Depends, HTTPException, APIRouter
 from gen3authz.client.arborist.errors import ArboristError
@@ -6,20 +7,31 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.models.user_list import UserListResponseModel, UpdateItemsModel
+from gen3userdatalibrary.models.data import USER_LIST_UPDATE_ALLOW_LIST
+from gen3userdatalibrary.models.user_list import (
+    UserListResponseModel,
+    UpdateItemsModel,
+    UserList,
+    ItemToUpdateModel,
+)
 from gen3userdatalibrary.services.auth import (
     get_user_id,
     get_user_data_library_endpoint,
 )
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.helpers.core import map_list_id_to_list_dict
-from gen3userdatalibrary.services.helpers.db import sort_persist_and_get_changed_lists
-from gen3userdatalibrary.services.helpers.dependencies import (
+from gen3userdatalibrary.services.dependencies import (
     parse_and_auth_request,
     validate_items,
     validate_lists,
+    sort_lists_into_create_or_update,
 )
-from gen3userdatalibrary.utils import add_user_list_metric, mutate_keys
+from gen3userdatalibrary.services.utils.core import (
+    mutate_keys,
+    find_differences,
+    filter_keys,
+)
+from gen3userdatalibrary.services.utils.metrics import add_user_list_metric
+from gen3userdatalibrary.services.utils.modeling import try_conforming_list
 
 lists_router = APIRouter()
 
@@ -36,8 +48,8 @@ async def read_all_lists(
     Return all lists for user
 
     Args:
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
+        request: FastAPI request (so we can check authorization)
+        data_access_layer: how we interface with db
     """
     user_id = await get_user_id(request=request)
     # dynamically create user policy
@@ -105,10 +117,13 @@ async def upsert_user_lists(
     Create a new list with the provided items, or update any lists that already exist
 
     Args:
-        :param request: (Request) FastAPI request (so we can check authorization)
+        request: (Request) FastAPI request (so we can check authorization)
             {"lists": [RequestedUserListModel]}
-        :param requested_lists: Body from the POST, expects list of entities
-        :param data_access_layer: (DataAccessLayer): Interface for data manipulations
+        requested_lists: requested_lists: Body from the POST, expects list of entities
+        data_access_layer: (DataAccessLayer): Interface for data manipulations
+
+    Returns:
+
     """
     user_id = await get_user_id(request=request)
 
@@ -168,8 +183,8 @@ async def delete_all_lists(
     Delete all lists for a provided user
 
     Args:
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
+        request: FastAPI request (so we can check authorization)
+        data_access_layer: how we interface with db
     """
     start_time = time.time()
     user_id = await get_user_id(request=request)
@@ -196,3 +211,75 @@ async def delete_all_lists(
     )
     logging.debug(response)
     return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=response)
+
+
+# region Helpers
+
+
+def map_list_id_to_list_dict(new_user_lists):
+    response_user_lists = {}
+    for user_list in new_user_lists:
+        response_user_lists[user_list.id] = user_list.to_dict()
+        del response_user_lists[user_list.id]["id"]
+    return response_user_lists
+
+
+def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
+    """
+    Given an old list and new list, gets the changes in the new list to be added
+    to the old list
+    """
+    properties_to_old_new_difference = find_differences(list_to_update, new_list)
+    relevant_differences = filter_keys(
+        lambda k, _: k in USER_LIST_UPDATE_ALLOW_LIST, properties_to_old_new_difference
+    )
+    has_no_relevant_differences = not relevant_differences or (
+        len(relevant_differences) == 1
+        and relevant_differences.__contains__("updated_time")
+    )
+    if has_no_relevant_differences:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to update!"
+        )
+    property_to_change_to_make = {
+        k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()
+    }
+    return property_to_change_to_make
+
+
+async def sort_persist_and_get_changed_lists(
+    data_access_layer: DataAccessLayer, raw_lists: List[ItemToUpdateModel], user_id: str
+) -> dict[str, dict]:
+    """
+    Conforms and sorts lists into sets to be updated or created, persists them, and returns an
+    id => list (as dict) relationship
+    """
+    new_lists_as_orm = [
+        await try_conforming_list(user_id, user_list) for user_list in raw_lists
+    ]
+    unique_list_identifiers = {
+        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
+    }
+    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
+        data_access_layer, unique_list_identifiers, new_lists_as_orm
+    )
+    updated_lists = []
+    for list_to_update in lists_to_update:
+        identifier = (list_to_update.creator, list_to_update.name)
+        new_version_of_list = unique_list_identifiers.get(identifier, None)
+        assert new_version_of_list is not None
+        changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
+        updated_list = await data_access_layer.update_and_persist_list(
+            list_to_update.id, changes_to_make
+        )
+        updated_lists.append(updated_list)
+    for list_to_create in lists_to_create:
+        await data_access_layer.persist_user_list(user_id, list_to_create)
+    response_user_lists = {}
+    for user_list in lists_to_create + updated_lists:
+        response_user_lists[user_list.id] = user_list.to_dict()
+        del response_user_lists[user_list.id]["id"]
+    return response_user_lists
+
+
+# endregion
