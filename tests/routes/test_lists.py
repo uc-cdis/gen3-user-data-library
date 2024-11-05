@@ -69,8 +69,14 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_lists_unauthorized(
-        self, get_token_claims, arborist, method, user_list, endpoint, client,
-            monkeypatch
+        self,
+        get_token_claims,
+        arborist,
+        method,
+        user_list,
+        endpoint,
+        client,
+        monkeypatch,
     ):
         """
         Test accessing the endpoint when unauthorized
@@ -110,8 +116,7 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.services.auth._get_token_claims")
     async def test_create_single_valid_list(
-        self, get_token_claims, arborist, endpoint, user_list, client,
-            monkeypatch
+        self, get_token_claims, arborist, endpoint, user_list, client, monkeypatch
     ):
         """
         Test the response for creating a single valid list
