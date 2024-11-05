@@ -36,6 +36,7 @@ from sqlalchemy import text, delete, func, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import make_transient
+from starlette import status
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.models.user_list import UserList
@@ -63,13 +64,13 @@ class DataAccessLayer:
             creator_id: matching name of whoever made the list
             lists_to_add: number of lists to add to existing user's list set
         """
-        new_list = UserList.id is None
-        if new_list:
-            lists_so_far = await self.get_list_count_for_creator(creator_id)
-            if lists_so_far + lists_to_add >= config.MAX_LISTS:
-                raise HTTPException(
-                    status_code=500, detail="Max number of lists reached!"
-                )
+        lists_so_far = await self.get_list_count_for_creator(creator_id)
+        total = lists_so_far + lists_to_add
+        if total > config.MAX_LISTS:
+            raise HTTPException(
+                status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+                detail="Max number of lists reached!",
+            )
 
     async def persist_user_list(self, user_id, user_list: UserList):
         """

@@ -6,7 +6,6 @@ from fastapi.responses import RedirectResponse
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary.services.auth import authorize_request
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.dependencies import parse_and_auth_request
 
@@ -37,8 +36,6 @@ async def get_version(request: Request) -> dict:
     Returns:
         dict: {"version": "1.0.0"} the version
     """
-    # await authorize_request(request=request, authz_access_method="read",
-    #                         authz_resources=["/gen3_data_library/service_info/version"], )
     service_version = version("gen3userdatalibrary")
     return {"version": service_version}
 
@@ -61,12 +58,6 @@ async def get_status(
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    await authorize_request(
-        request=request,
-        authz_access_method="read",
-        authz_resources=["/gen3_data_library/service_info/status"],
-    )
-
     return_status = status.HTTP_201_CREATED
     status_text = "OK"
 

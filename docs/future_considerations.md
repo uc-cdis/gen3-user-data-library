@@ -14,7 +14,7 @@ third party allowlist/denylist source.
 ### Validation
 
 Is there a better way to validate data coming into endpoints?
-Currently, we used dependencies which work fine, but duplicate code and queries.
+Currently, we use dependencies which work fine, but it duplicates code and queries.
 Middleware is an option, but trying that required regex patterns.
 We could bundle all queries into one dependency or just not have them and do
 validation by endpoint, but that introduces the possibility of forgetting to test

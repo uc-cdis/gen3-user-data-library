@@ -45,8 +45,8 @@ endpoints_to_context = {
         "type": "all",
         "resource": lambda user_id: get_lists_endpoint(user_id),
         "method": "update",
-        "items": lambda b: list(
-            map(lambda item_to_update: item_to_update["items"], b["lists"])
+        "items": lambda body: list(
+            map(lambda item_to_update: item_to_update["items"], body["lists"])
         ),
     },
     "delete_all_lists": {

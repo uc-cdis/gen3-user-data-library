@@ -137,6 +137,10 @@ async def append_items_to_list(
         :param item_list: the items to be appended
         :return: JSONResponse: json response with info about the request outcome
     """
+    if not item_list:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to append!"
+        )
     user_list = await data_access_layer.get_list(ID)
     list_exists = user_list is not None
     if not list_exists:
