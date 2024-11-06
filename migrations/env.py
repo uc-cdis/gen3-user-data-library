@@ -9,8 +9,6 @@ from alembic import context
 from gen3userdatalibrary.config import DB_CONNECTION_STRING
 from gen3userdatalibrary.models.user_list import Base
 
-from gen3userdatalibrary.models.user_list import Base
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

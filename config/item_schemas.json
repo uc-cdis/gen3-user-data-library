@@ -1,4 +1,9 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctds.uchicago.edu/data-library/items_config.schema.json",
+  "type": "object",
+  "title": "Schema Definitions",
+  "description": "A configuration file containing definitions of valid user list item schemas.",
   "GA4GH_DRS": {
     "type": "object",
     "properties": {
