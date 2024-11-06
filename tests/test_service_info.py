@@ -1,3 +1,4 @@
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -102,6 +103,7 @@ class TestAuthRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofbadnews"}
         response = await client.get(endpoint, headers=headers)
+        resp_text = json.loads(response.text)
         assert response.status_code == 401
         assert (
             resp_text.get("detail", None)

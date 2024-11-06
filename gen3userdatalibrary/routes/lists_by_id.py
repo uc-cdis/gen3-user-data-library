@@ -40,11 +40,6 @@ async def get_list_by_id(
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    await authorize_request(
-        request=request,
-        authz_access_method="read",
-        authz_resources=["/gen3_data_library/service_info/status"],
-    )
     status_text = "OK"
 
     succeeded, get_result = await make_db_request_or_return_500(
