@@ -6,8 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from starlette import status
 
 from gen3userdatalibrary import config
+from gen3userdatalibrary.auth import get_lists_endpoint
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel, UserList
-from gen3userdatalibrary.services.auth import get_lists_endpoint
 
 
 async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList:

@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest_asyncio
 from httpx import AsyncClient
 
+from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.main import get_app
-from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 
 
 class BaseTestRouter:

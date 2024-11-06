@@ -7,6 +7,11 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
+from gen3userdatalibrary.auth import (
+    get_user_id,
+    get_user_data_library_endpoint,
+)
+from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.data import USER_LIST_UPDATE_ALLOW_LIST
 from gen3userdatalibrary.models.user_list import (
     UserListResponseModel,
@@ -14,24 +19,19 @@ from gen3userdatalibrary.models.user_list import (
     UserList,
     ItemToUpdateModel,
 )
-from gen3userdatalibrary.services.auth import (
-    get_user_id,
-    get_user_data_library_endpoint,
-)
-from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.dependencies import (
+from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
     validate_lists,
     sort_lists_into_create_or_update,
 )
-from gen3userdatalibrary.services.utils.core import (
+from gen3userdatalibrary.utils.core import (
     mutate_keys,
     find_differences,
     filter_keys,
 )
-from gen3userdatalibrary.services.utils.metrics import add_user_list_metric
-from gen3userdatalibrary.services.utils.modeling import try_conforming_list
+from gen3userdatalibrary.utils.metrics import add_user_list_metric
+from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 lists_router = APIRouter()
 

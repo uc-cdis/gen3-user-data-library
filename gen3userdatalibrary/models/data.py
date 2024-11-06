@@ -1,8 +1,8 @@
-from gen3userdatalibrary.services.auth import (
+from gen3userdatalibrary.auth import (
     get_lists_endpoint,
     get_list_by_id_endpoint,
 )
-from gen3userdatalibrary.services.utils.core import identity
+from gen3userdatalibrary.utils.core import identity
 
 USER_LIST_UPDATE_ALLOW_LIST = {"items", "name"}
 

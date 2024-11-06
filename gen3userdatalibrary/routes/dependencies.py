@@ -6,11 +6,11 @@ from pydantic import ValidationError
 from starlette import status
 
 from gen3userdatalibrary import config
+from gen3userdatalibrary.auth import get_user_id, authorize_request
+from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.models.data import endpoints_to_context
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
-from gen3userdatalibrary.services.auth import get_user_id, authorize_request
-from gen3userdatalibrary.services.db import get_data_access_layer, DataAccessLayer
-from gen3userdatalibrary.services.utils.modeling import try_conforming_list
+from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 
 def validate_user_list_item(item_contents: dict):

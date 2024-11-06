@@ -6,8 +6,8 @@ from fastapi.responses import RedirectResponse
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.dependencies import parse_and_auth_request
+from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.routes.dependencies import parse_and_auth_request
 
 basic_router = APIRouter()
 

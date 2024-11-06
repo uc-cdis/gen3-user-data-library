@@ -1,12 +1,13 @@
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 import pytest
 from fastapi import Request, Depends
 from fastapi.routing import APIRoute
 
+from gen3userdatalibrary import config
+from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.routes import route_aggregator
-from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.dependencies import (
+from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
 )
@@ -62,7 +63,7 @@ class TestConfigRouter(BaseTestRouter):
             "/lists/123e4567-e89b-12d3-a456-426614174000/",
         ],
     )
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_auth_dep_get_validates_correctly(
         self,
         get_token_claims,

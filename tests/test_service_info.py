@@ -12,8 +12,8 @@ class TestAuthRouter(BaseTestRouter):
     router = route_aggregator
 
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_version(self, get_token_claims, arborist, endpoint, client):
         """
         Test that the version endpoint returns a non-empty version
@@ -27,10 +27,15 @@ class TestAuthRouter(BaseTestRouter):
         assert response.json().get("version")
 
     @pytest.mark.parametrize("endpoint", ["/_version", "/_version/"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_version_no_token(
-        self, get_token_claims, arborist, endpoint, client, monkeypatch
+        self,
+        get_token_claims,
+        arborist,
+        endpoint,
+        client,
+        monkeypatch,
     ):
         """
         Test that the version endpoint returns a 401 with details when no token is provided
@@ -46,8 +51,8 @@ class TestAuthRouter(BaseTestRouter):
     @pytest.mark.parametrize(
         "endpoint", ["/_version", "/_version/", "/_status", "/_status/"]
     )
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_version_and_status_unauthorized(
         self, get_token_claims, arborist, endpoint, client, monkeypatch
     ):
@@ -66,8 +71,8 @@ class TestAuthRouter(BaseTestRouter):
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_status(self, get_token_claims, arborist, endpoint, client):
         """
         Test that the status endpoint returns a non-empty status
@@ -81,10 +86,13 @@ class TestAuthRouter(BaseTestRouter):
         assert response.json().get("status")
 
     @pytest.mark.parametrize("endpoint", ["/_status", "/_status/"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     async def test_status_no_token(
-        self, get_token_claims, arborist, endpoint, client, monkeypatch
+        self,
+        arborist,
+        endpoint,
+        client,
+        monkeypatch,
     ):
         """
         Test that the status endpoint returns a 401 with details when no token is provided
@@ -95,5 +103,8 @@ class TestAuthRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofbadnews"}
         response = await client.get(endpoint, headers=headers)
         assert response.status_code == 401
-        assert "Unauthorized" in response.text
+        assert (
+            resp_text.get("detail", None)
+            == "Could not verify, parse, and/or validate scope from provided access token."
+        )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)

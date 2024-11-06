@@ -1,9 +1,11 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from jsonschema.exceptions import ValidationError
 
 from gen3userdatalibrary.main import route_aggregator
-from gen3userdatalibrary.services.utils.metrics import get_from_cfg_metadata
+from gen3userdatalibrary.routes.dependencies import validate_user_list_item
+from gen3userdatalibrary.utils.metrics import get_from_cfg_metadata
 from tests.data.example_lists import VALID_LIST_A
 from tests.routes.conftest import BaseTestRouter
 
@@ -76,8 +78,8 @@ class TestConfigRouter(BaseTestRouter):
         assert retrieved_metadata_value == default
 
     @pytest.mark.parametrize("endpoint", ["/docs", "/redoc"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_docs(self, get_token_claims, arborist, endpoint, client):
         """
         Test FastAPI docs endpoints
