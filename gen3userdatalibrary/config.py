@@ -8,9 +8,9 @@ from starlette.datastructures import Secret
 env = os.getenv("ENV", "test")
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 if env == "test":
-    path = "/../tests/.env"
+    path = os.path.abspath(f"{CURRENT_DIR}/../tests/.env")
 else:
-    path = "/../.env"
+    path = os.path.abspath(f"{CURRENT_DIR}/../.env")
 config = Config(CURRENT_DIR + path)
 DEBUG = config("DEBUG", cast=bool, default=False)
 VERBOSE_LLM_LOGS = config("VERBOSE_LLM_LOGS", cast=bool, default=False)
@@ -76,9 +76,9 @@ def read_json_if_exists(file_path):
             return None
 
 
-DEFAULT_CONFIG_PATH = "/../config/item_schemas.json"
-SCHEMAS_LOCATION = CURRENT_DIR + config(
-    "SCHEMAS_LOCATION", cast=str, default=DEFAULT_CONFIG_PATH
+SCHEMAS_LOCATION = os.path.abspath(
+    CURRENT_DIR
+    + config("SCHEMAS_LOCATION", cast=str, default="/../config/item_schemas.json")
 )
 ITEM_SCHEMAS = read_json_if_exists(SCHEMAS_LOCATION)
 if ITEM_SCHEMAS is None:

@@ -1,8 +1,8 @@
 import datetime
 import uuid
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 
-from pydantic import BaseModel, ConfigDict, constr, Field, Extra
+from pydantic import BaseModel, ConfigDict, constr
 from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint, UUID
 from sqlalchemy.orm import declarative_base
 
@@ -79,7 +79,6 @@ class UserList(Base):
         nullable=False,
     )
 
-    # see ITEMS_JSON_SCHEMA_* above for various schemas for different items here
     items = Column(JSON)
 
     __table_args__ = (UniqueConstraint("name", "creator", name="_name_creator_uc"),)

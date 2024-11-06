@@ -1,13 +1,13 @@
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 import pytest
 from fastapi import Request, Depends
 from fastapi.routing import APIRoute
 
 from gen3userdatalibrary import config
+from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.routes import route_aggregator
-from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.dependencies import (
+from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
 )
@@ -70,7 +70,7 @@ class TestConfigRouter(BaseTestRouter):
             "/lists/123e4567-e89b-12d3-a456-426614174000/",
         ],
     )
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_auth_dep_get_validates_correctly(
         self,
         get_token_claims,
@@ -182,8 +182,8 @@ class TestConfigRouter(BaseTestRouter):
         del app.dependency_overrides[parse_and_auth_request]
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_max_lists_against_two_different_users(
         self, get_token_claims, arborist, user_list, client
     ):
@@ -205,8 +205,8 @@ class TestConfigRouter(BaseTestRouter):
         config.MAX_LISTS = 12
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_max_items_dependency_failure(
         self, get_token_claims, arborist, client, endpoint
     ):
@@ -238,8 +238,8 @@ class TestConfigRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_max_lists_dependency_success(
         self, get_token_claims, arborist, user_list, client, endpoint
     ):
@@ -261,8 +261,8 @@ class TestConfigRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_max_lists_dependency_failure(
         self, get_token_claims, arborist, user_list, client, endpoint
     ):
@@ -288,8 +288,8 @@ class TestConfigRouter(BaseTestRouter):
         config.MAX_LISTS = 12
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_validate_id(self, get_token_claims, arborist, user_list, client):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True

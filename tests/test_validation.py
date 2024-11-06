@@ -13,8 +13,8 @@ class TestAuthRouter(BaseTestRouter):
     router = route_aggregator
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_mismatched_type_to_endpoint_fails(
         self, get_token_claims, arborist, endpoint, client
     ):

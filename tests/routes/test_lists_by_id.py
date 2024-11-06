@@ -3,8 +3,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from gen3userdatalibrary.routes import route_aggregator
-from tests.helpers import create_basic_list, get_id_from_response
-from tests.routes.conftest import BaseTestRouter
 from tests.data.example_lists import (
     VALID_LIST_A,
     VALID_LIST_B,
@@ -12,6 +10,8 @@ from tests.data.example_lists import (
     VALID_LIST_D,
     VALID_LIST_E,
 )
+from tests.helpers import create_basic_list, get_id_from_response
+from tests.routes.conftest import BaseTestRouter
 
 
 @pytest.mark.asyncio
@@ -19,8 +19,8 @@ class TestUserListsRouter(BaseTestRouter):
     router = route_aggregator
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_getting_id_success(
         self, get_token_claims, arborist, user_list, client
     ):
@@ -41,8 +41,8 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.status_code == 200
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_getting_id_failure(
         self, get_token_claims, arborist, user_list, client
     ):
@@ -61,8 +61,8 @@ class TestUserListsRouter(BaseTestRouter):
         assert response.status_code == 404
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_updating_by_id_success(
         self, get_token_claims, arborist, user_list, client
     ):
@@ -91,8 +91,8 @@ class TestUserListsRouter(BaseTestRouter):
         )
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_updating_by_id_failures(
         self, get_token_claims, arborist, user_list, client
     ):
@@ -109,8 +109,8 @@ class TestUserListsRouter(BaseTestRouter):
         )
         assert response.status_code == 404
 
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_appending_by_id_success(self, get_token_claims, arborist, client):
         """
         Test we can append to a specific list correctly
@@ -183,8 +183,8 @@ class TestUserListsRouter(BaseTestRouter):
                 assert len(items) == 6
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_appending_by_id_failures(
         self, get_token_claims, arborist, user_list, client
     ):
@@ -228,8 +228,8 @@ class TestUserListsRouter(BaseTestRouter):
         response = await client.patch(f"/lists/{ul_id}", headers=headers, json=body)
         assert response.status_code == 404
 
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_deleting_by_id_success(self, get_token_claims, arborist, client):
         """
         Test that we can't get data after it has been deleted
@@ -256,8 +256,8 @@ class TestUserListsRouter(BaseTestRouter):
         assert second_get_outcome.status_code == 404
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_deleting_by_id_failures(
         self, get_token_claims, arborist, user_list, client
     ):

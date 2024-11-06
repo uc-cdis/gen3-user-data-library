@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from gen3userdatalibrary import config
+from gen3userdatalibrary.auth import _get_token
 from gen3userdatalibrary.main import route_aggregator
-from gen3userdatalibrary.services.auth import _get_token
 from tests.routes.conftest import BaseTestRouter
 
 
@@ -36,7 +36,7 @@ class TestAuthRouter(BaseTestRouter):
 
     @pytest.mark.parametrize("token_param", [None, "something"])
     @pytest.mark.parametrize("request_param", [None, "something"])
-    @patch("gen3userdatalibrary.services.auth.get_bearer_token", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth.get_bearer_token", new_callable=AsyncMock)
     async def test_get_token(self, get_bearer_token, request_param, token_param):
         """
         Test helper function returns proper token

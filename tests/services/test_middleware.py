@@ -4,7 +4,7 @@ import pytest
 
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.data import uuid4_regex_pattern
-from gen3userdatalibrary.services.utils.core import reg_match_key
+from gen3userdatalibrary.utils.core import reg_match_key
 from tests.routes.conftest import BaseTestRouter
 
 

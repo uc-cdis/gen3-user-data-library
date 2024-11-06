@@ -6,16 +6,16 @@ from fastapi import Request, Depends, HTTPException, APIRouter
 from starlette import status
 from starlette.responses import JSONResponse
 
+from gen3userdatalibrary.auth import get_user_id
+from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
-from gen3userdatalibrary.services.auth import authorize_request, get_user_id
-from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.services.dependencies import (
+from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
     ensure_items_less_than_max,
 )
-from gen3userdatalibrary.services.utils.core import update
-from gen3userdatalibrary.services.utils.modeling import try_conforming_list
+from gen3userdatalibrary.utils.core import update
+from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 only_auth_deps = [Depends(parse_and_auth_request)]
 auth_and_items_deps = [Depends(parse_and_auth_request), Depends(validate_items)]

@@ -11,7 +11,6 @@ from tests.data.example_lists import (
     VALID_LIST_A,
     VALID_LIST_B,
     VALID_PATCH_BODY,
-    VALID_LIST_C,
 )
 from tests.helpers import get_id_from_response
 from tests.routes.conftest import BaseTestRouter
@@ -21,8 +20,8 @@ from tests.routes.conftest import BaseTestRouter
 class TestUserListsRouter(BaseTestRouter):
     router = route_aggregator
 
-    @patch("gen3userdatalibrary.services.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.services.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_full_successful_walkthrough(
         self, get_token_claims, arborist, client
     ):
