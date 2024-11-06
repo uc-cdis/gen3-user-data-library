@@ -11,7 +11,7 @@ if env == "test":
     path = os.path.abspath(f"{CURRENT_DIR}/../tests/.env")
 else:
     path = os.path.abspath(f"{CURRENT_DIR}/../.env")
-config = Config(CURRENT_DIR + path)
+config = Config(path)
 DEBUG = config("DEBUG", cast=bool, default=False)
 VERBOSE_LLM_LOGS = config("VERBOSE_LLM_LOGS", cast=bool, default=False)
 

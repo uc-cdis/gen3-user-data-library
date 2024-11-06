@@ -1,10 +1,12 @@
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
+from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from alembic import context
+from gen3userdatalibrary.config import DB_CONNECTION_STRING
 from gen3userdatalibrary.models.user_list import Base
 
 # this is the Alembic Config object, which provides
@@ -26,7 +28,6 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-from gen3userdatalibrary import config
 
 
 def run_migrations_offline() -> None:
@@ -67,7 +68,12 @@ async def run_async_migrations() -> None:
     """
     # THIS WAS MODIFIED FROM THE DEFAULT ALEMBIC ASYNC SETUP TO PULL
     # CONFIGURATION FROM THE APP CONFIG
-    connectable = create_async_engine(str(config.DB_CONNECTION_STRING))
+    config.set_main_option("sqlalchemy.url", str(DB_CONNECTION_STRING))
+    connectable = async_engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
