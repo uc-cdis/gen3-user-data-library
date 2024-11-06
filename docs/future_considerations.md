@@ -9,6 +9,11 @@ This is not an issue because they cannot share lists with other users. However, 
 lists is a future possible feature. In which case, we should address this issue, perhaps by utilizing a
 third party allowlist/denylist source.
 
+## Autogenerate openapi file
+
+We should generate an actual openapi file instead of just the endpoint that
+fast api currently generates for us. How do we do this?
+
 ## Abstraction Considerations
 
 ### Validation
