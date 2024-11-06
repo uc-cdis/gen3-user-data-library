@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from starlette import status
 from starlette.responses import JSONResponse
+
 from gen3userdatalibrary.services.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.services.dependencies import parse_and_auth_request
 
@@ -57,12 +58,6 @@ async def get_status(
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    await authorize_request(
-        request=request,
-        authz_access_method="read",
-        authz_resources=["/gen3_data_library/service_info/status"],
-    )
-
     return_status = status.HTTP_201_CREATED
     status_text = "OK"
 
