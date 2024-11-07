@@ -81,7 +81,6 @@ class DataAccessLayer:
             user_id: same as creator id
             user_list: data object of the UserList type
         """
-        # await self.ensure_user_has_not_reached_max_lists(user_list.creator)
         self.db_session.add(user_list)
         # correct authz with id, but flush to get the autoincrement id
         await self.db_session.flush()
