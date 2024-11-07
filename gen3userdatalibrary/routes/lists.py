@@ -82,7 +82,6 @@ async def read_all_lists(
     response_model=UserListResponseModel,
     status_code=status.HTTP_201_CREATED,
     description="Create user list(s) by providing valid list information",
-    tags=["User Lists"],
     summary="Create user lists(s)",
     responses={
         status.HTTP_201_CREATED: {

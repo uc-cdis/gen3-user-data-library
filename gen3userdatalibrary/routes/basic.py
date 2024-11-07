@@ -12,9 +12,7 @@ from gen3userdatalibrary.routes.dependencies import parse_and_auth_request
 basic_router = APIRouter()
 
 
-@basic_router.get(
-    "/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
-)
+@basic_router.get("/", include_in_schema=False)
 async def redirect_to_docs():
     """
     Redirects to the API docs if they hit the base endpoint.
@@ -22,16 +20,11 @@ async def redirect_to_docs():
     return RedirectResponse(url="/redoc")
 
 
-@basic_router.get("/_version/", dependencies=[Depends(parse_and_auth_request)])
-@basic_router.get(
-    "/_version", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
-)
+@basic_router.get("/_version/", dependencies=[])
+@basic_router.get("/_version", include_in_schema=False, dependencies=[])
 async def get_version(request: Request) -> dict:
     """
     Return the version of the running service
-
-    Args:
-        request (Request): FastAPI request (so we can check authorization)
 
     Returns:
         dict: {"version": "1.0.0"} the version
@@ -40,10 +33,8 @@ async def get_version(request: Request) -> dict:
     return {"version": service_version}
 
 
-@basic_router.get("/_status/", dependencies=[Depends(parse_and_auth_request)])
-@basic_router.get(
-    "/_status", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
-)
+@basic_router.get("/_status/", dependencies=[])
+@basic_router.get("/_status", include_in_schema=False, dependencies=[])
 async def get_status(
     request: Request,
     data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
@@ -52,8 +43,8 @@ async def get_status(
     Return the status of the running service
 
     Args:
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
+        request: the data in request
+        data_access_layer: how we interface with the db
 
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`

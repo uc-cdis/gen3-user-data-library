@@ -2,8 +2,8 @@ import datetime
 import uuid
 from typing import Dict, Any, List
 
-from pydantic import BaseModel, ConfigDict, constr, SkipValidation
-from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint, UUID
+from pydantic import BaseModel, ConfigDict, constr, Field
+from sqlalchemy import JSON, Column, Integer, String, UniqueConstraint, UUID, DateTime
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -30,8 +30,8 @@ class UserListModel(BaseModel):
     version: int
     creator: constr(min_length=1)
     authz: Dict[str, Any]
-    created_time: SkipValidation[DateTime]
-    updated_time: SkipValidation[DateTime]
+    created_time: Any = Field(default_factory=lambda: datetime.datetime.now())
+    updated_time: Any = Field(default_factory=lambda: datetime.datetime.now())
     name: constr(min_length=1)
     items: Dict[str, Any]
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
