@@ -6,6 +6,7 @@ from fastapi.routing import APIRoute
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.models.data import PUBLIC_ROUTES
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
@@ -55,15 +56,20 @@ class TestConfigRouter(BaseTestRouter):
             return not any(dep.call == parse_and_auth_request for dep in dependencies)
 
         routes_without_deps = list(filter(route_has_no_dependencies, api_routes))
-        for route in routes_without_deps:
-            assert False, f"Endpoint {route.path} is missing dependency_X"
+
+        def not_public_route(api_route):
+            return api_route.path not in PUBLIC_ROUTES
+
+        routes_that_should_have_deps = list(
+            filter(not_public_route, routes_without_deps)
+        )
+        for route in routes_that_should_have_deps:
+            assert False, f"Endpoint {route.path} is missing auth dependency!"
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize(
         "endpoint",
         [
-            "/_version",
-            "/_version/",
             "/lists",
             "/lists/",
             "/lists/123e4567-e89b-12d3-a456-426614174000",

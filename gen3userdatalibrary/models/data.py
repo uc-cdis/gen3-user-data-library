@@ -6,6 +6,8 @@ from gen3userdatalibrary.utils.core import identity
 
 USER_LIST_UPDATE_ALLOW_LIST = {"items", "name"}
 
+PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
+
 uuid4_regex_pattern = (
     "([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"
 )
