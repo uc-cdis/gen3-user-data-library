@@ -18,17 +18,13 @@ async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList
     """
     try:
         list_as_orm = await create_user_list_instance(user_id, user_list)
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name"
-        )
-    except ValidationError:
-        config.logging.debug(
-            f"Invalid user-provided data when trying to create lists for user {user_id}."
-        )
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided",
+            detail={
+                "info": f"Invalid user id: {user_id}",
+                "error": exc.__class__.__name__,
+            },
         )
     except Exception as exc:
         config.logging.exception(
@@ -36,8 +32,11 @@ async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList
         )
         config.logging.debug(f"Details: {exc}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "info": "Invalid list information provided",
+                "error": exc.__class__.__name__,
+            },
         )
     return list_as_orm
 

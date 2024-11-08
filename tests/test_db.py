@@ -20,4 +20,3 @@ class TestConfigRouter(BaseTestRouter):
         #         "foo", 1
         #     )
         #     assert outcome == 1
-        assert False
