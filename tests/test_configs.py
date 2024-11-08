@@ -1,8 +1,10 @@
+import os
 from unittest.mock import AsyncMock, patch
-
+import importlib
 import pytest
 from jsonschema.exceptions import ValidationError
 
+from gen3userdatalibrary import config
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.routes.dependencies import validate_user_list_item
 from gen3userdatalibrary.utils.metrics import get_from_cfg_metadata
@@ -68,3 +70,13 @@ class TestConfigRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response = await client.get(endpoint, headers=headers)
         assert response.status_code == 200
+
+    async def test_config(self):
+        os.environ["ENV"] = "foo"
+        importlib.reload(config)
+        test_dir = os.path.dirname(os.path.realpath(__file__))
+        test_path = os.path.abspath(f"{test_dir}/../.env")
+        assert config.PATH == test_path
+        os.environ["ENV"] = "test"
+        importlib.reload(config)
+        assert NotImplemented

@@ -1,9 +1,13 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastapi.security import HTTPAuthorizationCredentials
+from starlette.datastructures import Headers
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
 
 from gen3userdatalibrary import config
-from gen3userdatalibrary.auth import _get_token
+from gen3userdatalibrary.auth import _get_token, authorize_request
 from gen3userdatalibrary.main import route_aggregator
 from tests.routes.conftest import BaseTestRouter
 
@@ -52,3 +56,26 @@ class TestAuthRouter(BaseTestRouter):
                 assert output == "parsed token from request"
             else:
                 assert output == token_param
+
+    async def test_authorize_request(self):
+        example_creds = HTTPAuthorizationCredentials(
+            scheme="Bearer", credentials="my_access_token"
+        )
+        example_request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/example",
+                "headers": Headers({"host": "127.0.0.1:8000"}).raw,
+                "query_string": b"name=example",
+                "client": ("127.0.0.1", 8000),
+            }
+        )
+        with pytest.raises(HTTPException):
+            outcome = await authorize_request(
+                "access",
+                ["/users/1/user-data-library/lists"],
+                None,  # example_creds,
+                example_request,
+            )
+        assert NotImplemented
