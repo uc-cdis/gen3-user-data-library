@@ -1,6 +1,8 @@
-import os
-from unittest.mock import AsyncMock, patch
 import importlib
+import os
+from json import JSONDecodeError
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from jsonschema.exceptions import ValidationError
 
@@ -71,12 +73,29 @@ class TestConfigRouter(BaseTestRouter):
         response = await client.get(endpoint, headers=headers)
         assert response.status_code == 200
 
-    async def test_config(self):
+    async def test_config(self, mocker):
+        old_env = os.environ.get("ENV", "test")
         os.environ["ENV"] = "foo"
         importlib.reload(config)
         test_dir = os.path.dirname(os.path.realpath(__file__))
         test_path = os.path.abspath(f"{test_dir}/../.env")
         assert config.PATH == test_path
-        os.environ["ENV"] = "test"
+        os.environ["ENV"] = old_env
+        # ---
+
+        mock_schema = mocker.patch(
+            "gen3userdatalibrary.config.ITEM_SCHEMAS", return_value={"None": "bah"}
+        )
         importlib.reload(config)
-        assert NotImplemented
+        item_schema = config.ITEM_SCHEMAS
+        assert None in item_schema
+        mock_file = mocker.patch("os.path.isfile", return_value=False)
+        with pytest.raises(OSError):
+            importlib.reload(config)
+        assert config.ITEM_SCHEMAS is None
+
+        mock_file = mocker.patch("os.path.isfile", return_value=True)
+        mock_load = mocker.patch("json.load")
+        mock_load.side_effect = JSONDecodeError("msg", "doc", 0)
+        with pytest.raises(OSError):
+            importlib.reload(config)
