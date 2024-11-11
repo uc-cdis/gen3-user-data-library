@@ -19,12 +19,6 @@ get_list_by_id_endpoint = (
 )
 
 
-async def testy():
-    outcome1 = await _get_token("a", "b")
-    outcome2 = await _alt_get_token("a", "b")
-    return outcome2
-
-
 async def authorize_request(
     authz_access_method: str = "access",
     authz_resources: list[str] = None,
@@ -187,16 +181,6 @@ async def _get_token(
     Returns:
         The obtained token.
     """
-    if not token:
-        # we need a request in order to get a bearer token
-        if request:
-            token = await get_bearer_token(request)
-    return token
-
-
-async def _alt_get_token(
-    token: Union[HTTPAuthorizationCredentials, str], request: Optional[Request]
-):
     if not token:
         # we need a request in order to get a bearer token
         if request:

@@ -1,9 +1,9 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from starlette.datastructures import Headers
-from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 from gen3userdatalibrary import config, auth
@@ -122,18 +122,28 @@ class TestAuthRouter(BaseTestRouter):
                 example_request,
             )
 
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     async def test_id(
         self,
+        arborist,
         mocker,
     ):
+        arborist.auth_request.return_value = True
         mock_token = mocker.patch(
             "gen3userdatalibrary.auth._get_token", new_callable=AsyncMock
         )
-        mock_token.return_value = "normal mock"
-        alt_mock_token = mocker.patch(
+        mock_token.return_value = HTTPAuthorizationCredentials(
+            scheme="Bearer", credentials="my_access_token"
+        )
+        mock_get_id = mocker.patch(
             "gen3userdatalibrary.auth.get_user_id", new_callable=AsyncMock
         )
-        alt_mock_token.return_value = "mock id"
+        mock_get_id.return_value = "mock id"
+
+        class MockException(Exception):
+            pass
+
+        mock_get_id.side_effect = MockException("mock throw")
         example_request = Request(
             {
                 "type": "http",
@@ -144,11 +154,24 @@ class TestAuthRouter(BaseTestRouter):
                 "client": ("127.0.0.1", 8000),
             }
         )
-        outcome = await auth.authorize_request(
-            "access",
-            ["/users/1/user-data-library/lists"],
-            None,  # example_creds,
-            example_request,
-        )
+        with pytest.raises(MockException):
+            outcome = await auth.authorize_request(
+                "access",
+                ["/users/1/user-data-library/lists"],
+                None,  # example_creds,
+                example_request,
+            )
+        mock_get_id.side_effect = None
 
-        assert outcome is False
+        class MockExceptionTwo(Exception):
+            pass
+
+        arborist.auth_request.side_effect = MockExceptionTwo("mock throw")
+        with pytest.raises(HTTPException):
+            outcome = await auth.authorize_request(
+                "access",
+                ["/users/1/user-data-library/lists"],
+                None,
+                example_request,
+            )
+        assert 1 == 1
