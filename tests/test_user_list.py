@@ -1,4 +1,6 @@
 import pytest
+
+from gen3userdatalibrary.models.user_list import is_dict, is_nonempty
 from gen3userdatalibrary.routes import route_aggregator
 from tests.routes.conftest import BaseTestRouter
 
@@ -8,7 +10,7 @@ class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
 
     def test_is_dict(self):
-        assert NotImplemented
+        outcome = is_dict(dict())
 
     def test_is_nonempty(self):
-        assert NotImplemented
+        outcome = is_nonempty("aaa")

@@ -23,7 +23,7 @@ class TestConfigRouter(BaseTestRouter):
         side_effect=raise_exce,
     )
     async def test_try_conforming_list(self, modeling):
-        modeling.create_user_list_instance.return_value = True
+
         example_list = ItemToUpdateModel(
             name="1", items={"key1": "value1", "key2": 123}
         )
