@@ -15,46 +15,6 @@ from gen3userdatalibrary.main import route_aggregator
 from tests.routes.conftest import BaseTestRouter
 
 
-@pytest.fixture
-def mock_get_user_id(mocker):
-    mock_user_id = mocker.patch(
-        "gen3userdatalibrary.auth.get_user_id", new_callable=AsyncMock
-    )
-    mock_user_id.return_value = "mock_user_id"
-    return mock_user_id
-
-
-@pytest.fixture
-def mock_alt_get_token(mocker):
-    mock_token = mocker.patch(
-        "gen3userdatalibrary.auth._alt_get_token", new_callable=AsyncMock
-    )
-    mock_token.return_value = "alt mock"
-    return mock_token
-
-
-@pytest.fixture
-def mock_get_token(mocker):
-    mock_token = mocker.patch(
-        "gen3userdatalibrary.auth._get_token", new_callable=AsyncMock
-    )
-    mock_token.return_value = "normal mock"
-    return mock_token
-
-
-@pytest.fixture
-def mock_both_token(mocker):
-    mock_token = mocker.patch(
-        "gen3userdatalibrary.auth._get_token", new_callable=AsyncMock
-    )
-    mock_token.return_value = "normal mock"
-    alt_mock_token = mocker.patch(
-        "gen3userdatalibrary.auth._alt_get_token", new_callable=AsyncMock
-    )
-    alt_mock_token.return_value = "alt mock"
-    return mock_token, alt_mock_token
-
-
 @pytest.mark.asyncio
 class TestAuthRouter(BaseTestRouter):
     router = route_aggregator
