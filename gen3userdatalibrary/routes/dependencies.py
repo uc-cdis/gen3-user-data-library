@@ -116,7 +116,8 @@ async def validate_items(
         for list_to_update in lists_to_update:
             identifier = (list_to_update.creator, list_to_update.name)
             new_version_of_list = unique_list_identifiers.get(identifier, None)
-            assert new_version_of_list is not None
+            if new_version_of_list is None:
+                raise ValueError("No unique identifier, cannot update list!")
             ensure_items_less_than_max(
                 len(new_version_of_list.items), len(list_to_update.items)
             )

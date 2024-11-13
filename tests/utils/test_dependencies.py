@@ -18,8 +18,9 @@ from tests.data.example_lists import (
     VALID_LIST_B,
     VALID_LIST_C,
     VALID_LIST_D,
+    REPLACE_LIST_A,
 )
-from tests.helpers import create_basic_list
+from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
 
 
@@ -306,3 +307,44 @@ class TestConfigRouter(BaseTestRouter):
         l_id = "1"
         resp_2 = await client.get(f"/lists/{l_id}", headers=headers)
         assert resp_2.status_code == 422
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_item_validation_update_and_create(
+        self, get_token_claims, arborist, client
+    ):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1"}
+        response = await client.put(
+            "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
+        )
+        response = await client.put(
+            "/lists",
+            headers=headers,
+            json={"lists": [REPLACE_LIST_A, VALID_LIST_B, VALID_LIST_C]},
+        )
+        assert response.status_code == 201
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_append_items_to_list_in_deps(
+        self, get_token_claims, arborist, client, mocker
+    ):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1"}
+        response = await client.put(
+            "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
+        )
+        id = get_id_from_response(response)
+        mocker.patch(
+            "gen3userdatalibrary.routes.dependencies.DataAccessLayer.get_existing_list_or_throw",
+            side_effect=ValueError("mock exception"),
+        )
+        response = await client.patch(
+            f"/lists/{id}",
+            headers=headers,
+            json=PATCH_BODY,
+        )
+        assert response.text == '{"detail":"ID not recognized!"}'

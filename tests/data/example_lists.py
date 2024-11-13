@@ -26,6 +26,24 @@ VALID_LIST_A = {
     },
 }
 
+REPLACE_LIST_A = {
+    "name": "My Saved List 1",
+    "items": {
+        "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a64": {
+            "dataset_guid": "phs000001.v1.p1.c1",
+            "type": "GA4GH_DRS",
+        },
+        "drs://dg.TEST:3418077e-0779-4715-8195-7b60565172f5": {
+            "dataset_guid": "phs000002.v2.p2.c2",
+            "type": "GA4GH_DRS",
+        },
+        "drs://dg.4503:edbb0398-fcff-4c92-b908-9e650e0a6eb5": {
+            "dataset_guid": "phs000002.v2.p2.c1",
+            "type": "GA4GH_DRS",
+        },
+    },
+}
+
 VALID_LIST_B = {
     "name": "õ(*&!@#)(*$%)() 2",
     "items": {
