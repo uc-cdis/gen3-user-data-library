@@ -9,5 +9,11 @@ export ENV="test"
 source "${CURRENT_DIR}/../tests/.env"
 source "${CURRENT_DIR}/_common_setup.sh"
 
+echo "Check if .coveragerc file exists"
+if [ ! -f ".coveragerc" ]; then
+  echo ".coveragerc file does not exist. Please create it before running tests."
+  exit 1
+fi
+
 echo "running tests w/ 'pytest'..."
-poetry run pytest -vv --cov-config=.coveragerc --cov=gen3userdatalibrary --cov-report term-missing:skip-covered --cov-fail-under 90 --cov-report html:_coverage --cov-branch
+poetry run pytest -vv --cov-config=.coveragerc --cov=gen3userdatalibrary

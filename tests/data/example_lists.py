@@ -197,6 +197,12 @@ VALID_PATCH_BODY = {
 
 VALID_MULTI_LIST_BODY = {"lists": [VALID_LIST_A, VALID_LIST_B]}
 
+INVALID_LIST_B = {
+    "name": "My Saved List AP1",
+    "items": {},
+}
+
+
 PATCH_BODY = {
     "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a99": {
         "dataset_guid": "phs000001.v1.p1.c1",

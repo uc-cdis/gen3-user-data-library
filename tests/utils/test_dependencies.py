@@ -19,6 +19,7 @@ from tests.data.example_lists import (
     VALID_LIST_C,
     VALID_LIST_D,
     REPLACE_LIST_A,
+    INVALID_LIST_B,
 )
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
@@ -348,3 +349,19 @@ class TestConfigRouter(BaseTestRouter):
             json=PATCH_BODY,
         )
         assert response.text == '{"detail":"ID not recognized!"}'
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_invalid_lists_to_create(
+        self, get_token_claims, arborist, client, mocker
+    ):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "1"}
+        response = await client.put(
+            "/lists", headers=headers, json={"lists": [INVALID_LIST_B]}
+        )
+        assert (
+            response.status_code == 400
+            and response.text == '{"detail":"No items provided for list for user: 1"}'
+        )

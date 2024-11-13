@@ -1,5 +1,8 @@
 ; see https://coverage.readthedocs.io/en/latest/config.html
 [run]
+branch = True
+source = gen3userdatalibrary
+cov = gen3userdatalibrary
 omit =
     # omit anything in a .local directory anywhere
     */.local/*
@@ -10,7 +13,15 @@ omit =
 
 [report]
 ; Regexes for lines to exclude from consideration
-exclude_also =
+show_missing = True
+; Enable term-missing to show missing lines in the terminal output
+term_missing = True
+; Equivalent to --cov-report term-missing:skip-covered
+skip_covered = True
+; Equivalent to --cov-fail-under 90
+fail_under = 90
+
+exclude_lines =
     ; Don't complain about missing debug-only code:
     def __repr__
     if self\.debug
@@ -28,3 +39,10 @@ exclude_also =
 
     ; Don't complain about abstract methods, they aren't run:
     @(abc\.)?abstractmethod
+
+[html]
+; Equivalent to --cov-report html:_coverage
+directory = _coverage
+
+[coverage]
+branch = True

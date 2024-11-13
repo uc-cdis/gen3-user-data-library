@@ -9,8 +9,8 @@ from tests.routes.conftest import BaseTestRouter
 class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
 
-    def test_is_dict(self):
+    async def test_is_dict(self):
         outcome = is_dict(dict())
 
-    def test_is_nonempty(self):
+    async def test_is_nonempty(self):
         outcome = is_nonempty("aaa")
