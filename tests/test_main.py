@@ -1,6 +1,9 @@
+import os
+
 import pytest
 from fastapi import FastAPI
 
+from gen3userdatalibrary import config
 from gen3userdatalibrary.db import DataAccessLayer
 from gen3userdatalibrary.main import lifespan, get_app
 from gen3userdatalibrary.routes import route_aggregator
@@ -51,5 +54,21 @@ class TestConfigRouter(BaseTestRouter):
         mock_schema = mocker.patch(
             "gen3userdatalibrary.config.ENABLE_PROMETHEUS_METRICS", True
         )
-        with pytest.raises(ValueError):
+        assert config.ENABLE_PROMETHEUS_METRICS is True
+        original_prometheus_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+        original_dir = os.getcwd()
+
+        os.environ["PROMETHEUS_MULTIPROC_DIR"] = "bash"
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        current_dir_without_slash = current_dir.rstrip("/")
+        parent_dir = os.path.dirname(current_dir_without_slash)
+        os.chdir(parent_dir)
+        try:
             outcome = get_app()
+        finally:
+            if original_prometheus_dir is not None:
+                os.environ["PROMETHEUS_MULTIPROC_DIR"] = original_prometheus_dir
+            else:
+                del os.environ["PROMETHEUS_MULTIPROC_DIR"]
+            os.chdir(original_dir)
+        assert isinstance(outcome, FastAPI)
