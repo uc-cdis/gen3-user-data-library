@@ -1,7 +1,7 @@
 from unittest.mock import patch, AsyncMock
 
 import pytest
-from fastapi import Request, Depends
+from fastapi import Request, Depends, HTTPException
 from fastapi.routing import APIRoute
 
 from gen3userdatalibrary import config
@@ -11,6 +11,7 @@ from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
+    ensure_list_exists_and_items_less_than_max,
 )
 from tests.data.example_lists import (
     VALID_LIST_A,
@@ -365,3 +366,19 @@ class TestConfigRouter(BaseTestRouter):
             response.status_code == 400
             and response.text == '{"detail":"No items provided for list for user: 1"}'
         )
+
+    @pytest.mark.skip(reason="Test not implemented yet.")
+    async def test_validate_user_list_item(self):
+        pass
+
+    async def test_ensure_list_exists_and_items_less_than_max(self, mocker):
+        with pytest.raises(Exception):
+            outcome = await ensure_list_exists_and_items_less_than_max(1, 2, 3)
+        mocker.patch(
+            "gen3userdatalibrary.routes.dependencies.DataAccessLayer.get_existing_list_or_throw",
+            side_effect=ValueError,
+        )
+        with pytest.raises(HTTPException):
+            outcome = await ensure_list_exists_and_items_less_than_max(
+                1, DataAccessLayer("abc"), 3
+            )

@@ -16,4 +16,4 @@ if [ ! -f ".coveragerc" ]; then
 fi
 
 echo "running tests w/ 'pytest'..."
-poetry run pytest -vv --cov-config=.coveragerc --cov=gen3userdatalibrary
+poetry run pytest -vv --cov-config=.coveragerc --cov=gen3userdatalibrary --cov-context=test

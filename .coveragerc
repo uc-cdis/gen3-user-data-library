@@ -2,7 +2,7 @@
 [run]
 branch = True
 source = gen3userdatalibrary
-cov = gen3userdatalibrary
+
 omit =
     # omit anything in a .local directory anywhere
     */.local/*
@@ -14,8 +14,6 @@ omit =
 [report]
 ; Regexes for lines to exclude from consideration
 show_missing = True
-; Enable term-missing to show missing lines in the terminal output
-term_missing = True
 ; Equivalent to --cov-report term-missing:skip-covered
 skip_covered = True
 ; Equivalent to --cov-fail-under 90

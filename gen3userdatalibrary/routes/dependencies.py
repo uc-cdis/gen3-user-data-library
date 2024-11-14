@@ -113,16 +113,8 @@ async def validate_items(
         lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
             dal, unique_list_identifiers, new_lists_as_orm
         )
-        for list_to_update in lists_to_update:
-            identifier = (list_to_update.creator, list_to_update.name)
-            new_version_of_list = unique_list_identifiers.get(identifier, None)
-            if new_version_of_list is None:
-                raise ValueError("No unique identifier, cannot update list!")
-            ensure_items_less_than_max(
-                len(new_version_of_list.items), len(list_to_update.items)
-            )
-        for item_to_create in lists_to_create:
-            ensure_items_less_than_max(len(item_to_create.items))
+        await check_lists_to_update(lists_to_update, unique_list_identifiers)
+        await check_lists_to_create(lists_to_create)
     elif route_function == "append_items_to_list":
         try:
             list_to_append = await dal.get_existing_list_or_throw(list_id)
@@ -132,19 +124,37 @@ async def validate_items(
             )
         ensure_items_less_than_max(len(conformed_body), len(list_to_append.items))
     else:  # 'update_list_by_id'
-        try:
-            list_to_append = await dal.get_existing_list_or_throw(list_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Something went wrong while validating request!",
-            )
+        await ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_id)
+
+
+async def ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_id):
+    try:
+        list_to_append = await dal.get_existing_list_or_throw(list_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Something went wrong while validating request!",
+        )
+    ensure_items_less_than_max(len(conformed_body["items"]), len(list_to_append.items))
+
+
+async def check_lists_to_create(lists_to_create):
+    for item_to_create in lists_to_create:
+        ensure_items_less_than_max(len(item_to_create.items))
+
+
+async def check_lists_to_update(lists_to_update, unique_list_identifiers):
+    for list_to_update in lists_to_update:
+        identifier = (list_to_update.creator, list_to_update.name)
+        new_version_of_list = unique_list_identifiers.get(identifier, None)
+        if new_version_of_list is None:
+            raise ValueError("No unique identifier, cannot update list!")
         ensure_items_less_than_max(
-            len(conformed_body["items"]), len(list_to_append.items)
+            len(new_version_of_list.items), len(list_to_update.items)
         )
 
 
@@ -175,6 +185,11 @@ async def validate_lists(
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
         dal, unique_list_identifiers, new_lists_as_orm
     )
+    await ensure_items_exist_and_less_than_max(lists_to_create, user_id)
+    await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
+
+
+async def ensure_items_exist_and_less_than_max(lists_to_create, user_id):
     for item_to_create in lists_to_create:
         if len(item_to_create.items) == 0:
             raise HTTPException(
@@ -182,7 +197,6 @@ async def validate_lists(
                 detail=f"No items provided for list for user: {user_id}",
             )
         ensure_items_less_than_max(len(item_to_create.items))
-    await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
 
 
 async def sort_lists_into_create_or_update(
