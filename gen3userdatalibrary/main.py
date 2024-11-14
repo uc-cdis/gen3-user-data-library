@@ -54,7 +54,8 @@ async def lifespan(app: Request):
             logging.debug(
                 "Startup policy engine (Arborist) connection test initiating..."
             )
-            assert app.state.arborist_client.healthy()
+            if not app.state.arborist_client.healthy():
+                raise Exception("Arborist unhealthy,aborting...")
         except Exception as exc:
             logging.exception(
                 "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."

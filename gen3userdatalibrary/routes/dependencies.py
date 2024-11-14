@@ -53,7 +53,7 @@ async def parse_and_auth_request(request: Request):
     resource = get_resource_from_endpoint_context(
         endpoint_context, user_id, path_params
     )
-    auth_outcome = await authorize_request(
+    await authorize_request(
         request=request,
         authz_access_method=endpoint_context["method"],
         authz_resources=[resource],

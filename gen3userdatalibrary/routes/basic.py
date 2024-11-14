@@ -19,7 +19,7 @@ async def redirect_to_docs():
     """
     Redirects to the API docs if they hit the base endpoint.
     """
-    return RedirectResponse(url="/redoc")
+    return RedirectResponse(url="/docs")
 
 
 @basic_router.get("/_version/", dependencies=[Depends(parse_and_auth_request)])
