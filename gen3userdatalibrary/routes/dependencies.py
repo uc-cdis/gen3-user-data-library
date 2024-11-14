@@ -8,7 +8,7 @@ from starlette import status
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_user_id, authorize_request
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
-from gen3userdatalibrary.models.data import endpoints_to_context
+from gen3userdatalibrary.models.data import ENDPOINT_TO_CONTEXT
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.utils.modeling import try_conforming_list
 
@@ -49,7 +49,7 @@ async def parse_and_auth_request(request: Request):
     user_id = await get_user_id(request=request)
     path_params = request.scope["path_params"]
     route_function = request.scope["route"].name
-    endpoint_context = endpoints_to_context.get(route_function, {})
+    endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
     resource = get_resource_from_endpoint_context(
         endpoint_context, user_id, path_params
     )
@@ -87,7 +87,7 @@ async def validate_items(
     request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
 ):
     route_function = request.scope["route"].name
-    endpoint_context = endpoints_to_context.get(route_function, {})
+    endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
     conformed_body = json.loads(await request.body())
     user_id = await get_user_id(request=request)
     list_id = request["path_params"].get("ID", None)
@@ -153,7 +153,7 @@ def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
     )
     if more_items_than_max:
         raise HTTPException(
-            status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Too many items in list",
         )
 

@@ -6,24 +6,22 @@ from gen3userdatalibrary.utils.core import identity
 
 USER_LIST_UPDATE_ALLOW_LIST = {"items", "name"}
 
-uuid4_regex_pattern = (
-    "([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"
-)
 
-recognized_endpoint_functions = {
-    "redirect_to_docs",
-    "get_version",
-    "get_status",
-    "read_all_lists",
-    "upsert_user_lists",
-    "delete_all_lists",
-    "get_list_by_id",
-    "update_list_by_id",
-    "append_items_to_list",
-    "delete_list_by_id",
-}
+"""
+Endpoint to context is a static definition of information specific to endpoints used in
+dependencies. For example, all endpoints need to authorize the user request, but the
+specific resource in question is going to different between endpoints. To handle this,
+we can designate a 'resource' key for that endpoint's function-specific use case.
 
-endpoints_to_context = {
+Current recognized properties:
+    resource: a descriptive resource path for authorize_request
+    method: a description of the method type (e.g. read, write, ...)
+    type: defines how to build the 'resource' path if it needs params
+        - all: all lists, takes (user_id)
+        - ID: by id, takes (user_id, list_id)
+    items: defines how to extract the 'items' component from a request body
+"""
+ENDPOINT_TO_CONTEXT = {
     "redirect_to_docs": {
         "resource": "/gen3_data_library/service_info/redoc",
         "method": "read",

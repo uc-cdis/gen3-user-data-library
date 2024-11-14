@@ -10,7 +10,6 @@ packages = [{ include = "gen3userdatalibrary" }]
 [tool.poetry.dependencies]
 python = ">=3.9,<3.10.dev0"
 
-#setuptools = ">=75.1.0"
 requests = ">=2.31.0"
 fastapi = ">=0.97.0"
 cdislogging = ">=1.1.1"
@@ -21,14 +20,11 @@ authutils = ">=6.2.5"
 alembic = ">=1.13.2"
 sqlalchemy = { extras = ["asyncio"], version = ">=2.0.31" }
 asyncpg = ">=0.29.0"
-#prometheus-client = ">=0.20.0"
 cdispyutils = { git = "https://github.com/uc-cdis/cdis-python-utils/", rev = "feat/common_metrics" }
-#cryptography = "43.0.1"
 # NOTE:
 # for testing with updated libaries as git repos:
 # foobar = {git = "https://github.com/uc-cdis/some-repo", rev = "feat/test"}
 httpx = "0.23.3"
-#pyyaml = ">=6.0.1"
 pytest-asyncio = ">=0.23.8"
 jsonschema = "3.2.0"
 
@@ -37,16 +33,12 @@ jsonschema = "3.2.0"
 # <8.0.0 is temporary, try removing. It was causing issues because the
 # underlying pytest-* libraries hadn't updated yet to fix some breaking changes
 pytest = ">=7.3.2,<8.0.0"
-#uvicorn = ">=0.22.0"
 coverage = ">=7.3.2"
 pytest-cov = ">=4.1.0"
 isort = ">=5.12.0"
 black = ">=23.10.0"
 pylint = ">=3.0.1"
 pytest-profiling = ">=1.7.0"
-#gen3 = "4.25.1"
-#drsclient = "0.2.3"
-#dictionaryutils = "3.4.10"
 
 [tool.pytest.ini_options]
 # Better default `pytest` command which adds coverage

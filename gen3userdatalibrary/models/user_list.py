@@ -2,21 +2,11 @@ import datetime
 import uuid
 from typing import Dict, Any, List
 
-from pydantic import BaseModel, ConfigDict, constr
-from sqlalchemy import JSON, Column, DateTime, Integer, String, UniqueConstraint, UUID
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import JSONB, Column, DateTime, Integer, String, UniqueConstraint, UUID
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
-
-
-def is_dict(v: Any):
-    assert isinstance(v, dict)
-    return v
-
-
-def is_nonempty(v: Any):
-    assert v
-    return v
 
 
 class NonEmptyDict(Dict[str, Any]):
@@ -28,11 +18,11 @@ class NonEmptyDict(Dict[str, Any]):
 
 class UserListModel(BaseModel):
     version: int
-    creator: constr(min_length=1)
+    creator: Field(min_length=1)
     authz: Dict[str, Any]
     created_time: datetime
     updated_time: datetime
-    name: constr(min_length=1)
+    name: Field(min_length=1)
     items: Dict[str, Any]
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
@@ -106,7 +96,7 @@ class UserList(Base):
     )
     version = Column(Integer, nullable=False)
     creator = Column(String, nullable=False, index=True)
-    authz = Column(JSON, nullable=False)
+    authz = Column(JSONB, nullable=False)
 
     name = Column(String, nullable=False)
 
@@ -122,7 +112,7 @@ class UserList(Base):
         nullable=False,
     )
 
-    items = Column(JSON)
+    items = Column(JSONB)
 
     __table_args__ = (UniqueConstraint("name", "creator", name="_name_creator_uc"),)
 
@@ -141,3 +131,13 @@ class UserList(Base):
             ),
             "items": self.items,
         }
+
+
+def is_dict(v: Any):
+    assert isinstance(v, dict)
+    return v
+
+
+def is_nonempty(v: Any):
+    assert v
+    return v
