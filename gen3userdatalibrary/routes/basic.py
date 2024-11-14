@@ -52,8 +52,8 @@ async def get_status(
     Return the status of the running service
 
     Args:
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
+         request: FastAPI request (so we can check authorization)
+         data_access_layer: how we interface with db
 
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`

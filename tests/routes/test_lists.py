@@ -224,10 +224,10 @@ class TestUserListsRouter(BaseTestRouter):
         """
         Test creating a list with a non-unique name for different user, ensure 200
 
-        :param get_token_claims: for token
-        :param arborist: for successful auth
-        :param endpoint: which route to hit
-        :param client: router
+         get_token_claims: for token
+         arborist: for successful auth
+         endpoint: which route to hit
+         client: router
         """
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
@@ -322,10 +322,10 @@ class TestUserListsRouter(BaseTestRouter):
         """
         Test creating a list with non-unique name for given user, ensure 400
 
-        :param get_token_claims: for token
-        :param arborist: for successful auth
-        :param endpoint: which route to hit
-        :param client: router
+         get_token_claims: for token
+         arborist: for successful auth
+         endpoint: which route to hit
+         client: router
         """
         arborist.auth_request.return_value = True
         user_id = "79"

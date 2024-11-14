@@ -33,9 +33,9 @@ async def get_list_by_id(
     Find list by its id
 
     Args:
-        :param ID: the id of the list you wish to retrieve
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
+         ID: the id of the list you wish to retrieve
+         request: FastAPI request (so we can check authorization)
+         data_access_layer: how we interface with db
 
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
@@ -82,11 +82,13 @@ async def update_list_by_id(
         provided content if a list already exists.
 
     Args:
-        :param ID: the id of the list you wish to retrieve
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
-        :param info_to_update_with: content to change list
-        :return: JSONResponse: json response with info about the request outcome
+         ID: the id of the list you wish to retrieve
+         request: FastAPI request (so we can check authorization)
+         data_access_layer: how we interface with db
+         info_to_update_with: content to change list
+
+    Returns:
+         JSONResponse: json response with info about the request outcome
     """
     user_list = await data_access_layer.get_list(ID)
     if user_list is None:
@@ -126,11 +128,13 @@ async def append_items_to_list(
     Adds a list of provided items to an existing list
 
     Args:
-        :param ID: the id of the list you wish to retrieve
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
-        :param item_list: the items to be appended
-        :return: JSONResponse: json response with info about the request outcome
+         ID: the id of the list you wish to retrieve
+         request: FastAPI request (so we can check authorization)
+         data_access_layer: how we interface with db
+         item_list: the items to be appended
+
+    Returns:
+         JSONResponse: json response with info about the request outcome
     """
     if not item_list:
         raise HTTPException(
@@ -171,10 +175,12 @@ async def delete_list_by_id(
     Delete a list under the given id
 
     Args:
-        :param ID: the id of the list you wish to retrieve
-        :param request: FastAPI request (so we can check authorization)
-        :param data_access_layer: how we interface with db
-        :return: JSONResponse: json response with info about the request outcome
+         ID: the id of the list you wish to retrieve
+         request: FastAPI request (so we can check authorization)
+         data_access_layer: how we interface with db
+
+    Returns:
+         JSONResponse: json response with info about the request outcome
     """
     succeeded, delete_result = await make_db_request_or_return_500(
         lambda: data_access_layer.get_list(ID)

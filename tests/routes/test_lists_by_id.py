@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from starlette.exceptions import HTTPException
 
 from gen3userdatalibrary.routes import route_aggregator
 from tests.data.example_lists import (
@@ -28,11 +27,11 @@ class TestUserListsRouter(BaseTestRouter):
         """
         If I create a list, I should be able to access it without issue if I have the correct auth
 
-        :param endpoint: route we want to hit
-        :param user_list: user list sample object
-        :param client: route handler
-        :param get_token_claims: a general handler for authenticating a user's token
-        :param arborist: async instance of our access control policy engine
+        Args:
+            get_token_claims: a general handler for authenticating a user's token
+            arborist: async instance of our access control policy engine
+            user_list: example user lists
+            client: route handler
         """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         resp1 = await create_basic_list(
