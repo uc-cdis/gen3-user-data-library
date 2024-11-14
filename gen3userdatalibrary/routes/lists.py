@@ -56,15 +56,15 @@ async def read_all_lists(
     start_time = time.time()
 
     try:
-        new_user_lists = await data_access_layer.get_all_lists(user_id)
+        user_lists = await data_access_layer.get_all_lists(user_id)
     except Exception as exc:
         logging.exception(f"Unknown exception {type(exc)} when trying to fetch lists.")
         logging.debug(f"Details: {exc}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="There was a problem trying to get list for the user. Try again later!",
         )
-    id_to_list_dict = map_list_id_to_list_dict(new_user_lists)
+    id_to_list_dict = _map_list_id_to_list_dict(user_lists)
     response_user_lists = mutate_keys(lambda k: str(k), id_to_list_dict)
     response = {"lists": response_user_lists}
     end_time = time.time()
@@ -78,7 +78,8 @@ async def read_all_lists(
 
 
 @lists_router.put(
-    "",  # most of the following stuff helps populate the openapi docs
+    # most of the following stuff helps populate the openapi docs
+    "",
     response_model=UserListResponseModel,
     status_code=status.HTTP_201_CREATED,
     description="Create user list(s) by providing valid list information",
@@ -119,7 +120,7 @@ async def upsert_user_lists(
     Args:
         request: (Request) FastAPI request (so we can check authorization)
             {"lists": [RequestedUserListModel]}
-        requested_lists: requested_lists: Body from the POST, expects list of entities
+        requested_lists: (UpdateItemsModel) Body from the POST, expects list of entities
         data_access_layer: (DataAccessLayer): Interface for data manipulations
 
     Returns:
@@ -216,7 +217,15 @@ async def delete_all_lists(
 # region Helpers
 
 
-def map_list_id_to_list_dict(new_user_lists):
+def _map_list_id_to_list_dict(new_user_lists: List[UserList]):
+    """
+    maps list id => user list, remove user list id from user list (as dict)
+    Args:
+        new_user_lists: UserList
+
+    Returns:
+        user list id => UserList (as dict, without id)
+    """
     response_user_lists = {}
     for user_list in new_user_lists:
         response_user_lists[user_list.id] = user_list.to_dict()

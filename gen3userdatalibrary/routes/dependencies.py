@@ -67,7 +67,7 @@ def ensure_any_items_match_schema(endpoint_context, conformed_body):
         for item_set in item_dict:
             for item_contents in item_set.values():
                 validate_user_list_item(item_contents)
-    else:  # assume dict for now
+    else:  # is (or should be) dict
         for item_contents in item_dict.values():
             validate_user_list_item(item_contents)
 

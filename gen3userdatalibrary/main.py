@@ -5,7 +5,6 @@ import fastapi
 from fastapi import FastAPI
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
-from starlette.requests import Request
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.db import get_data_access_layer
@@ -14,7 +13,7 @@ from gen3userdatalibrary.routes import route_aggregator
 
 
 @asynccontextmanager
-async def lifespan(app: Request):
+async def lifespan(app: FastAPI):
     """
     Parse the configuration, setup and instantiate necessary classes.
 
@@ -92,19 +91,19 @@ def get_app() -> fastapi.FastAPI:
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:
-        metrics_app = make_metrics_app()
+        metrics_app = make_metrics_app(config.PROMETHEUS_MULTIPROC_DIR)
         fastapi_app.mount("/metrics", metrics_app)
 
     return fastapi_app
 
 
-def make_metrics_app():
+def make_metrics_app(prometheus_multiproc_dir):
     """
     Required for Prometheus multiprocess setup
     See: https://prometheus.github.io/client_python/multiprocess/
     """
     registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
+    multiprocess.MultiProcessCollector(registry, prometheus_multiproc_dir)
     return make_asgi_app(registry=registry)
 
 

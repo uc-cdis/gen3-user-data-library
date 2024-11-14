@@ -3,7 +3,8 @@ import uuid
 from typing import Dict, Any, List
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import JSONB, Column, DateTime, Integer, String, UniqueConstraint, UUID
+from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -18,11 +19,11 @@ class NonEmptyDict(Dict[str, Any]):
 
 class UserListModel(BaseModel):
     version: int
-    creator: Field(min_length=1)
+    creator: str = Field(min_length=1)
     authz: Dict[str, Any]
     created_time: datetime
     updated_time: datetime
-    name: Field(min_length=1)
+    name: str = Field(min_length=1)
     items: Dict[str, Any]
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
@@ -32,7 +33,7 @@ class UserListResponseModel(BaseModel):
 
 
 class ItemToUpdateModel(BaseModel):
-    name: constr(min_length=1)
+    name: str = Field(min_length=1)
     items: Dict[str, Any]
     model_config = ConfigDict(extra="forbid")
 
