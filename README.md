@@ -1,6 +1,15 @@
 # Gen3 User Data Library
 
-[short description]
+The Gen3 User Data Library service allows management of many user selections of data. It creates a "library" containing all of a user's data selections.
+
+Data selections are internally referred to as `lists`. A user can have 0 to many lists forming their library. A list has unique items
+ that represent data in different forms. Lists can be stored, retrieved, modified, and deleted per user.
+
+At the moment the lists support the following items:
+
+- Global Alliance for Genomics and Health (GA4GH) Data Repository Service (DRS) Uniform Resource Identifiers (URIs)
+- Gen3 GraphQL queries
+
 
 **Table of Contents**
 
