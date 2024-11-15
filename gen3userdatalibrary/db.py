@@ -35,7 +35,6 @@ from fastapi import HTTPException
 from sqlalchemy import text, delete, func, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
-from sqlalchemy.orm import make_transient
 from starlette import status
 
 from gen3userdatalibrary import config
@@ -223,15 +222,13 @@ class DataAccessLayer:
             original_list_id: id of original list
             list_as_orm: new list to replace the old one
         """
-        existing_obj = await self.get_existing_list_or_throw(original_list_id)
-        await self.db_session.delete(existing_obj)
-        # await self.db_session.commit()
-
-        make_transient(list_as_orm)
-        list_as_orm.id = None
-        self.db_session.add(list_as_orm)
-        # await self.db_session.commit()
-        return list_as_orm
+        existing_obj = await self.get_list(
+            (list_as_orm.creator, list_as_orm.name), "name"
+        )
+        existing_obj.name = list_as_orm.name
+        existing_obj.items = list_as_orm.items
+        # todo: should this be different?
+        return existing_obj
 
     async def add_items_to_list(self, list_id: UUID, item_data: dict):
         """
