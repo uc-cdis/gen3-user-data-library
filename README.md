@@ -1,23 +1,27 @@
 # Gen3 User Data Library
 
-The Gen3 User Data Library service allows management of many user selections of data. It creates a "library" containing all of a user's data selections.
+The user data library is a relatively
+**Table of Contents**
 
-Data selections are internally referred to as `lists`. A user can have 0 to many lists forming their library. A list has unique items
- that represent data in different forms. Lists can be stored, retrieved, modified, and deleted per user.
+- [Overview](#Overview)
+- [Details](#Details)
+- [Quickstart](#Quickstart)
+- [Authz](#Authz)
+- [Local Development](#local-dev)
+
+## Overview
+
+The Gen3 User Data Library service allows management of many user selections of data. It creates a "library" containing
+all of a user's data selections.
+
+Data selections are internally referred to as `lists`. A user can have 0 to many lists forming their library. A list has
+unique items
+that represent data in different forms. Lists can be stored, retrieved, modified, and deleted per user.
 
 At the moment the lists support the following items:
 
 - Global Alliance for Genomics and Health (GA4GH) Data Repository Service (DRS) Uniform Resource Identifiers (URIs)
 - Gen3 GraphQL queries
-
-
-**Table of Contents**
-
-- [auto gen this]
-
-## Overview
-
-[medium description]
 
 ## Details
 
@@ -27,7 +31,13 @@ At the moment the lists support the following items:
 
 ### Setup
 
-[]
+The api should nearly work out of the box. You will
+need to install poetry dependencies, as well as set
+up a `.env` file at the top level. The configuration
+for this is described directly below. Once you have
+a `.env` set up, running `run.sh` should boot up
+an api you can access in your browser by going to
+`localhost:8000` assuming you use the default ports.
 
 #### Configuration
 

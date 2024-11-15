@@ -156,7 +156,7 @@ class DataAccessLayer:
         )
         for key, value in changes_that_can_be_made:
             setattr(db_list_to_update, key, value)
-        await self.db_session.commit()
+        # await self.db_session.commit()
         return db_list_to_update
 
     async def test_connection(self) -> None:
@@ -194,7 +194,7 @@ class DataAccessLayer:
         query = delete(UserList).where(UserList.creator == sub_id)
         query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(query)
-        await self.db_session.commit()
+        # await self.db_session.commit()
         return count
 
     async def delete_list(self, list_id: UUID):
@@ -212,7 +212,7 @@ class DataAccessLayer:
         del_query = delete(UserList).where(UserList.id == list_id)
         count_query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(del_query)
-        await self.db_session.commit()
+        # await self.db_session.commit()
         return count
 
     async def replace_list(self, original_list_id, list_as_orm: UserList):
@@ -225,12 +225,12 @@ class DataAccessLayer:
         """
         existing_obj = await self.get_existing_list_or_throw(original_list_id)
         await self.db_session.delete(existing_obj)
-        await self.db_session.commit()
+        # await self.db_session.commit()
 
         make_transient(list_as_orm)
         list_as_orm.id = None
         self.db_session.add(list_as_orm)
-        await self.db_session.commit()
+        # await self.db_session.commit()
         return list_as_orm
 
     async def add_items_to_list(self, list_id: UUID, item_data: dict):
@@ -244,7 +244,7 @@ class DataAccessLayer:
         """
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.update(item_data)
-        await self.db_session.commit()
+        # await self.db_session.commit()
         return user_list
 
     async def grab_all_lists_that_exist(

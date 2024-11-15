@@ -2,6 +2,7 @@ import time
 from typing import List
 
 from fastapi import Request, Depends, HTTPException, APIRouter
+from fastapi import Response
 from gen3authz.client.arborist.errors import ArboristError
 from starlette import status
 from starlette.responses import JSONResponse
@@ -179,7 +180,7 @@ async def upsert_user_lists(
 async def delete_all_lists(
     request: Request,
     data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
-) -> JSONResponse:
+) -> Response:
     """
     Delete all lists for a provided user
 
@@ -211,7 +212,7 @@ async def delete_all_lists(
         f"response_time_seconds={response_time_seconds} user_id={user_id}"
     )
     logging.debug(response)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=response)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # region Helpers
@@ -248,7 +249,7 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
     )
     if has_no_relevant_differences:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to update!"
+            status_code=status.HTTP_409_CONFLICT, detail="Nothing to update!"
         )
     property_to_change_to_make = {
         k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()

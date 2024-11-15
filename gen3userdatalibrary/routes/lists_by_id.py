@@ -1,10 +1,9 @@
-import time
 from typing import Dict, Any
 from uuid import UUID
 
 from fastapi import Request, Depends, HTTPException, APIRouter
 from starlette import status
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from gen3userdatalibrary.auth import get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
@@ -12,7 +11,6 @@ from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
-    ensure_items_less_than_max,
 )
 from gen3userdatalibrary.utils.core import update
 from gen3userdatalibrary.utils.modeling import try_conforming_list
@@ -40,25 +38,14 @@ async def get_list_by_id(
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    status_text = "OK"
-
-    succeeded, get_result = await make_db_request_or_return_500(
-        lambda: data_access_layer.get_list(ID)
-    )
-    if not succeeded:
-        response = get_result
-    elif get_result is None:
-        resp_content = {"status": "NOT FOUND", "timestamp": time.time()}
+    result = await data_access_layer.get_list(ID)
+    if result is None:
         response = JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND, content=resp_content
+            status_code=status.HTTP_404_NOT_FOUND, content="ID not found!"
         )
     else:
-        data = update("id", lambda ul_id: str(ul_id), get_result.to_dict())
-        resp_content = {
-            "status": status_text,
-            "timestamp": time.time(),
-            "body": {"lists": {str(get_result.id): data}},
-        }
+        data = update("id", lambda ul_id: str(ul_id), result.to_dict())
+        resp_content = {str(result.id): data}
         response = JSONResponse(status_code=status.HTTP_200_OK, content=resp_content)
     return response
 
@@ -92,21 +79,14 @@ async def update_list_by_id(
     """
     user_list = await data_access_layer.get_list(ID)
     if user_list is None:
-        raise HTTPException(status_code=404, detail="List not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
+        )
     user_id = await get_user_id(request=request)
     list_as_orm = await try_conforming_list(user_id, info_to_update_with)
-    ensure_items_less_than_max(len(info_to_update_with.items))
-    succeeded, update_result = await make_db_request_or_return_500(
-        lambda: data_access_layer.replace_list(ID, list_as_orm)
-    )
-
-    if not succeeded:
-        response = update_result
-    else:
-        data = update("id", lambda ul_id: str(ul_id), update_result.to_dict())
-        resp_content = {"status": "OK", "timestamp": time.time(), "updated_list": data}
-        return_status = status.HTTP_200_OK
-        response = JSONResponse(status_code=return_status, content=resp_content)
+    replace_result = await data_access_layer.replace_list(ID, list_as_orm)
+    data = update("id", lambda ul_id: str(ul_id), replace_result.to_dict())
+    response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
     return response
 
 
@@ -138,7 +118,7 @@ async def append_items_to_list(
     """
     if not item_list:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to append!"
+            status_code=status.HTTP_409_CONFLICT, detail="Nothing to append!"
         )
     user_list = await data_access_layer.get_list(ID)
     list_exists = user_list is not None
@@ -146,19 +126,10 @@ async def append_items_to_list(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist"
         )
-    ensure_items_less_than_max(len(item_list), len(user_list.items))
 
-    succeeded, append_result = await make_db_request_or_return_500(
-        lambda: data_access_layer.add_items_to_list(ID, item_list)
-    )
-
-    if succeeded:
-        data = update("id", lambda ul_id: str(ul_id), append_result.to_dict())
-        resp_content = {"status": "OK", "timestamp": time.time(), "data": data}
-        return_status = status.HTTP_200_OK
-        response = JSONResponse(status_code=return_status, content=resp_content)
-    else:
-        response = append_result
+    append_result = await data_access_layer.add_items_to_list(ID, item_list)
+    data = update("id", lambda ul_id: str(ul_id), append_result.to_dict())
+    response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
     return response
 
 
@@ -170,7 +141,7 @@ async def delete_list_by_id(
     ID: UUID,
     request: Request,
     data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
-) -> JSONResponse:
+) -> Response:
     """
     Delete a list under the given id
 
@@ -182,53 +153,10 @@ async def delete_list_by_id(
     Returns:
          JSONResponse: json response with info about the request outcome
     """
-    succeeded, delete_result = await make_db_request_or_return_500(
-        lambda: data_access_layer.get_list(ID)
-    )
-    if not succeeded:
-        return delete_result
-    elif delete_result is None:
-        response = {
-            "status": "NOT FOUND",
-            "timestamp": time.time(),
-            "list_deleted": False,
-        }
-        return JSONResponse(status_code=404, content=response)
+    get_result = await data_access_layer.get_list(ID)
+    if get_result is None:
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
 
-    succeeded, data = await make_db_request_or_return_500(
-        lambda: data_access_layer.delete_list(ID)
-    )
-    if succeeded:
-        resp_content = {
-            "status": "OK",
-            "timestamp": time.time(),
-            "list_deleted": bool(data),
-        }
-        response = JSONResponse(status_code=200, content=resp_content)
-    else:
-        response = data
+    delete_result = await data_access_layer.delete_list(ID)
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
     return response
-
-
-# region Helpers
-
-
-def build_generic_500_response():
-    return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
-    status_text = "UNHEALTHY"
-    response = {"status": status_text, "timestamp": time.time()}
-    return JSONResponse(status_code=return_status, content=response)
-
-
-async def make_db_request_or_return_500(
-    primed_db_query, fail_handler=build_generic_500_response
-):
-    try:
-        outcome = await primed_db_query()
-        return True, outcome
-    except Exception as e:
-        outcome = fail_handler()
-        return False, outcome
-
-
-# endregion
