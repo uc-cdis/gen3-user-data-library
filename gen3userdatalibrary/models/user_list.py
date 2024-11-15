@@ -1,5 +1,5 @@
-import datetime
 import uuid
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -8,6 +8,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
+
+USER_LIST_UPDATE_ALLOW_LIST = {"items", "name"}
 
 
 class NonEmptyDict(Dict[str, Any]):
@@ -103,13 +105,13 @@ class UserList(Base):
 
     created_time = Column(
         DateTime(timezone=True),
-        default=datetime.datetime.now(datetime.timezone.utc),
+        default=datetime.now(timezone.utc),
         nullable=False,
     )
     updated_time = Column(
         DateTime(timezone=True),
-        default=datetime.datetime.now(datetime.timezone.utc),
-        onupdate=datetime.datetime.now(datetime.timezone.utc),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
         nullable=False,
     )
 

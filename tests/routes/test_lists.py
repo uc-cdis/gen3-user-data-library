@@ -337,7 +337,7 @@ class TestUserListsRouter(BaseTestRouter):
         response_2 = await client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
-        assert response_2.status_code == 400
+        assert response_2.status_code == 409
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
@@ -359,7 +359,7 @@ class TestUserListsRouter(BaseTestRouter):
             arborist, get_token_claims, client, VALID_LIST_A, headers
         )
         r2 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_A]})
-        assert r2.status_code == 400
+        assert r2.status_code == 409
         r3 = await client.put("/lists", headers=headers, json={"lists": []})
         assert r3.status_code == 400
 
@@ -659,14 +659,22 @@ class TestUserListsRouter(BaseTestRouter):
                 "type": "GA4GH_DRS",
             }
         }
+        # todo: update time isn't working anymore?
         response_2 = await client.put(
             endpoint, headers=headers, json={"lists": [updated_list_a]}
         )
         res_2_info = get_list_info(response_2)
+        created_time_did_not_change = (
+            res_1_info["created_time"] == res_2_info["created_time"]
+        )
+        updated_time_changed = res_1_info["updated_time"] != res_2_info["updated_time"]
+        update_create_is_not_same_time_as_update = (
+            res_2_info["created_time"] != res_2_info["updated_time"]
+        )
         assert (
-            (res_1_info["created_time"] == res_2_info["created_time"])
-            and res_1_info["updated_time"] != res_2_info["updated_time"]
-            and res_2_info["created_time"] != res_2_info["updated_time"]
+            created_time_did_not_change
+            and updated_time_changed
+            and update_create_is_not_same_time_as_update
         )
 
 

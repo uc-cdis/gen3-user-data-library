@@ -8,8 +8,8 @@ from starlette import status
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_user_id, authorize_request
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
-from gen3userdatalibrary.models.data import ENDPOINT_TO_CONTEXT
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
+from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEXT
 from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 
@@ -38,7 +38,7 @@ def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
     if endpoint_type == "all":
         resource = get_resource(user_id)
     elif endpoint_type == "id":
-        list_id = path_params["ID"]
+        list_id = path_params["list_id"]
         resource = get_resource(user_id, list_id)
     else:  # None
         resource = get_resource
@@ -90,7 +90,7 @@ async def validate_items(
     endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
     conformed_body = json.loads(await request.body())
     user_id = await get_user_id(request=request)
-    list_id = request["path_params"].get("ID", None)
+    list_id = request["path_params"].get("list_id", None)
 
     try:
         ensure_any_items_match_schema(endpoint_context, conformed_body)
@@ -127,7 +127,7 @@ async def validate_items(
             list_to_append = await dal.get_existing_list_or_throw(list_id)
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
+                status_code=status.HTTP_404_NOT_FOUND, detail="list_id not recognized!"
             )
         ensure_items_less_than_max(len(conformed_body), len(list_to_append.items))
     else:  # 'update_list_by_id'
@@ -135,7 +135,7 @@ async def validate_items(
             list_to_append = await dal.get_existing_list_or_throw(list_id)
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
+                status_code=status.HTTP_404_NOT_FOUND, detail="list_id not recognized!"
             )
         except Exception as e:
             raise HTTPException(

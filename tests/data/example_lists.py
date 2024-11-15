@@ -112,7 +112,7 @@ VALID_LIST_E = {
 
 
 VALID_REPLACEMENT_LIST = {
-    "name": "example 2",
+    "name": "My Saved List 1",
     "items": {
         "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65": {
             "dataset_guid": "phs000001.v1.p1.c1",

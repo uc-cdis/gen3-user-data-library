@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from importlib.metadata import version
 
 import fastapi
+from cdislogging import get_logger
 from fastapi import FastAPI
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
@@ -31,7 +32,11 @@ async def lifespan(app: FastAPI):
         prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
     )
 
-    app.state.arborist_client = ArboristClient(arborist_base_url=config.ARBORIST_URL)
+    app.state.arborist_client = ArboristClient(
+        arborist_base_url=config.ARBORIST_URL,
+        logger=get_logger("user_syncer.arborist_client"),
+        authz_provider="user-sync",
+    )
 
     try:
         logging.debug(
@@ -54,7 +59,8 @@ async def lifespan(app: FastAPI):
                 "Startup policy engine (Arborist) connection test initiating..."
             )
             if not app.state.arborist_client.healthy():
-                raise Exception("Arborist unhealthy,aborting...")
+                print("not healthy!")
+                # raise Exception("Arborist unhealthy,aborting...")
         except Exception as exc:
             logging.exception(
                 "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."

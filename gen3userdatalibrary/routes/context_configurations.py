@@ -4,9 +4,6 @@ from gen3userdatalibrary.auth import (
 )
 from gen3userdatalibrary.utils.core import identity
 
-USER_LIST_UPDATE_ALLOW_LIST = {"items", "name"}
-
-
 """
 Endpoint to context is a static definition of information specific to endpoints used in
 dependencies. For example, all endpoints need to authorize the user request, but the
@@ -36,12 +33,12 @@ ENDPOINT_TO_CONTEXT = {
     },
     "read_all_lists": {
         "type": "all",
-        "resource": lambda user_id: get_lists_endpoint(user_id),
+        "resource": get_lists_endpoint,
         "method": "read",
     },
     "upsert_user_lists": {
         "type": "all",
-        "resource": lambda user_id: get_lists_endpoint(user_id),
+        "resource": get_lists_endpoint,
         "method": "update",
         "items": lambda body: list(
             map(lambda item_to_update: item_to_update["items"], body["lists"])
@@ -49,29 +46,29 @@ ENDPOINT_TO_CONTEXT = {
     },
     "delete_all_lists": {
         "type": "all",
-        "resource": lambda user_id: get_lists_endpoint(user_id),
+        "resource": get_lists_endpoint,
         "method": "delete",
     },
     "get_list_by_id": {
         "type": "id",
-        "resource": lambda user_id, list_id: get_list_by_id_endpoint(user_id, list_id),
+        "resource": get_list_by_id_endpoint,
         "method": "read",
     },
     "update_list_by_id": {
         "type": "id",
-        "resource": lambda user_id, list_id: get_list_by_id_endpoint(user_id, list_id),
+        "resource": get_list_by_id_endpoint,
         "method": "update",
         "items": lambda b: b["items"],
     },
     "append_items_to_list": {
         "type": "id",
-        "resource": lambda user_id, list_id: get_list_by_id_endpoint(user_id, list_id),
+        "resource": get_list_by_id_endpoint,
         "method": "update",
         "items": identity,
     },
     "delete_list_by_id": {
         "type": "id",
-        "resource": lambda user_id, list_id: get_list_by_id_endpoint(user_id, list_id),
+        "resource": get_list_by_id_endpoint,
         "method": "delete",
     },
 }

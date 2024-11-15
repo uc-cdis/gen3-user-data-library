@@ -3,6 +3,7 @@ from typing import List
 
 from fastapi import Request, Depends, HTTPException, APIRouter
 from fastapi import Response
+from fastapi.encoders import jsonable_encoder
 from gen3authz.client.arborist.errors import ArboristError
 from starlette import status
 from starlette.responses import JSONResponse
@@ -13,12 +14,12 @@ from gen3userdatalibrary.auth import (
     get_user_data_library_endpoint,
 )
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.models.data import USER_LIST_UPDATE_ALLOW_LIST
 from gen3userdatalibrary.models.user_list import (
     UserListResponseModel,
     UpdateItemsModel,
     UserList,
     ItemToUpdateModel,
+    USER_LIST_UPDATE_ALLOW_LIST,
 )
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
@@ -27,7 +28,6 @@ from gen3userdatalibrary.routes.dependencies import (
     sort_lists_into_create_or_update,
 )
 from gen3userdatalibrary.utils.core import (
-    mutate_keys,
     find_differences,
     filter_keys,
 )
@@ -52,9 +52,9 @@ async def read_all_lists(
         request: FastAPI request (so we can check authorization)
         data_access_layer: how we interface with db
     """
+    start_time = time.time()
     user_id = await get_user_id(request=request)
     # dynamically create user policy
-    start_time = time.time()
 
     try:
         user_lists = await data_access_layer.get_all_lists(user_id)
@@ -66,8 +66,9 @@ async def read_all_lists(
             detail="There was a problem trying to get list for the user. Try again later!",
         )
     id_to_list_dict = _map_list_id_to_list_dict(user_lists)
-    response_user_lists = mutate_keys(lambda k: str(k), id_to_list_dict)
-    response = {"lists": response_user_lists}
+    # response_user_lists = mutate_keys(lambda k: str(k), id_to_list_dict)
+    json_conformed_data = jsonable_encoder(id_to_list_dict)
+    response = {"lists": json_conformed_data}
     end_time = time.time()
     response_time_seconds = end_time - start_time
     logging.info(
@@ -127,14 +128,16 @@ async def upsert_user_lists(
     Returns:
 
     """
-    user_id = await get_user_id(request=request)
+    start_time = time.time()
+
+    creator_id = await get_user_id(request=request)
 
     if not config.DEBUG_SKIP_AUTH:
         # make sure the user exists in Arborist
         # IMPORTANT: This is using the user's unique subject ID
-        request.app.state.arborist_client.create_user_if_not_exist(user_id)
+        request.app.state.arborist_client.create_user_if_not_exist(creator_id)
 
-        resource = get_user_data_library_endpoint(user_id)
+        resource = get_user_data_library_endpoint(creator_id)
 
         try:
             logging.debug("attempting to update arborist resource: {}".format(resource))
@@ -143,31 +146,47 @@ async def upsert_user_lists(
             logging.error(e)
             # keep going; maybe just some conflicts from things existing already
 
+        policy_id = creator_id
+        role_ids = ("create", "read", "update", "delete")
+        resource_paths = get_user_data_library_endpoint(creator_id)
+        policy_json = {
+            "id": policy_id,
+            "description": "policy created by requestor",
+            "role_ids": role_ids,
+            "resource_paths": resource_paths,
+        }
+        try:
+            outcome = request.app.state.arborist_client.create_policy(
+                policy_json=policy_json
+            )
+        except ArboristError as e:
+            pass
+
     raw_lists = requested_lists.lists
     if not raw_lists:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!"
         )
-    start_time = time.time()
     updated_user_lists = await sort_persist_and_get_changed_lists(
-        data_access_layer, raw_lists, user_id
+        data_access_layer, raw_lists, creator_id
     )
-    response_user_lists = mutate_keys(lambda k: str(k), updated_user_lists)
+    # response_user_lists = mutate_keys(lambda k: str(k), updated_user_lists)
+    json_conformed_data = jsonable_encoder(updated_user_lists)
     end_time = time.time()
     response_time_seconds = end_time - start_time
-    response = {"lists": response_user_lists}
+    response = {"lists": json_conformed_data}
     action = "CREATE"
     logging.info(
         f"Gen3 User Data Library Response. Action: {action}. "
         f"lists={requested_lists}, response={response}, "
-        f"response_time_seconds={response_time_seconds} user_id={user_id}"
+        f"response_time_seconds={response_time_seconds} user_id={creator_id}"
     )
     add_user_list_metric(
         fastapi_app=request.app,
         action=action,
         user_lists=requested_lists.lists,
         response_time_seconds=response_time_seconds,
-        user_id=user_id,
+        user_id=creator_id,
     )
     logging.debug(response)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
@@ -244,8 +263,7 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
         lambda k, _: k in USER_LIST_UPDATE_ALLOW_LIST, properties_to_old_new_difference
     )
     has_no_relevant_differences = not relevant_differences or (
-        len(relevant_differences) == 1
-        and relevant_differences.__contains__("updated_time")
+        len(relevant_differences) == 1 and "updated_time" in relevant_differences
     )
     if has_no_relevant_differences:
         raise HTTPException(
