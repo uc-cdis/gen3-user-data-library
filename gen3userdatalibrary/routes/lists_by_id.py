@@ -34,9 +34,9 @@ async def get_list_by_id(
     Find list by its id
 
     Args:
-         list_id: the id of the list you wish to retrieve
-         request: FastAPI request (so we can check authorization)
-         data_access_layer: how we interface with db
+         list_id (UUID): the id of the list you wish to retrieve
+         request (Request): FastAPI request (so we can check authorization)
+         data_access_layer (DataAccessLayer): how we interface with db
 
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
@@ -73,10 +73,10 @@ async def update_list_by_id(
         provided content if a list already exists.
 
     Args:
-         list_id: the id of the list you wish to retrieve
-         request: FastAPI request (so we can check authorization)
-         data_access_layer: how we interface with db
-         info_to_update_with: content to change list
+         list_id (UUID): the id of the list you wish to retrieve
+         request (Request): FastAPI request (so we can check authorization)
+         data_access_layer (DataAccessLayer): how we interface with db
+         info_to_update_with (ItemToUpdateModel): content to change list
 
     Returns:
          JSONResponse: json response with info about the request outcome
@@ -120,10 +120,10 @@ async def append_items_to_list(
     Adds a list of provided items to an existing list
 
     Args:
-         list_id: the id of the list you wish to retrieve
-         request: FastAPI request (so we can check authorization)
-         data_access_layer: how we interface with db
-         item_list: the items to be appended
+         list_id (UUID): the id of the list you wish to retrieve
+         request (Request): FastAPI request (so we can check authorization)
+         data_access_layer (DataAccessLayer): how we interface with db
+         item_list (Dict[str, Any): the items to be appended
 
     Returns:
          JSONResponse: json response with info about the request outcome
@@ -160,9 +160,9 @@ async def delete_list_by_id(
     Delete a list under the given id
 
     Args:
-         list_id: the id of the list you wish to retrieve
-         request: FastAPI request (so we can check authorization)
-         data_access_layer: how we interface with db
+         list_id (UUID): the id of the list you wish to retrieve
+         request (Request): FastAPI request (so we can check authorization)
+         data_access_layer (DataAccessLayer): how we interface with db
 
     Returns:
          JSONResponse: json response with info about the request outcome

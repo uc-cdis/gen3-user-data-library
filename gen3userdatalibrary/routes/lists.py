@@ -50,8 +50,8 @@ async def read_all_lists(
     Return all lists for user
 
     Args:
-        request: FastAPI request (so we can check authorization)
-        data_access_layer: how we interface with db
+        request (Request): FastAPI request (so we can check authorization)
+        data_access_layer (DataAccessLayer): how we interface with db
     """
     start_time = time.time()
     user_id = await get_user_id(request=request)
@@ -219,8 +219,8 @@ async def delete_all_lists(
     Delete all lists for a provided user
 
     Args:
-        request: FastAPI request (so we can check authorization)
-        data_access_layer: how we interface with db
+        request (Request): FastAPI request (so we can check authorization)
+        data_access_layer (DataAccessLayer): how we interface with db
     """
     start_time = time.time()
     user_id = await get_user_id(request=request)
