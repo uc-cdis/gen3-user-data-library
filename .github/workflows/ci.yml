@@ -15,7 +15,7 @@ jobs:
     with:
       python-poetry: 'true'
     secrets: inherit
-# TODO: Uncomment after November 20th, 2024
+# TODO: Uncomment after repo is public
 #  UnitTest:
 #    name: Python Unit Test with Postgres
 #    uses: uc-cdis/.github/.github/workflows/python_unit_test.yaml@master
@@ -61,15 +61,15 @@ jobs:
     with:
       python-version: '3.9'
       use-cache: true
-
-  InformationalLint:
-    name: Run Informational Linters
-    needs: [ LintConfig ] #TODO Add UnitTest
-    if: github.ref != 'refs/heads/main'
-    uses: uc-cdis/.github/.github/workflows/optional_lint_check.yaml@master
-    with:
-      python-version: '3.9'
-      use-cache: true
+# TODO: Uncomment after repo is public
+#  InformationalLint:
+#    name: Run Informational Linters
+#    needs: [ LintConfig ] #TODO Add UnitTest
+#    if: github.ref != 'refs/heads/main'
+#    uses: uc-cdis/.github/.github/workflows/optional_lint_check.yaml@master
+#    with:
+#      python-version: '3.9'
+#      use-cache: true
 
   ImageBuildAndPush:
     name: Build Image and Push
