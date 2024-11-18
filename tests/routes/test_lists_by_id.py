@@ -25,7 +25,7 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_getting_id_success(
-        self, get_token_claims, arborist, user_list, endpoint, client
+        self, get_token_claims, arborist, user_list, endpoint, app_client_pair
     ):
         """
         If I create a list, I should be able to access it without issue if I have the correct auth
@@ -36,6 +36,9 @@ class TestUserListsRouter(BaseTestRouter):
             user_list: example user lists
             client: route handler
         """
+        app, client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
         headers = {"Authorization": "Bearer ofa.valid.token"}
         resp1 = await create_basic_list(
             arborist, get_token_claims, client, user_list, headers
@@ -51,11 +54,14 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_getting_id_failure(
-        self, get_token_claims, arborist, user_list, endpoint, client
+        self, get_token_claims, arborist, user_list, endpoint, app_client_pair
     ):
         """
         Ensure asking for a list with unused id returns 404
         """
+        app, client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(
             arborist, get_token_claims, client, user_list, headers
@@ -74,12 +80,15 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_updating_by_id_success(
-        self, get_token_claims, arborist, user_list, endpoint, client
+        self, get_token_claims, arborist, user_list, endpoint, app_client_pair
     ):
         """
         Test we can update a specific list correctly
 
         """
+        app, client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(
             arborist, get_token_claims, client, user_list, headers
@@ -107,11 +116,14 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_updating_by_id_failures(
-        self, get_token_claims, arborist, user_list, endpoint, client
+        self, get_token_claims, arborist, user_list, endpoint, app_client_pair
     ):
         """
         Test updating non-existent list fails
         """
+        app, client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(
             arborist, get_token_claims, client, user_list, headers
@@ -132,12 +144,15 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_appending_by_id_success(
-        self, get_token_claims, arborist, endpoint, client
+        self, get_token_claims, arborist, endpoint, app_client_pair
     ):
         """
         Test we can append to a specific list correctly
         note: getting weird test behavior if I try to use valid lists, so keeping local until that is resolved
         """
+        app, client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
         headers = {"Authorization": "Bearer ofa.valid.token"}
         outcome_D = await create_basic_list(
             arborist, get_token_claims, client, VALID_LIST_D, headers
@@ -211,12 +226,15 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_appending_by_id_failures(
-        self, get_token_claims, arborist, user_list, endpoint, client
+        self, get_token_claims, arborist, user_list, endpoint, app_client_pair
     ):
         """
         Test that appending to non-existent list fails
 
         """
+        app, client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(
             arborist, get_token_claims, client, user_list, headers
@@ -256,12 +274,15 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_deleting_by_id_success(
-        self, get_token_claims, arborist, endpoint, client
+        self, get_token_claims, arborist, endpoint, app_client_pair
     ):
         """
         Test that we can't get data after it has been deleted
 
         """
+        app, client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
         headers = {"Authorization": "Bearer ofa.valid.token"}
         resp1 = await create_basic_list(
             arborist, get_token_claims, client, VALID_LIST_A, headers
@@ -289,12 +310,15 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_deleting_by_id_failures(
-        self, get_token_claims, arborist, user_list, endpoint, client
+        self, get_token_claims, arborist, user_list, endpoint, app_client_pair
     ):
         """
         Test we can't delete a non-existent list
 
         """
+        app, client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
         headers = {"Authorization": "Bearer ofa.valid.token"}
 
         resp1 = await create_basic_list(

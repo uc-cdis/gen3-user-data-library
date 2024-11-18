@@ -4,6 +4,7 @@ from typing import List
 from fastapi import Request, Depends, HTTPException, APIRouter
 from fastapi import Response
 from fastapi.encoders import jsonable_encoder
+from gen3authz.client.arborist.async_client import ArboristClient
 from gen3authz.client.arborist.errors import ArboristError
 from starlette import status
 from starlette.responses import JSONResponse
@@ -135,13 +136,23 @@ async def upsert_user_lists(
     if not config.DEBUG_SKIP_AUTH:
         # make sure the user exists in Arborist
         # IMPORTANT: This is using the user's unique subject ID
-        request.app.state.arborist_client.create_user_if_not_exist(creator_id)
+        try:
+            arb_client: ArboristClient = request.app.state.arborist_client
+            create_outcome = await arb_client.create_user_if_not_exist(creator_id)
+        except ArboristError as ae:
+            logging.error(f"Error creating user in arborist: {(ae.code, ae.message)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal error interfacing with arborist",
+            )
 
         resource = get_user_data_library_endpoint(creator_id)
 
         try:
             logging.debug("attempting to update arborist resource: {}".format(resource))
-            request.app.state.arborist_client.update_resource("/", resource, merge=True)
+            await request.app.state.arborist_client.update_resource(
+                "/", resource, merge=True
+            )
         except ArboristError as e:
             logging.error(e)
             # keep going; maybe just some conflicts from things existing already
@@ -156,11 +167,15 @@ async def upsert_user_lists(
             "resource_paths": resource_paths,
         }
         try:
-            outcome = request.app.state.arborist_client.create_policy(
+            outcome = await request.app.state.arborist_client.create_policy(
                 policy_json=policy_json
             )
-        except ArboristError as e:
-            pass
+        except ArboristError as ae:
+            logging.error(f"Error creating policy in arborist: {(ae.code, ae.message)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal error interfacing with arborist",
+            )
 
     raw_lists = requested_lists.lists
     if not raw_lists:
@@ -279,8 +294,14 @@ async def sort_persist_and_get_changed_lists(
     data_access_layer: DataAccessLayer, raw_lists: List[ItemToUpdateModel], user_id: str
 ) -> dict[str, dict]:
     """
-    Conforms and sorts lists into sets to be updated or created, persists them, and returns an
-    id => list (as dict) relationship
+    Conforms and sorts lists into sets to be updated or created, persists them in db, handles any
+    exceptions in trying to do so.
+
+    Returns:
+        id => list (as dict) relationship
+
+    Raises:
+        409 HTTP exception if there is nothing to update
     """
     new_lists_as_orm = [
         await try_conforming_list(user_id, user_list) for user_list in raw_lists
