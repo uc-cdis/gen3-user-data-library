@@ -39,9 +39,33 @@ lists_router = APIRouter()
 
 
 @lists_router.get(
-    "/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
+    "/",
+    include_in_schema=False,
+    dependencies=[Depends(parse_and_auth_request)],
 )
-@lists_router.get("", dependencies=[Depends(parse_and_auth_request)])
+@lists_router.get(
+    "",
+    dependencies=[Depends(parse_and_auth_request)],
+    response_model=UserListResponseModel,
+    status_code=status.HTTP_200_OK,
+    description="Returns all lists that user can read",
+    summary="Get all of user's lists",
+    responses={
+        status.HTTP_200_OK: {
+            "model": UserListResponseModel,
+            "description": "A list of all user lists the user owns",
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
+)
 async def read_all_lists(
     request: Request,
     data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
@@ -67,7 +91,6 @@ async def read_all_lists(
             detail="There was a problem trying to get list for the user. Try again later!",
         )
     id_to_list_dict = _map_list_id_to_list_dict(user_lists)
-    # response_user_lists = mutate_keys(lambda k: str(k), id_to_list_dict)
     json_conformed_data = jsonable_encoder(id_to_list_dict)
     response = {"lists": json_conformed_data}
     end_time = time.time()
@@ -86,7 +109,6 @@ async def read_all_lists(
     response_model=UserListResponseModel,
     status_code=status.HTTP_201_CREATED,
     description="Create user list(s) by providing valid list information",
-    tags=["User Lists"],
     summary="Create user lists(s)",
     responses={
         status.HTTP_201_CREATED: {
@@ -95,6 +117,15 @@ async def read_all_lists(
         },
         status.HTTP_400_BAD_REQUEST: {
             "description": "Bad request, unable to create list"
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
         },
     },
     dependencies=[
@@ -207,7 +238,32 @@ async def upsert_user_lists(
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
 
-@lists_router.delete("", dependencies=[Depends(parse_and_auth_request)])
+@lists_router.delete(
+    "",
+    dependencies=[Depends(parse_and_auth_request)],
+    response_model=UserListResponseModel,
+    status_code=status.HTTP_204_NO_CONTENT,
+    description="Deletes all lists owned by the user",
+    summary="Delete all of user's lists",
+    responses={
+        status.HTTP_204_NO_CONTENT: {
+            "model": None,
+            "description": "No content",
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Bad request, unable to create list"
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
+)
 @lists_router.delete(
     "/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
 )

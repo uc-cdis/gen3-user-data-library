@@ -209,7 +209,6 @@ class DataAccessLayer:
         query = delete(UserList).where(UserList.creator == sub_id)
         query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(query)
-        # await self.db_session.commit()
         return count
 
     async def delete_list(self, list_id: UUID):
