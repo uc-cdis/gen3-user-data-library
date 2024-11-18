@@ -663,7 +663,9 @@ class TestUserListsRouter(BaseTestRouter):
         response_2 = await client.put(
             endpoint, headers=headers, json={"lists": [updated_list_a]}
         )
-        res_2_info = get_list_info(response_2)
+        l_id = get_id_from_response(response_2)
+        resp_3 = await client.get(f"/lists/{l_id}", headers=headers)
+        res_2_info = list(resp_3.json().items())[0][1]
         created_time_did_not_change = (
             res_1_info["created_time"] == res_2_info["created_time"]
         )

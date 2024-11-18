@@ -9,7 +9,7 @@ from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
-USER_LIST_UPDATE_ALLOW_LIST = {"items", "name"}
+USER_LIST_UPDATE_ALLOW_LIST = {"items", "name", "updated_time"}
 
 
 class NonEmptyDict(Dict[str, Any]):
