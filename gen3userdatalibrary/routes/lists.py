@@ -188,26 +188,6 @@ async def upsert_user_lists(
             logging.error(e)
             # keep going; maybe just some conflicts from things existing already
 
-        policy_id = creator_id
-        role_ids = ("create", "read", "update", "delete")
-        resource_paths = get_user_data_library_endpoint(creator_id)
-        policy_json = {
-            "id": policy_id,
-            "description": "policy created by requestor",
-            "role_ids": role_ids,
-            "resource_paths": resource_paths,
-        }
-        try:
-            outcome = await request.app.state.arborist_client.create_policy(
-                policy_json=policy_json
-            )
-        except ArboristError as ae:
-            logging.error(f"Error creating policy in arborist: {(ae.code, ae.message)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal error interfacing with arborist",
-            )
-
     raw_lists = requested_lists.lists
     if not raw_lists:
         raise HTTPException(

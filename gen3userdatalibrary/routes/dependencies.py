@@ -1,16 +1,46 @@
 import json
 
 from fastapi import HTTPException, Request, Depends
+from gen3authz.client.arborist.errors import ArboristError
 from jsonschema.validators import validate
 from pydantic import ValidationError
 from starlette import status
 
-from gen3userdatalibrary import config
-from gen3userdatalibrary.auth import get_user_id, authorize_request
+from gen3userdatalibrary import config, logging
+from gen3userdatalibrary.auth import (
+    get_user_id,
+    authorize_request,
+    get_user_data_library_endpoint,
+)
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEXT
 from gen3userdatalibrary.utils.modeling import try_conforming_list
+
+
+async def ensure_user_exists(request: Request):
+    policy_id = await get_user_id(request=request)
+    user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
+    if user_exists:
+        return False
+    role_ids = ("create", "read", "update", "delete")
+    resource_paths = get_user_data_library_endpoint(policy_id)
+    policy_json = {
+        "id": policy_id,
+        "description": "policy created by requestor",
+        "role_ids": role_ids,
+        "resource_paths": resource_paths,
+    }
+    try:
+        outcome = await request.app.state.arborist_client.create_policy(
+            policy_json=policy_json
+        )
+    except ArboristError as ae:
+        logging.error(f"Error creating policy in arborist: {(ae.code, ae.message)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error interfacing with arborist",
+        )
 
 
 def validate_user_list_item(item_contents: dict):
@@ -45,7 +75,9 @@ def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
     return resource
 
 
-async def parse_and_auth_request(request: Request):
+async def parse_and_auth_request(
+    request: Request, created_user=Depends(ensure_user_exists)
+):
     user_id = await get_user_id(request=request)
     path_params = request.scope["path_params"]
     route_function = request.scope["route"].name
