@@ -45,10 +45,10 @@ async def ensure_user_exists(request: Request):
             policy_json=policy_json
         )
     except ArboristError as ae:
-        logging.error(f"Error creating policy in arborist: {(ae.code, ae.message)}")
+        logging.error(f"Error creating policy in arborist: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal error interfacing with arborist",
+            detail="Internal error creating a policy in arborist",
         )
 
 
