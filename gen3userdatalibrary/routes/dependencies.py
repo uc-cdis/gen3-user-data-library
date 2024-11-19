@@ -40,6 +40,7 @@ async def ensure_user_exists(request: Request):
         "role_ids": role_ids,
         "resource_paths": resource_paths,
     }
+    logging.debug(f"Policy {policy_id} does not exist, attempting to create....")
     try:
         outcome = await request.app.state.arborist_client.create_policy(
             policy_json=policy_json
@@ -94,6 +95,7 @@ async def parse_and_auth_request(
     resource = get_resource_from_endpoint_context(
         endpoint_context, user_id, path_params
     )
+    logging.debug(f"Authorizing user: {user_id}")
     await authorize_request(
         request=request,
         authz_access_method=endpoint_context["method"],
