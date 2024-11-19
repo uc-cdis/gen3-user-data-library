@@ -1,10 +1,9 @@
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 
 import pytest
 from fastapi import Request, Depends
 from fastapi.routing import APIRoute
 
-from gen3userdatalibrary import config
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.routes.dependencies import (

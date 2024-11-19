@@ -5,9 +5,9 @@ import cdislogging
 from starlette.config import Config
 from starlette.datastructures import Secret
 
-env = os.getenv("ENV", "production")
+ENV = os.getenv("ENV", "production")
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-if env == "test":
+if ENV == "test":
     path = os.path.abspath(f"{CURRENT_DIR}/../tests/.env")
 else:
     path = os.path.abspath(f"{CURRENT_DIR}/../.env")

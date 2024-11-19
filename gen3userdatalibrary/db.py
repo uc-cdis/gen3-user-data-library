@@ -47,22 +47,6 @@ engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
 
-async def replace_list(new_list_as_orm: UserList, existing_obj: UserList):
-    """
-    Delete the original list, replace it with the new one!
-    Does not check that list exists
-
-    Args:
-        original_list_id: id of original list
-        list_as_orm: new list to replace the old one
-    """
-
-    existing_obj.name = new_list_as_orm.name
-    existing_obj.items = new_list_as_orm.items
-    # todo: should this be different?
-    return existing_obj
-
-
 class DataAccessLayer:
     """
     Defines an abstract interface to manipulate the database. Instances are given a session to
@@ -273,6 +257,18 @@ class DataAccessLayer:
         existing_user_lists = query_result.all()
         from_sequence_to_list = [row[0] for row in existing_user_lists]
         return from_sequence_to_list
+
+    async def replace_list(self, new_list_as_orm: UserList, existing_obj: UserList):
+        """
+        Delete the original list, replace it with the new one!
+        Does not check that list exists
+
+        """
+        await self.db_session.delete(existing_obj)
+        await self.db_session.flush()
+        self.db_session.add(new_list_as_orm)
+        await self.db_session.flush()
+        return new_list_as_orm
 
 
 async def get_data_access_layer() -> DataAccessLayer:

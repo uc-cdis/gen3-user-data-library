@@ -2,8 +2,8 @@ import time
 from typing import List
 
 from fastapi import Request, Depends, HTTPException, APIRouter
-from fastapi import Response
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import Response
 from gen3authz.client.arborist.async_client import ArboristClient
 from gen3authz.client.arborist.errors import ArboristError
 from starlette import status
@@ -216,7 +216,6 @@ async def upsert_user_lists(
     updated_user_lists = await sort_persist_and_get_changed_lists(
         data_access_layer, raw_lists, creator_id
     )
-    # response_user_lists = mutate_keys(lambda k: str(k), updated_user_lists)
     json_conformed_data = jsonable_encoder(updated_user_lists)
     end_time = time.time()
     response_time_seconds = end_time - start_time
@@ -241,15 +240,11 @@ async def upsert_user_lists(
 @lists_router.delete(
     "",
     dependencies=[Depends(parse_and_auth_request)],
-    response_model=UserListResponseModel,
     status_code=status.HTTP_204_NO_CONTENT,
     description="Deletes all lists owned by the user",
     summary="Delete all of user's lists",
     responses={
-        status.HTTP_204_NO_CONTENT: {
-            "model": None,
-            "description": "No content",
-        },
+        status.HTTP_204_NO_CONTENT: {"description": "Successful request"},
         status.HTTP_400_BAD_REQUEST: {
             "description": "Bad request, unable to create list"
         },

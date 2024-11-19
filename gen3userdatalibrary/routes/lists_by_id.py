@@ -2,10 +2,10 @@ from typing import Dict, Any
 from uuid import UUID
 
 from fastapi import Request, Depends, HTTPException, APIRouter
+from fastapi.encoders import jsonable_encoder
 from starlette import status
 from starlette.responses import JSONResponse, Response
 
-from gen3userdatalibrary import db
 from gen3userdatalibrary.auth import get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
@@ -14,12 +14,34 @@ from gen3userdatalibrary.routes.dependencies import (
     validate_items,
 )
 from gen3userdatalibrary.utils.core import update
-from gen3userdatalibrary.utils.modeling import try_conforming_list
+from gen3userdatalibrary.utils.modeling import create_user_list_instance
 
 lists_by_id_router = APIRouter()
 
 
-@lists_by_id_router.get("/{list_id}", dependencies=[Depends(parse_and_auth_request)])
+@lists_by_id_router.get(
+    "/{list_id}",
+    dependencies=[Depends(parse_and_auth_request)],
+    status_code=status.HTTP_200_OK,
+    description="Retrieves the list identified by the id for the user",
+    summary="Get user's list by id",
+    responses={
+        status.HTTP_200_OK: {"description": "Successfully got id"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Bad request, unable to create list"
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_404_NOT_FOUND: {"description": "Could not find id"},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
+)
 @lists_by_id_router.get(
     "/{list_id}/",
     include_in_schema=False,
@@ -56,6 +78,25 @@ async def get_list_by_id(
 @lists_by_id_router.put(
     "/{list_id}",
     dependencies=[Depends(parse_and_auth_request), Depends(validate_items)],
+    status_code=status.HTTP_200_OK,
+    description="Retrieves the list identified by the id for the user",
+    summary="Get user's list by id",
+    responses={
+        status.HTTP_200_OK: {"description": "Successfully got id"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Bad request, unable to create list"
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_404_NOT_FOUND: {"description": "Could not find id"},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
 )
 @lists_by_id_router.put(
     "/{list_id}/",
@@ -87,7 +128,7 @@ async def update_list_by_id(
             status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
         )
     user_id = await get_user_id(request=request)
-    new_list_as_orm = await try_conforming_list(user_id, info_to_update_with)
+    new_list_as_orm = await create_user_list_instance(user_id, info_to_update_with)
     existing_list = await data_access_layer.get_list(
         (new_list_as_orm.creator, new_list_as_orm.name), "name"
     )
@@ -96,8 +137,10 @@ async def update_list_by_id(
             status_code=status.HTTP_404_NOT_FOUND,
             content=f"No UserList found with id {list_id}",
         )
-    replace_result = await db.replace_list(new_list_as_orm, existing_list)
-    data = update("id", lambda ul_id: str(ul_id), replace_result.to_dict())
+    replace_result = await data_access_layer.replace_list(
+        new_list_as_orm, existing_list
+    )
+    data = jsonable_encoder(replace_result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=data)
 
 

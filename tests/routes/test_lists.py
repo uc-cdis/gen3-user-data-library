@@ -116,23 +116,28 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_arborist_calls(
-        self,
-        get_token_claims,
-        arborist,
-        app_client_pair,
+        self, get_token_claims, arborist, app_client_pair, monkeypatch
     ):
+
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         arborist.auth_request = AsyncMock()
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client.create_user_if_not_exist = AsyncMock()
         create_user = app.state.arborist_client.create_user_if_not_exist
         create_user.return_value = "foo"
-        create_user.side_effect = ValueError
-        with pytest.raises(ValueError):
-            response = await client.put(
+
+        class MockError(Exception):
+            pass
+
+        create_user.side_effect = MockError
+        with pytest.raises(MockError):
+            response = await test_client.put(
                 "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
             )
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
@@ -156,7 +161,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
@@ -164,7 +169,7 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.put(
+        response = await test_client.put(
             endpoint, headers=headers, json={"lists": [user_list]}
         )
 
@@ -203,7 +208,7 @@ class TestUserListsRouter(BaseTestRouter):
     ):
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
@@ -211,7 +216,7 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.put(
+        response = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A, VALID_LIST_B]}
         )
 
@@ -267,13 +272,13 @@ class TestUserListsRouter(BaseTestRouter):
         """
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.put(
+        response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
         assert response_1.status_code == 201
@@ -283,7 +288,7 @@ class TestUserListsRouter(BaseTestRouter):
         user_id = "80"
         get_token_claims.return_value = {"sub": user_id}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
         assert response_2.status_code == 201
@@ -299,7 +304,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         Ensure 400 when no list is provided
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
@@ -307,7 +312,7 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.put(endpoint, headers=headers, json={"lists": []})
+        response = await test_client.put(endpoint, headers=headers, json={"lists": []})
 
         assert response
         assert response.status_code == 400
@@ -369,16 +374,16 @@ class TestUserListsRouter(BaseTestRouter):
          endpoint: which route to hit
          client: router
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.put(
+        response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
         assert response_2.status_code == 409
@@ -392,7 +397,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         Test db.create_lists raising some error other than unique constraint, ensure 400
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         # malformed body
@@ -402,11 +407,13 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         r1 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
-        r2 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_A]})
+        r2 = await test_client.put(
+            "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
+        )
         assert r2.status_code == 409
-        r3 = await client.put("/lists", headers=headers, json={"lists": []})
+        r3 = await test_client.put("/lists", headers=headers, json={"lists": []})
         assert r3.status_code == 400
 
     # endregion
@@ -421,7 +428,7 @@ class TestUserListsRouter(BaseTestRouter):
         """
         Test I'm able to get back all lists for a user
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         previous_config = config.DEBUG_SKIP_AUTH
@@ -429,28 +436,28 @@ class TestUserListsRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.get("/lists", headers=headers)
+        response_1 = await test_client.get("/lists", headers=headers)
         r1 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         r2 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
         r3 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers, "2"
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers, "2"
         )
         r4 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers, "2"
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers, "2"
         )
         r5 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers, "3"
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers, "3"
         )
         get_token_claims.return_value = {"sub": "1"}
-        response_6 = await client.get("/lists", headers=headers)
+        response_6 = await test_client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "2"}
-        response_7 = await client.get("/lists", headers=headers)
+        response_7 = await test_client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "3"}
-        response_8 = await client.get("/lists", headers=headers)
+        response_8 = await test_client.get("/lists", headers=headers)
 
         def get_creator_to_id_from_resp(resp):
             return map_creator_to_list_ids(
@@ -480,20 +487,20 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_reading_for_non_existent_user_fails(
         self, get_token_claims, arborist, app_client_pair
     ):
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
-        response_1 = await client.get("/lists", headers=headers)
+        response_1 = await test_client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "bar"}
-        response_2 = await client.get("/lists", headers=headers)
+        response_2 = await test_client.get("/lists", headers=headers)
 
     # endregion
 
@@ -505,7 +512,7 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_creating_and_updating_lists(
         self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
@@ -514,12 +521,12 @@ class TestUserListsRouter(BaseTestRouter):
         user_id = "fsemr"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.put(
+        response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A, VALID_LIST_B]}
         )
         updated_list_a = VALID_LIST_A
         updated_list_a["items"] = VALID_LIST_C["items"]
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_C, updated_list_a]}
         )
 
@@ -572,7 +579,7 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_updating_two_lists_twice(
         self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
@@ -580,10 +587,10 @@ class TestUserListsRouter(BaseTestRouter):
         # update twice
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
         arborist.auth_request.return_value = True
         user_id = "qqqqqq"
@@ -592,7 +599,7 @@ class TestUserListsRouter(BaseTestRouter):
         updated_list_a["items"] = VALID_LIST_C["items"]
         updated_list_b = VALID_LIST_B
         updated_list_b["items"] = VALID_LIST_C["items"]
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [updated_list_a, updated_list_b]}
         )
         updated_lists = json.loads(response_2.text).get("lists", {})
@@ -606,11 +613,11 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_bad_lists_contents(
         self, get_token_claims, arborist, endpoint, app_client_pair
     ):
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         headers = {"Authorization": "Bearer ofa.valid.token"}
         resp1 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         test_body = {
             "name": "My Saved List 1",
@@ -622,7 +629,7 @@ class TestUserListsRouter(BaseTestRouter):
                 }
             },
         }
-        resp2 = await client.put(endpoint, headers=headers, json=test_body)
+        resp2 = await test_client.put(endpoint, headers=headers, json=test_body)
         assert resp2.status_code == 400
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
@@ -649,20 +656,20 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_deleting_lists_success(
         self, get_token_claims, arborist, app_client_pair
     ):
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
-        response_1 = await client.get("/lists", headers=headers)
-        response_2 = await client.delete("/lists", headers=headers)
-        response_3 = await client.get("/lists", headers=headers)
+        response_1 = await test_client.get("/lists", headers=headers)
+        response_2 = await test_client.delete("/lists", headers=headers)
+        response_3 = await test_client.get("/lists", headers=headers)
         list_content = json.loads(response_3.text).get("lists", None)
         assert list_content == {}
 
@@ -671,7 +678,7 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_deleting_lists_failures(
         self, get_token_claims, arborist, app_client_pair, monkeypatch
     ):
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
@@ -679,20 +686,20 @@ class TestUserListsRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers, "2"
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers, "2"
         )
 
-        response_1 = await client.get("/lists", headers=headers)
+        response_1 = await test_client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "89", "otherstuff": "foobar"}
-        response_2 = await client.get("/lists", headers=headers)
-        response_3 = await client.delete("/lists", headers=headers)
-        response_4 = await client.get("/lists", headers=headers)
+        response_2 = await test_client.get("/lists", headers=headers)
+        response_3 = await test_client.delete("/lists", headers=headers)
+        response_4 = await test_client.get("/lists", headers=headers)
         assert response_3.status_code == 204
         assert response_4.status_code == 200
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
@@ -705,13 +712,13 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_last_updated_changes_automatically(
         self, get_token_claims, arborist, endpoint, app_client_pair
     ):
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         user_id = "fsemr"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.put(
+        response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
         get_list_info = lambda r: list(json.loads(r.text)["lists"].items())[0][1]
@@ -724,12 +731,11 @@ class TestUserListsRouter(BaseTestRouter):
                 "type": "GA4GH_DRS",
             }
         }
-        # todo: update time isn't working anymore?
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [updated_list_a]}
         )
         l_id = get_id_from_response(response_2)
-        resp_3 = await client.get(f"/lists/{l_id}", headers=headers)
+        resp_3 = await test_client.get(f"/lists/{l_id}", headers=headers)
         res_2_info = list(resp_3.json().items())[0][1]
         created_time_did_not_change = (
             res_1_info["created_time"] == res_2_info["created_time"]

@@ -36,15 +36,15 @@ class TestUserListsRouter(BaseTestRouter):
             user_list: example user lists
             client: route handler
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         resp1 = await create_basic_list(
-            arborist, get_token_claims, client, user_list, headers
+            arborist, get_token_claims, test_client, user_list, headers
         )
         l_id = get_id_from_response(resp1)
-        response = await client.get(endpoint(l_id), headers=headers)
+        response = await test_client.get(endpoint(l_id), headers=headers)
         assert response.status_code == 200
 
     @pytest.mark.parametrize(
@@ -59,18 +59,18 @@ class TestUserListsRouter(BaseTestRouter):
         """
         Ensure asking for a list with unused id returns 404
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(
-            arborist, get_token_claims, client, user_list, headers
+            arborist, get_token_claims, test_client, user_list, headers
         )
         l_id = get_id_from_response(create_outcome)
-        response = await client.get(endpoint(l_id), headers=headers)
+        response = await test_client.get(endpoint(l_id), headers=headers)
         assert response.status_code == 200
         l_id = "550e8400-e29b-41d4-a716-446655440000"
-        response = await client.get(endpoint(l_id), headers=headers)
+        response = await test_client.get(endpoint(l_id), headers=headers)
         assert response.status_code == 404
 
     @pytest.mark.parametrize(
@@ -86,15 +86,15 @@ class TestUserListsRouter(BaseTestRouter):
         Test we can update a specific list correctly
 
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(
-            arborist, get_token_claims, client, user_list, headers
+            arborist, get_token_claims, test_client, user_list, headers
         )
         ul_id = get_id_from_response(create_outcome)
-        response = await client.put(
+        response = await test_client.put(
             endpoint(ul_id), headers=headers, json=VALID_REPLACEMENT_LIST
         )
         updated_list = response.json()
@@ -121,15 +121,15 @@ class TestUserListsRouter(BaseTestRouter):
         """
         Test updating non-existent list fails
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(
-            arborist, get_token_claims, client, user_list, headers
+            arborist, get_token_claims, test_client, user_list, headers
         )
         ul_id = "d94ddbcc-6ef5-4a38-bc9f-95b3ef58e274"
-        response = await client.put(
+        response = await test_client.put(
             endpoint(ul_id), headers=headers, json=VALID_REPLACEMENT_LIST
         )
         assert response.status_code == 404
@@ -150,15 +150,15 @@ class TestUserListsRouter(BaseTestRouter):
         Test we can append to a specific list correctly
         note: getting weird test behavior if I try to use valid lists, so keeping local until that is resolved
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         outcome_D = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_D, headers
+            arborist, get_token_claims, test_client, VALID_LIST_D, headers
         )
         outcome_E = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_E, headers
+            arborist, get_token_claims, test_client, VALID_LIST_E, headers
         )
 
         body = {
@@ -187,10 +187,10 @@ class TestUserListsRouter(BaseTestRouter):
             },
         }
 
-        response_one = await client.patch(
+        response_one = await test_client.patch(
             endpoint(outcome_D), headers=headers, json=body
         )
-        response_two = await client.patch(
+        response_two = await test_client.patch(
             endpoint(outcome_E), headers=headers, json=body
         )
         for response in [response_one]:
@@ -232,12 +232,12 @@ class TestUserListsRouter(BaseTestRouter):
         Test that appending to non-existent list fails
 
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         create_outcome = await create_basic_list(
-            arborist, get_token_claims, client, user_list, headers
+            arborist, get_token_claims, test_client, user_list, headers
         )
         body = {
             "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65": {
@@ -265,7 +265,7 @@ class TestUserListsRouter(BaseTestRouter):
             },
         }
         ul_id = "d94ddbcc-6ef5-4a38-bc9f-95b3ef58e274"
-        response = await client.patch(endpoint(ul_id), headers=headers, json=body)
+        response = await test_client.patch(endpoint(ul_id), headers=headers, json=body)
         assert response.status_code == 404
 
     @pytest.mark.parametrize(
@@ -280,24 +280,24 @@ class TestUserListsRouter(BaseTestRouter):
         Test that we can't get data after it has been deleted
 
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         resp1 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         first_id = get_id_from_response(resp1)
-        sanity_get_check = await client.get(endpoint(first_id), headers=headers)
+        sanity_get_check = await test_client.get(endpoint(first_id), headers=headers)
         assert sanity_get_check.status_code == 200
-        first_delete = await client.delete(endpoint(first_id), headers=headers)
-        first_get_outcome = await client.get(endpoint(first_id), headers=headers)
+        first_delete = await test_client.delete(endpoint(first_id), headers=headers)
+        first_get_outcome = await test_client.get(endpoint(first_id), headers=headers)
         resp2 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
         second_id = get_id_from_response(resp2)
-        second_delete = await client.delete(endpoint(second_id), headers=headers)
-        second_get_outcome = await client.get(endpoint(second_id), headers=headers)
+        second_delete = await test_client.delete(endpoint(second_id), headers=headers)
+        second_get_outcome = await test_client.get(endpoint(second_id), headers=headers)
         assert first_delete.status_code == 204
         assert first_get_outcome.status_code == 404
         assert second_delete.status_code == 204
@@ -316,32 +316,36 @@ class TestUserListsRouter(BaseTestRouter):
         Test we can't delete a non-existent list
 
         """
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
 
         resp1 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         ul_id = get_id_from_response(resp1)
-        sanity_get_check_1 = await client.get(endpoint(ul_id), headers=headers)
+        sanity_get_check_1 = await test_client.get(endpoint(ul_id), headers=headers)
         assert sanity_get_check_1.status_code == 200
 
-        first_delete_attempt_2 = await client.delete(endpoint(ul_id), headers=headers)
+        first_delete_attempt_2 = await test_client.delete(
+            endpoint(ul_id), headers=headers
+        )
         assert first_delete_attempt_2.status_code == 204
 
-        first_delete_attempt_3 = await client.delete(endpoint(ul_id), headers=headers)
+        first_delete_attempt_3 = await test_client.delete(
+            endpoint(ul_id), headers=headers
+        )
         assert first_delete_attempt_3.status_code == 404
 
         resp2 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
         ul_id_2 = get_id_from_response(resp2)
-        sanity_get_check_2 = await client.get(endpoint(ul_id_2), headers=headers)
+        sanity_get_check_2 = await test_client.get(endpoint(ul_id_2), headers=headers)
         assert sanity_get_check_2.status_code == 200
 
-        second_delete_attempt_1 = await client.delete(
+        second_delete_attempt_1 = await test_client.delete(
             endpoint(ul_id_2), headers=headers
         )
         assert second_delete_attempt_1.status_code == 204
