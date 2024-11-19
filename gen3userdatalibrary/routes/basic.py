@@ -11,7 +11,11 @@ from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 basic_router = APIRouter()
 
 
-@basic_router.get("/", include_in_schema=False)
+@basic_router.get(
+    "/",
+    description="Directs client to the docs",
+    summary="Get swagger docs",
+)
 async def redirect_to_docs():
     """
     Redirects to the API docs if they hit the base endpoint.

@@ -224,7 +224,6 @@ class DataAccessLayer:
         """
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.update(item_data)
-        # await self.db_session.commit()
         return user_list
 
     async def grab_all_lists_that_exist(

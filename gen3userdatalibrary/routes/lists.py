@@ -245,9 +245,6 @@ async def upsert_user_lists(
     summary="Delete all of user's lists",
     responses={
         status.HTTP_204_NO_CONTENT: {"description": "Successful request"},
-        status.HTTP_400_BAD_REQUEST: {
-            "description": "Bad request, unable to create list"
-        },
         status.HTTP_401_UNAUTHORIZED: {
             "description": "User unauthorized when accessing endpoint"
         },

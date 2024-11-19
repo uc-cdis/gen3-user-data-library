@@ -27,9 +27,6 @@ lists_by_id_router = APIRouter()
     summary="Get user's list by id",
     responses={
         status.HTTP_200_OK: {"description": "Successfully got id"},
-        status.HTTP_400_BAD_REQUEST: {
-            "description": "Bad request, unable to create list"
-        },
         status.HTTP_401_UNAUTHORIZED: {
             "description": "User unauthorized when accessing endpoint"
         },
@@ -147,6 +144,26 @@ async def update_list_by_id(
 @lists_by_id_router.patch(
     "/{list_id}",
     dependencies=[Depends(parse_and_auth_request), Depends(validate_items)],
+    status_code=status.HTTP_200_OK,
+    description="Appends to the existing list",
+    summary="Add to list",
+    responses={
+        status.HTTP_200_OK: {"description": "Successfully got id"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Bad request, unable to change list"
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_404_NOT_FOUND: {"description": "Could not find id"},
+        status.HTTP_409_CONFLICT: {"description": "Nothing to append to list!"},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
 )
 @lists_by_id_router.patch(
     "/{list_id}/",
@@ -183,12 +200,30 @@ async def append_items_to_list(
         )
 
     append_result = await data_access_layer.add_items_to_list(list_id, item_list)
-    data = update("id", lambda ul_id: str(ul_id), append_result.to_dict())
+    data = jsonable_encoder(append_result)
     response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
     return response
 
 
-@lists_by_id_router.delete("/{list_id}", dependencies=[Depends(parse_and_auth_request)])
+@lists_by_id_router.delete(
+    "/{list_id}",
+    dependencies=[Depends(parse_and_auth_request)],
+    status_code=status.HTTP_204_NO_CONTENT,
+    description="Deletes the specified list",
+    summary="Delete a list",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_404_NOT_FOUND: {"description": "Could not find id"},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
+)
 @lists_by_id_router.delete(
     "/{list_id}/",
     include_in_schema=False,
@@ -213,7 +248,6 @@ async def delete_list_by_id(
     get_result = await data_access_layer.get_list(list_id)
     if get_result is None:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
-
     delete_result = await data_access_layer.delete_list(list_id)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     return response
