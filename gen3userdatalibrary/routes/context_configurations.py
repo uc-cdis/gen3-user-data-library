@@ -20,15 +20,15 @@ Current recognized properties:
 """
 ENDPOINT_TO_CONTEXT = {
     "redirect_to_docs": {
-        "resource": "/gen3_data_library/service_info/redoc",
+        "resource": "/gen3_user_data_library/service_info/redoc",
         "method": "read",
     },
     "get_version": {
-        "resource": "/gen3_data_library/service_info/version",
+        "resource": "/gen3_user_data_library/service_info/version",
         "method": "read",
     },
     "get_status": {
-        "resource": "/gen3_data_library/service_info/status",
+        "resource": "/gen3_user_data_library/service_info/status",
         "method": "read",
     },
     "read_all_lists": {
