@@ -20,7 +20,16 @@ from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 async def ensure_user_exists(request: Request):
     policy_id = await get_user_id(request=request)
-    user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
+    try:
+        user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
+    except Exception as e:
+        logging.error(
+            f"Something went wrong when checking whether the policy exists: {str(e)}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed checking policy!",
+        )
     if user_exists:
         return False
     role_ids = ("create", "read", "update", "delete")
