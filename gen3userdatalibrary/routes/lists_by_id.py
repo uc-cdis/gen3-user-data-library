@@ -13,7 +13,6 @@ from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
 )
-from gen3userdatalibrary.utils.core import update
 from gen3userdatalibrary.utils.modeling import create_user_list_instance
 
 lists_by_id_router = APIRouter()
@@ -66,9 +65,8 @@ async def get_list_by_id(
             status_code=status.HTTP_404_NOT_FOUND, content="list_id not found!"
         )
     else:
-        data = update("id", lambda ul_id: str(ul_id), result.to_dict())
-        resp_content = {str(result.id): data}
-        response = JSONResponse(status_code=status.HTTP_200_OK, content=resp_content)
+        data = jsonable_encoder(result)
+        response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
     return response
 
 
