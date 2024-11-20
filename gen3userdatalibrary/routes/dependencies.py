@@ -19,6 +19,10 @@ from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 
 async def ensure_user_exists(request: Request):
+
+    if config.DEBUG_SKIP_AUTH:
+        return True
+    
     policy_id = await get_user_id(request=request)
     try:
         user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
