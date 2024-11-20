@@ -10,7 +10,7 @@ from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import (
     get_user_id,
     authorize_request,
-    get_user_data_library_endpoint,
+    get_lists_endpoint, get_username,
 )
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
@@ -19,13 +19,16 @@ from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 
 async def ensure_user_exists(request: Request):
-
     if config.DEBUG_SKIP_AUTH:
         return True
     
-    policy_id = await get_user_id(request=request)
+    user_id = await get_user_id(request=request)
+    username = await get_username(request=request)
     try:
-        user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
+        # TODO Check if user is assigned the policy, not if the policy exists.
+        # We use the user_id as the policy_id
+        policy = request.app.state.arborist_client.get_policy(user_id)
+        logging.debug(f"Got policy: {policy}")
     except Exception as e:
         logging.error(
             f"Something went wrong when checking whether the policy exists: {str(e)}"
@@ -34,27 +37,55 @@ async def ensure_user_exists(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed checking policy!",
         )
-    if user_exists:
-        return False
-    role_ids = ("create", "read", "update", "delete")
-    resource_paths = get_user_data_library_endpoint(policy_id)
-    policy_json = {
-        "id": policy_id,
-        "description": "policy created by requestor",
-        "role_ids": role_ids,
-        "resource_paths": resource_paths,
-    }
-    logging.debug(f"Policy {policy_id} does not exist, attempting to create....")
+    if policy:
+        return True
+
+    logging.info(f"Policy does not exist for user_id {user_id}")
+    role_ids = ["create", "read", "update", "delete"]
+    resource = get_lists_endpoint(user_id)
+
     try:
-        outcome = await request.app.state.arborist_client.create_policy(
+        logging.debug("attempting to update arborist resource: {}".format(resource))
+        request.app.state.arborist_client.update_resource(
+            path='/', resource_json={
+                "name": resource,
+                "description": f"Library for user_id {user_id}",
+            }, merge=True
+        )
+    except ArboristError as e:
+        logging.error(e)
+        # keep going; maybe just some conflicts from things existing already
+
+    policy_json = {
+        "id": user_id,
+        "description": "policy created by gen3-user-data-library",
+        "role_ids": role_ids,
+        "resource_paths": [resource],
+    }
+    logging.debug(f"Policy {user_id} does not exist, attempting to create....")
+    try:
+        request.app.state.arborist_client.update_policy(
+            policy_id=user_id,
             policy_json=policy_json
         )
     except ArboristError as ae:
-        logging.error(f"Error creating policy in arborist: {str(e)}")
+        logging.error(f"Error creating policy in arborist: {str(ae)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal error creating a policy in arborist",
         )
+    logging.debug(f"Granting {user_id} to {username}....")
+
+    try:
+        request.app.state.arborist_client.grant_user_policy(username=username, policy_id=user_id)
+    except ArboristError as ae:
+        logging.error(f"Error granting policy in arborist: {str(ae)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error granting policy in arborist",
+        )
+
+    logging.debug("Done!")
 
 
 def validate_user_list_item(item_contents: dict):
@@ -99,7 +130,7 @@ async def parse_and_auth_request(
     resource = get_resource_from_endpoint_context(
         endpoint_context, user_id, path_params
     )
-    logging.debug(f"Authorizing user: {user_id}")
+    logging.info(f"Authorizing user: {user_id}")
     await authorize_request(
         request=request,
         authz_access_method=endpoint_context["method"],

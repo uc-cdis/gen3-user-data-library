@@ -58,7 +58,7 @@ async def authorize_request(
     try:
         user_id = await get_user_id(token, request)
     except HTTPException as exc:
-        logging.debug(
+        logging.info(
             f"Unable to determine user_id. Defaulting to `Unknown`. Exc: {exc}"
         )
         user_id = "Unknown"
@@ -76,7 +76,7 @@ async def authorize_request(
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
     if not is_authorized:
-        logging.debug(
+        logging.info(
             f"user `{user_id}` does not have `{authz_access_method}` access "
             f"on `{authz_resources}`"
         )
@@ -114,6 +114,39 @@ async def get_user_id(
         raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
 
     return token_claims["sub"]
+
+async def get_username(
+    token: HTTPAuthorizationCredentials = None, request: Request = None
+) -> Union[int, Any]:
+    """
+    Retrieves the username from the provided token/request
+
+    Args:
+        token (HTTPAuthorizationCredentials): an authorization token (optional, you can also provide request
+            and this can be parsed from there). this has priority over any token from request.
+        request (Request): The incoming HTTP request. Used to parse tokens from header.
+
+    Returns:
+        str: The user's username.
+
+    Raises:
+        HTTPException: Raised if the token is missing or invalid.
+
+    Note:
+        If `DEBUG_SKIP_AUTH` is enabled and no token is provided, username is set to "librarian".
+    """
+    if config.DEBUG_SKIP_AUTH and not token:
+        logging.warning(
+            "DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING username = 'librarian'"
+        )
+        return "0"
+
+    token_claims = await _get_token_claims(token, request)
+    if "context" not in token_claims and "user" not in token_claims["context"]:
+        raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
+
+    username = token_claims["context"]["user"]["name"]
+    return username
 
 
 async def _get_token_claims(
