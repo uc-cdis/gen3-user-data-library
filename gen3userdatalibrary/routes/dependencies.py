@@ -35,7 +35,7 @@ async def ensure_user_exists(request: Request):
             detail="Failed checking policy!",
         )
     logging.error(
-        f"what is user exists? -> {(non_existent_policies_as_set, policy_exists)}"
+        f"what is user exists? -> {(non_existent_policies_as_set, " | ", policy_exists)}"
     )
     if policy_exists:
         return False
