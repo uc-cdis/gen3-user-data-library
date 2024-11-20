@@ -30,6 +30,7 @@ async def ensure_user_exists(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed checking policy!",
         )
+    logging.error(f"what is user exists? -> {user_exists}")
     if user_exists:
         return False
     role_ids = ("create", "read", "update", "delete")
