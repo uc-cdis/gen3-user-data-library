@@ -21,7 +21,11 @@ from gen3userdatalibrary.utils.modeling import try_conforming_list
 async def ensure_user_exists(request: Request):
     policy_id = await get_user_id(request=request)
     try:
-        user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
+        policies_that_do_not_exist = (
+            request.app.state.arborist_client.policies_not_exist([policy_id])
+        )
+        non_existent_policies_as_set = set(policies_that_do_not_exist)
+        policy_exists = policy_id not in non_existent_policies_as_set
     except Exception as e:
         logging.error(
             f"Something went wrong when checking whether the policy exists: {str(e)}"
@@ -30,8 +34,10 @@ async def ensure_user_exists(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed checking policy!",
         )
-    logging.error(f"what is user exists? -> {user_exists}")
-    if user_exists:
+    logging.error(
+        f"what is user exists? -> {(non_existent_policies_as_set, policy_exists)}"
+    )
+    if policy_exists:
         return False
     role_ids = ("create", "read", "update", "delete")
     resource_paths = get_user_data_library_endpoint(policy_id)
@@ -47,7 +53,7 @@ async def ensure_user_exists(request: Request):
             policy_json=policy_json
         )
     except ArboristError as ae:
-        logging.error(f"Error creating policy in arborist: {str(e)}")
+        logging.error(f"Error creating policy in arborist: {str(ae)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal error creating a policy in arborist",
