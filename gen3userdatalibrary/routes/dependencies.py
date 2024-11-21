@@ -21,11 +21,8 @@ from gen3userdatalibrary.utils.modeling import try_conforming_list
 async def ensure_user_exists(request: Request):
     policy_id = await get_user_id(request=request)
     try:
-        policies_that_do_not_exist = (
-            request.app.state.arborist_client.policies_not_exist([policy_id])
-        )
-        non_existent_policies_as_set = set(policies_that_do_not_exist)
-        policy_exists = policy_id not in non_existent_policies_as_set
+        policy_exists = not request.app.state.arborist_client.get_policy(policy_id)
+        logging.error(f"Does policy exist? {policy_exists}")
     except Exception as e:
         logging.error(
             f"Something went wrong when checking whether the policy exists: {str(e)}"
@@ -34,19 +31,27 @@ async def ensure_user_exists(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed checking policy!",
         )
-    logging.error(
-        f"what is user exists? -> {(non_existent_policies_as_set, " | ", policy_exists)}"
-    )
     if policy_exists:
-        return False
-    role_ids = ("create", "read", "update", "delete")
-    resource_paths = get_user_data_library_endpoint(policy_id)
+        return True
+
+    role_ids = ["create", "read", "update", "delete"]
+    resource_path = get_user_data_library_endpoint(policy_id)
+    resource_json = {
+        "name": f"user_{policy_id}_library",
+        "description": f"Library for user_id {policy_id}",
+        "sub_resources": [f"{resource_path}/lists"],
+    }
+
+    await request.app.state.arborist_client.create_resource(
+        parent_path=resource_path, resource_json=resource_json, create_parents=True
+    )
     policy_json = {
         "id": policy_id,
         "description": "policy created by requestor",
         "role_ids": role_ids,
-        "resource_paths": resource_paths,
+        "resource_paths": [resource_path],
     }
+    logging.error(policy_json)
     logging.error(f"Policy {policy_id} does not exist, attempting to create....")
     try:
         outcome = await request.app.state.arborist_client.create_policy(
