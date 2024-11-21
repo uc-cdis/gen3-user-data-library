@@ -43,9 +43,12 @@ async def ensure_user_exists(request: Request):
     }
     logging.error(f"Logging before resource creation: {resource_json}")
 
-    await request.app.state.arborist_client.create_resource(
-        parent_path=resource_path, resource_json=resource_json, create_parents=True
-    )
+    try:
+        await request.app.state.arborist_client.create_resource(
+            parent_path=resource_path, resource_json=resource_json, create_parents=True
+        )
+    except Exception as e:
+        logging.error(f"Error creating resource: {str(e)}")
     policy_json = {
         "id": policy_id,
         "description": "policy created by requestor",
