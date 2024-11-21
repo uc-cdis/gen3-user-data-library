@@ -31,8 +31,8 @@ async def ensure_user_exists(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed checking policy!",
         )
-    if policy_exists:
-        return True
+    # if policy_exists:
+    #     return True
 
     role_ids = ["create", "read", "update", "delete"]
     resource_path = get_user_data_library_endpoint(policy_id)
