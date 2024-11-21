@@ -41,6 +41,7 @@ async def ensure_user_exists(request: Request):
         "description": f"Library for user_id {policy_id}",
         "sub_resources": [f"{resource_path}/lists"],
     }
+    logging.error(f"Logging before resource creation: {resource_json}")
 
     await request.app.state.arborist_client.create_resource(
         parent_path=resource_path, resource_json=resource_json, create_parents=True
