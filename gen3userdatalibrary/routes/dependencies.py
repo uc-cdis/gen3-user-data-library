@@ -1,6 +1,7 @@
 import json
 
 from fastapi import HTTPException, Request, Depends
+from gen3authz.client.arborist.errors import ArboristError
 from jsonschema.validators import validate
 from pydantic import ValidationError
 from starlette import status
@@ -134,7 +135,7 @@ async def ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_i
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
         )
-    except Exception as e:
+    except ArboristError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Something went wrong while validating request!",
