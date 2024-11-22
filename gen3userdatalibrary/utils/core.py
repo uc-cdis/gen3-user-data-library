@@ -1,11 +1,15 @@
 """ General purpose functions """
 
 from functools import reduce
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Hashable, Any
 
 from sqlalchemy import inspect
 
 identity = lambda P: P
+
+
+def build_switch_case(cases: dict[Hashable, Any], default):
+    return lambda instance: cases.get(instance, default)
 
 
 def mutate_keys(mutator, updated_user_lists: dict):

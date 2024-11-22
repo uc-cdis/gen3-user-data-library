@@ -13,9 +13,9 @@ from gen3userdatalibrary.auth import (
     get_user_data_library_endpoint,
 )
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
+from gen3userdatalibrary.models.helpers import try_conforming_list
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEXT
-from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 
 async def ensure_user_exists(request: Request):
@@ -46,7 +46,7 @@ async def ensure_user_exists(request: Request):
             policy_json=policy_json
         )
     except ArboristError as ae:
-        logging.error(f"Error creating policy in arborist: {str(e)}")
+        logging.error(f"Error creating policy in arborist: {str(ae)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal error creating a policy in arborist",

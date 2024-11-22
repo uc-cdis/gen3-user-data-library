@@ -8,12 +8,12 @@ from starlette.responses import JSONResponse, Response
 
 from gen3userdatalibrary.auth import get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.models.helpers import create_user_list_instance
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
 )
-from gen3userdatalibrary.utils.modeling import create_user_list_instance
 
 only_auth_deps = [Depends(parse_and_auth_request)]
 auth_and_items_deps = [Depends(parse_and_auth_request), Depends(validate_items)]
@@ -62,7 +62,7 @@ async def get_list_by_id(
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    result = await data_access_layer.get_list(list_id)
+    result = await data_access_layer.get_list_by_id(list_id)
     if result is None:
         response = JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND, content="list_id not found!"
@@ -120,15 +120,15 @@ async def update_list_by_id(
     Returns:
          JSONResponse: json response with info about the request outcome
     """
-    user_list = await data_access_layer.get_list(list_id)
+    user_list = await data_access_layer.get_list_by_id(list_id)
     if user_list is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
         )
     user_id = await get_user_id(request=request)
     new_list_as_orm = await create_user_list_instance(user_id, info_to_update_with)
-    existing_list = await data_access_layer.get_list(
-        (new_list_as_orm.creator, new_list_as_orm.name), "name"
+    existing_list = await data_access_layer.get_list_by_name_and_creator(
+        (new_list_as_orm.creator, new_list_as_orm.name)
     )
     if existing_list is None:
         return JSONResponse(
@@ -193,7 +193,7 @@ async def append_items_to_list(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Nothing to append!"
         )
-    user_list = await data_access_layer.get_list(list_id)
+    user_list = await data_access_layer.get_list_by_id(list_id)
     list_exists = user_list is not None
     if not list_exists:
         raise HTTPException(
@@ -246,7 +246,7 @@ async def delete_list_by_id(
     Returns:
          JSONResponse: json response with info about the request outcome
     """
-    get_result = await data_access_layer.get_list(list_id)
+    get_result = await data_access_layer.get_list_by_id(list_id)
     if get_result is None:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
     delete_result = await data_access_layer.delete_list(list_id)

@@ -104,25 +104,20 @@ class DataAccessLayer:
         result = await self.db_session.execute(query)
         return list(result.scalars().all())
 
-    async def get_list(
-        self, identifier: Union[UUID, Tuple[str, str]], by="id"
-    ) -> Optional[UserList]:
-        """
-        Get a list by either unique id or unique (creator, name) combo
-
-        Args:
-            identifier: this can either be the list UUID, or a tuple in the form (creator id, list name)
-            by: how do you want to identify the list? currently only checks for "name"
-        """
-        if by == "name":  # assume identifier is (creator, name)
-            query = select(UserList).filter(
-                tuple_(UserList.creator, UserList.name).in_([identifier])
-            )
-        else:  # by id
-            query = select(UserList).where(UserList.id == identifier)
+    async def get_list_or_none(self, query) -> Optional[UserList]:
         result = await self.db_session.execute(query)
         user_list = result.scalar_one_or_none()
         return user_list
+
+    async def get_list_by_id(self, identifier: UUID):
+        query = select(UserList).where(UserList.id == identifier)
+        return await self.get_list_or_none(query)
+
+    async def get_list_by_name_and_creator(self, identifier: Tuple[str, str]):
+        query = select(UserList).filter(
+            tuple_(UserList.creator, UserList.name).in_([identifier])
+        )
+        return await self.get_list_or_none(query)
 
     async def get_existing_list_or_throw(self, list_id: UUID) -> UserList:
         """
@@ -131,7 +126,7 @@ class DataAccessLayer:
         Args:
             list_id: UUID of the list
         """
-        existing_record = await self.get_list(list_id)
+        existing_record = await self.get_list_by_id(list_id)
         if existing_record is None:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record
@@ -258,17 +253,17 @@ class DataAccessLayer:
         from_sequence_to_list = [row[0] for row in existing_user_lists]
         return from_sequence_to_list
 
-    async def replace_list(self, new_list_as_orm: UserList, existing_obj: UserList):
+    async def replace_list(self, new_user_list: UserList, existing_user_list: UserList):
         """
         Delete the original list, replace it with the new one!
         Does not check that list exists
 
         """
-        await self.db_session.delete(existing_obj)
+        await self.db_session.delete(existing_user_list)
         await self.db_session.flush()
-        self.db_session.add(new_list_as_orm)
+        self.db_session.add(new_user_list)
         await self.db_session.flush()
-        return new_list_as_orm
+        return new_user_list
 
 
 async def get_data_access_layer() -> AsyncIterable[DataAccessLayer]:

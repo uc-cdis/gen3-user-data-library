@@ -15,6 +15,7 @@ from gen3userdatalibrary.auth import (
     get_user_data_library_endpoint,
 )
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.models.helpers import try_conforming_list
 from gen3userdatalibrary.models.user_list import (
     UserListResponseModel,
     UpdateItemsModel,
@@ -33,7 +34,6 @@ from gen3userdatalibrary.utils.core import (
     filter_keys,
 )
 from gen3userdatalibrary.utils.metrics import add_user_list_metric
-from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 lists_router = APIRouter()
 

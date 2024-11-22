@@ -1,12 +1,11 @@
-from argparse import ArgumentError
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi import HTTPException
 
+from gen3userdatalibrary.models.helpers import try_conforming_list
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.routes import route_aggregator
-from gen3userdatalibrary.utils.modeling import try_conforming_list
 from tests.routes.conftest import BaseTestRouter
 
 
