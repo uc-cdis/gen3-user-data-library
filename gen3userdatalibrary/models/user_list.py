@@ -2,21 +2,14 @@ import datetime
 import uuid
 from typing import Dict, Any, List
 
-from pydantic import BaseModel, ConfigDict, constr, Field
-from sqlalchemy import JSON, Column, Integer, String, UniqueConstraint, UUID, DateTime
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
-
-def is_dict(v: Any):
-    assert isinstance(v, dict)
-    return v
-
-
-def is_nonempty(v: Any):
-    assert v
-    return v
+USER_LIST_UPDATE_ALLOW_LIST = {"items", "name", "updated_time"}
 
 
 class NonEmptyDict(Dict[str, Any]):
@@ -28,11 +21,11 @@ class NonEmptyDict(Dict[str, Any]):
 
 class UserListModel(BaseModel):
     version: int
-    creator: constr(min_length=1)
+    creator: str = Field(min_length=1)
     authz: Dict[str, Any]
     created_time: Any = Field(default_factory=lambda: datetime.datetime.now())
     updated_time: Any = Field(default_factory=lambda: datetime.datetime.now())
-    name: constr(min_length=1)
+    name: str = Field(min_length=1)
     items: Dict[str, Any]
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
@@ -42,7 +35,7 @@ class UserListResponseModel(BaseModel):
 
 
 class ItemToUpdateModel(BaseModel):
-    name: constr(min_length=1)
+    name: str = Field(min_length=1)
     items: Dict[str, Any]
     model_config = ConfigDict(extra="forbid")
 
@@ -106,23 +99,23 @@ class UserList(Base):
     )
     version = Column(Integer, nullable=False)
     creator = Column(String, nullable=False, index=True)
-    authz = Column(JSON, nullable=False)
+    authz = Column(JSONB, nullable=False)
 
     name = Column(String, nullable=False)
 
     created_time = Column(
         DateTime(timezone=True),
-        default=datetime.datetime.now(datetime.timezone.utc),
+        default=datetime.now(timezone.utc),
         nullable=False,
     )
     updated_time = Column(
         DateTime(timezone=True),
-        default=datetime.datetime.now(datetime.timezone.utc),
-        onupdate=datetime.datetime.now(datetime.timezone.utc),
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
         nullable=False,
     )
 
-    items = Column(JSON)
+    items = Column(JSONB)
 
     __table_args__ = (UniqueConstraint("name", "creator", name="_name_creator_uc"),)
 
@@ -141,3 +134,13 @@ class UserList(Base):
             ),
             "items": self.items,
         }
+
+
+def is_dict(v: Any):
+    assert isinstance(v, dict)
+    return v
+
+
+def is_nonempty(v: Any):
+    assert v
+    return v

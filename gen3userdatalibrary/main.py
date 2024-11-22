@@ -2,10 +2,10 @@ from contextlib import asynccontextmanager
 from importlib.metadata import version
 
 import fastapi
+from cdislogging import get_logger
 from fastapi import FastAPI
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
-from starlette.requests import Request
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.db import get_data_access_layer
@@ -14,7 +14,7 @@ from gen3userdatalibrary.routes import route_aggregator
 
 
 @asynccontextmanager
-async def lifespan(app: Request):
+async def lifespan(app: FastAPI):
     """
     Parse the configuration, setup and instantiate necessary classes.
 
@@ -32,7 +32,11 @@ async def lifespan(app: Request):
         prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
     )
 
-    app.state.arborist_client = ArboristClient(arborist_base_url=config.ARBORIST_URL)
+    app.state.arborist_client = ArboristClient(
+        arborist_base_url=config.ARBORIST_URL,
+        logger=get_logger("user_syncer.arborist_client"),
+        authz_provider="user-sync",
+    )
 
     try:
         logging.debug(
@@ -54,9 +58,8 @@ async def lifespan(app: Request):
             logging.debug(
                 "Startup policy engine (Arborist) connection test initiating..."
             )
-            healthy = app.state.arborist_client.healthy()
-            if not healthy:
-                raise Exception("App not healthy, failing")
+            if not app.state.arborist_client.healthy():
+                raise Exception("Arborist unhealthy,aborting...")
         except Exception as exc:
             logging.exception(
                 "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
@@ -93,19 +96,19 @@ def get_app() -> fastapi.FastAPI:
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:
-        metrics_app = make_metrics_app()
+        metrics_app = make_metrics_app(config.PROMETHEUS_MULTIPROC_DIR)
         fastapi_app.mount("/metrics", metrics_app)
 
     return fastapi_app
 
 
-def make_metrics_app():
+def make_metrics_app(prometheus_multiproc_dir):
     """
     Required for Prometheus multiprocess setup
     See: https://prometheus.github.io/client_python/multiprocess/
     """
     registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
+    multiprocess.MultiProcessCollector(registry, prometheus_multiproc_dir)
     return make_asgi_app(registry=registry)
 
 

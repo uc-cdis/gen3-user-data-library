@@ -2,13 +2,6 @@
 
 This doc is to record common issues that crop up but are not issues that need to be fixed in the project
 
-## Unresolved Reference (Pycharm)
-
-Some variables have an unresolved reference squiggly that cannot currently be fixe.
-Refer
-to [this](https://youtrack.jetbrains.com/issue/PY-63306/False-positive-for-unresolved-reference-of-state-instance-field-in-FastAPI-app)
-outstanding ticket on the issue.
-
 ## I'm getting an arborist unavailable error?
 
 Error:

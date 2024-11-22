@@ -6,12 +6,51 @@ from jsonschema.validators import validate
 from pydantic import ValidationError
 from starlette import status
 
-from gen3userdatalibrary import config
-from gen3userdatalibrary.auth import get_user_id, authorize_request
+from gen3userdatalibrary import config, logging
+from gen3userdatalibrary.auth import (
+    get_user_id,
+    authorize_request,
+    get_user_data_library_endpoint,
+)
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
-from gen3userdatalibrary.models.data import endpoints_to_context
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
+from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEXT
 from gen3userdatalibrary.utils.modeling import try_conforming_list
+
+
+async def ensure_user_exists(request: Request):
+    policy_id = await get_user_id(request=request)
+    try:
+        user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
+    except Exception as e:
+        logging.error(
+            f"Something went wrong when checking whether the policy exists: {str(e)}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed checking policy!",
+        )
+    if user_exists:
+        return False
+    role_ids = ("create", "read", "update", "delete")
+    resource_paths = get_user_data_library_endpoint(policy_id)
+    policy_json = {
+        "id": policy_id,
+        "description": "policy created by requestor",
+        "role_ids": role_ids,
+        "resource_paths": resource_paths,
+    }
+    logging.debug(f"Policy {policy_id} does not exist, attempting to create....")
+    try:
+        outcome = await request.app.state.arborist_client.create_policy(
+            policy_json=policy_json
+        )
+    except ArboristError as ae:
+        logging.error(f"Error creating policy in arborist: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error creating a policy in arborist",
+        )
 
 
 def validate_user_list_item(item_contents: dict):
@@ -39,22 +78,25 @@ def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
     if endpoint_type == "all":
         resource = get_resource(user_id)
     elif endpoint_type == "id":
-        list_id = path_params["ID"]
+        list_id = path_params["list_id"]
         resource = get_resource(user_id, list_id)
     else:  # None
         resource = get_resource
     return resource
 
 
-async def parse_and_auth_request(request: Request):
+async def parse_and_auth_request(
+    request: Request, created_user=Depends(ensure_user_exists)
+):
     user_id = await get_user_id(request=request)
     path_params = request.scope["path_params"]
     route_function = request.scope["route"].name
-    endpoint_context = endpoints_to_context.get(route_function, {})
+    endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
     resource = get_resource_from_endpoint_context(
         endpoint_context, user_id, path_params
     )
-    auth_outcome = await authorize_request(
+    logging.debug(f"Authorizing user: {user_id}")
+    await authorize_request(
         request=request,
         authz_access_method=endpoint_context["method"],
         authz_resources=[resource],
@@ -68,7 +110,7 @@ def ensure_any_items_match_schema(endpoint_context, conformed_body):
         for item_set in item_dict:
             for item_contents in item_set.values():
                 validate_user_list_item(item_contents)
-    else:  # assume dict for now
+    else:  # is (or should be) dict
         for item_contents in item_dict.values():
             validate_user_list_item(item_contents)
 
@@ -88,10 +130,10 @@ async def validate_items(
     request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
 ):
     route_function = request.scope["route"].name
-    endpoint_context = endpoints_to_context.get(route_function, {})
+    endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
     conformed_body = json.loads(await request.body())
     user_id = await get_user_id(request=request)
-    list_id = request["path_params"].get("ID", None)
+    list_id = request["path_params"].get("list_id", None)
 
     try:
         ensure_any_items_match_schema(endpoint_context, conformed_body)
@@ -121,26 +163,11 @@ async def validate_items(
             list_to_append = await dal.get_existing_list_or_throw(list_id)
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
+                status_code=status.HTTP_404_NOT_FOUND, detail="list_id not recognized!"
             )
         ensure_items_less_than_max(len(conformed_body), len(list_to_append.items))
     else:  # 'update_list_by_id'
         await ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_id)
-
-
-async def ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_id):
-    try:
-        list_to_append = await dal.get_existing_list_or_throw(list_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
-        )
-    except ArboristError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Something went wrong while validating request!",
-        )
-    ensure_items_less_than_max(len(conformed_body["items"]), len(list_to_append.items))
 
 
 async def check_lists_to_create(lists_to_create):
@@ -159,13 +186,28 @@ async def check_lists_to_update(lists_to_update, unique_list_identifiers):
         )
 
 
+async def ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_id):
+    try:
+        list_to_append = await dal.get_existing_list_or_throw(list_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
+        )
+    except ArboristError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Something went wrong while validating request!",
+        )
+    ensure_items_less_than_max(len(conformed_body["items"]), len(list_to_append.items))
+
+
 def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
     more_items_than_max = (
         existing_item_count + number_of_new_items > config.MAX_LIST_ITEMS
     )
     if more_items_than_max:
         raise HTTPException(
-            status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Too many items in list",
         )
 

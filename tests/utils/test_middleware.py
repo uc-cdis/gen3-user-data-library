@@ -3,7 +3,6 @@ import re
 import pytest
 
 from gen3userdatalibrary.main import route_aggregator
-from gen3userdatalibrary.models.data import uuid4_regex_pattern
 from gen3userdatalibrary.utils.core import reg_match_key
 from tests.routes.conftest import BaseTestRouter
 
@@ -18,14 +17,14 @@ class TestConfigRouter(BaseTestRouter):
         """
         endpoint_method_to_access_method = {
             "^/lists$": {"GET": "red"},
-            rf"^/lists/{uuid4_regex_pattern}$": {"GET": "blue"},
+            rf"^/lists/{UUID4_REGEX_PATTERN}$": {"GET": "blue"},
         }
 
         matcher = lambda k: re.match(k, "/lists/123e4567-e89b-12d3-a456-426614174000")
 
         # Test: Should match the UUID pattern
         result = reg_match_key(matcher, endpoint_method_to_access_method)
-        assert result[0] == rf"^/lists/{uuid4_regex_pattern}$"
+        assert result[0] == rf"^/lists/{UUID4_REGEX_PATTERN}$"
         assert result[1] == {"GET": "blue"}
 
         # Test: Should not match anything when using an endpoint that doesn't fit
@@ -45,3 +44,8 @@ class TestConfigRouter(BaseTestRouter):
 
         result_invalid = reg_match_key(matcher, invalid_dict)
         assert result_invalid == (None, {})
+
+
+UUID4_REGEX_PATTERN = (
+    "([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"
+)

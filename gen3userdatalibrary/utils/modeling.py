@@ -57,7 +57,7 @@ async def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
     new_list = UserList(
         version=0,
         creator=str(user_id),
-        # temporarily set authz without the list ID since we haven't created the list in the db yet
+        # temporarily set authz without the list list_id since we haven't created the list in the db yet
         authz={"version": 0, "authz": [get_lists_endpoint(user_id)]},
         name=name,
         created_time=now,

@@ -36,7 +36,6 @@ from fastapi import HTTPException
 from sqlalchemy import text, delete, func, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
-from sqlalchemy.orm import make_transient
 from starlette import status
 
 from gen3userdatalibrary import config
@@ -69,7 +68,7 @@ class DataAccessLayer:
         total = lists_so_far + lists_to_add
         if total > config.MAX_LISTS:
             raise HTTPException(
-                status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Max number of lists reached!",
             )
 
@@ -157,7 +156,7 @@ class DataAccessLayer:
         )
         for key, value in changes_that_can_be_made:
             setattr(db_list_to_update, key, value)
-        await self.db_session.commit()
+        # await self.db_session.commit()
         return db_list_to_update
 
     async def test_connection(self) -> None:
@@ -195,7 +194,6 @@ class DataAccessLayer:
         query = delete(UserList).where(UserList.creator == sub_id)
         query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(query)
-        await self.db_session.commit()
         return count
 
     async def delete_list(self, list_id: UUID):
@@ -213,26 +211,8 @@ class DataAccessLayer:
         del_query = delete(UserList).where(UserList.id == list_id)
         count_query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(del_query)
-        await self.db_session.commit()
+        # await self.db_session.commit()
         return count
-
-    async def replace_list(self, original_list_id, list_as_orm: UserList):
-        """
-        Delete the original list, replace it with the new one!
-
-        Args:
-            original_list_id: id of original list
-            list_as_orm: new list to replace the old one
-        """
-        existing_obj = await self.get_existing_list_or_throw(original_list_id)
-        await self.db_session.delete(existing_obj)
-        await self.db_session.commit()
-
-        make_transient(list_as_orm)
-        list_as_orm.id = None
-        self.db_session.add(list_as_orm)
-        await self.db_session.commit()
-        return list_as_orm
 
     async def add_items_to_list(self, list_id: UUID, item_data: dict):
         """
@@ -245,7 +225,6 @@ class DataAccessLayer:
         """
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.update(item_data)
-        await self.db_session.commit()
         return user_list
 
     async def grab_all_lists_that_exist(
@@ -278,6 +257,18 @@ class DataAccessLayer:
         existing_user_lists = query_result.all()
         from_sequence_to_list = [row[0] for row in existing_user_lists]
         return from_sequence_to_list
+
+    async def replace_list(self, new_list_as_orm: UserList, existing_obj: UserList):
+        """
+        Delete the original list, replace it with the new one!
+        Does not check that list exists
+
+        """
+        await self.db_session.delete(existing_obj)
+        await self.db_session.flush()
+        self.db_session.add(new_list_as_orm)
+        await self.db_session.flush()
+        return new_list_as_orm
 
 
 async def get_data_access_layer() -> AsyncIterable[DataAccessLayer]:

@@ -2,6 +2,9 @@ import time
 from typing import List
 
 from fastapi import Request, Depends, HTTPException, APIRouter
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import Response
+from gen3authz.client.arborist.async_client import ArboristClient
 from gen3authz.client.arborist.errors import ArboristError
 from starlette import status
 from starlette.responses import JSONResponse
@@ -12,12 +15,12 @@ from gen3userdatalibrary.auth import (
     get_user_data_library_endpoint,
 )
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.models.data import USER_LIST_UPDATE_ALLOW_LIST
 from gen3userdatalibrary.models.user_list import (
     UserListResponseModel,
     UpdateItemsModel,
     UserList,
     ItemToUpdateModel,
+    USER_LIST_UPDATE_ALLOW_LIST,
 )
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
@@ -26,7 +29,6 @@ from gen3userdatalibrary.routes.dependencies import (
     sort_lists_into_create_or_update,
 )
 from gen3userdatalibrary.utils.core import (
-    mutate_keys,
     find_differences,
     filter_keys,
 )
@@ -37,9 +39,33 @@ lists_router = APIRouter()
 
 
 @lists_router.get(
-    "/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
+    "/",
+    include_in_schema=False,
+    dependencies=[Depends(parse_and_auth_request)],
 )
-@lists_router.get("", dependencies=[Depends(parse_and_auth_request)])
+@lists_router.get(
+    "",
+    dependencies=[Depends(parse_and_auth_request)],
+    response_model=UserListResponseModel,
+    status_code=status.HTTP_200_OK,
+    description="Returns all lists that user can read",
+    summary="Get all of user's lists",
+    responses={
+        status.HTTP_200_OK: {
+            "model": UserListResponseModel,
+            "description": "A list of all user lists the user owns",
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
+)
 async def read_all_lists(
     request: Request,
     data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
@@ -48,25 +74,25 @@ async def read_all_lists(
     Return all lists for user
 
     Args:
-        request: FastAPI request (so we can check authorization)
-        data_access_layer: how we interface with db
+        request (Request): FastAPI request (so we can check authorization)
+        data_access_layer (DataAccessLayer): how we interface with db
     """
+    start_time = time.time()
     user_id = await get_user_id(request=request)
     # dynamically create user policy
-    start_time = time.time()
 
     try:
-        new_user_lists = await data_access_layer.get_all_lists(user_id)
+        user_lists = await data_access_layer.get_all_lists(user_id)
     except Exception as exc:
         logging.exception(f"Unknown exception {type(exc)} when trying to fetch lists.")
         logging.debug(f"Details: {exc}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="There was a problem trying to get list for the user. Try again later!",
         )
-    id_to_list_dict = map_list_id_to_list_dict(new_user_lists)
-    response_user_lists = mutate_keys(lambda k: str(k), id_to_list_dict)
-    response = {"lists": response_user_lists}
+    id_to_list_dict = _map_list_id_to_list_dict(user_lists)
+    json_conformed_data = jsonable_encoder(id_to_list_dict)
+    response = {"lists": json_conformed_data}
     end_time = time.time()
     response_time_seconds = end_time - start_time
     logging.info(
@@ -78,7 +104,8 @@ async def read_all_lists(
 
 
 @lists_router.put(
-    "",  # most of the following stuff helps populate the openapi docs
+    # most of the following stuff helps populate the openapi docs
+    "",
     response_model=UserListResponseModel,
     status_code=status.HTTP_201_CREATED,
     description="Create user list(s) by providing valid list information",
@@ -90,6 +117,15 @@ async def read_all_lists(
         },
         status.HTTP_400_BAD_REQUEST: {
             "description": "Bad request, unable to create list"
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
         },
     },
     dependencies=[
@@ -118,24 +154,36 @@ async def upsert_user_lists(
     Args:
         request: (Request) FastAPI request (so we can check authorization)
             {"lists": [RequestedUserListModel]}
-        requested_lists: requested_lists: Body from the POST, expects list of entities
+        requested_lists: (UpdateItemsModel) Body from the POST, expects list of entities
         data_access_layer: (DataAccessLayer): Interface for data manipulations
 
     Returns:
 
     """
-    user_id = await get_user_id(request=request)
+    start_time = time.time()
+
+    creator_id = await get_user_id(request=request)
 
     if not config.DEBUG_SKIP_AUTH:
         # make sure the user exists in Arborist
         # IMPORTANT: This is using the user's unique subject ID
-        request.app.state.arborist_client.create_user_if_not_exist(user_id)
+        try:
+            arb_client: ArboristClient = request.app.state.arborist_client
+            create_outcome = await arb_client.create_user_if_not_exist(creator_id)
+        except ArboristError as ae:
+            logging.error(f"Error creating user in arborist: {(ae.code, ae.message)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal error interfacing with arborist",
+            )
 
-        resource = get_user_data_library_endpoint(user_id)
+        resource = get_user_data_library_endpoint(creator_id)
 
         try:
             logging.debug("attempting to update arborist resource: {}".format(resource))
-            request.app.state.arborist_client.update_resource("/", resource, merge=True)
+            await request.app.state.arborist_client.update_resource(
+                "/", resource, merge=True
+            )
         except ArboristError as e:
             logging.error(e)
             # keep going; maybe just some conflicts from things existing already
@@ -145,45 +193,62 @@ async def upsert_user_lists(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!"
         )
-    start_time = time.time()
     updated_user_lists = await sort_persist_and_get_changed_lists(
-        data_access_layer, raw_lists, user_id
+        data_access_layer, raw_lists, creator_id
     )
-    response_user_lists = mutate_keys(lambda k: str(k), updated_user_lists)
+    json_conformed_data = jsonable_encoder(updated_user_lists)
     end_time = time.time()
     response_time_seconds = end_time - start_time
-    response = {"lists": response_user_lists}
+    response = {"lists": json_conformed_data}
     action = "CREATE"
     logging.info(
         f"Gen3 User Data Library Response. Action: {action}. "
         f"lists={requested_lists}, response={response}, "
-        f"response_time_seconds={response_time_seconds} user_id={user_id}"
+        f"response_time_seconds={response_time_seconds} user_id={creator_id}"
     )
     add_user_list_metric(
         fastapi_app=request.app,
         action=action,
         user_lists=requested_lists.lists,
         response_time_seconds=response_time_seconds,
-        user_id=user_id,
+        user_id=creator_id,
     )
     logging.debug(response)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
 
 
-@lists_router.delete("", dependencies=[Depends(parse_and_auth_request)])
+@lists_router.delete(
+    "",
+    dependencies=[Depends(parse_and_auth_request)],
+    status_code=status.HTTP_204_NO_CONTENT,
+    description="Deletes all lists owned by the user",
+    summary="Delete all of user's lists",
+    responses={
+        status.HTTP_204_NO_CONTENT: {"description": "Successful request"},
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
+)
 @lists_router.delete(
     "/", include_in_schema=False, dependencies=[Depends(parse_and_auth_request)]
 )
 async def delete_all_lists(
     request: Request,
     data_access_layer: DataAccessLayer = Depends(get_data_access_layer),
-) -> JSONResponse:
+) -> Response:
     """
     Delete all lists for a provided user
 
     Args:
-        request: FastAPI request (so we can check authorization)
-        data_access_layer: how we interface with db
+        request (Request): FastAPI request (so we can check authorization)
+        data_access_layer (DataAccessLayer): how we interface with db
     """
     start_time = time.time()
     user_id = await get_user_id(request=request)
@@ -209,13 +274,21 @@ async def delete_all_lists(
         f"response_time_seconds={response_time_seconds} user_id={user_id}"
     )
     logging.debug(response)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=response)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # region Helpers
 
 
-def map_list_id_to_list_dict(new_user_lists):
+def _map_list_id_to_list_dict(new_user_lists: List[UserList]):
+    """
+    maps list id => user list, remove user list id from user list (as dict)
+    Args:
+        new_user_lists: UserList
+
+    Returns:
+        user list id => UserList (as dict, without id)
+    """
     response_user_lists = {}
     for user_list in new_user_lists:
         response_user_lists[user_list.id] = user_list.to_dict()
@@ -233,12 +306,11 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
         lambda k, _: k in USER_LIST_UPDATE_ALLOW_LIST, properties_to_old_new_difference
     )
     has_no_relevant_differences = not relevant_differences or (
-        len(relevant_differences) == 1
-        and relevant_differences.__contains__("updated_time")
+        len(relevant_differences) == 1 and "updated_time" in relevant_differences
     )
     if has_no_relevant_differences:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to update!"
+            status_code=status.HTTP_409_CONFLICT, detail="Nothing to update!"
         )
     property_to_change_to_make = {
         k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()
@@ -250,8 +322,14 @@ async def sort_persist_and_get_changed_lists(
     data_access_layer: DataAccessLayer, raw_lists: List[ItemToUpdateModel], user_id: str
 ) -> dict[str, dict]:
     """
-    Conforms and sorts lists into sets to be updated or created, persists them, and returns an
-    id => list (as dict) relationship
+    Conforms and sorts lists into sets to be updated or created, persists them in db, handles any
+    exceptions in trying to do so.
+
+    Returns:
+        id => list (as dict) relationship
+
+    Raises:
+        409 HTTP exception if there is nothing to update
     """
     new_lists_as_orm = [
         await try_conforming_list(user_id, user_list) for user_list in raw_lists

@@ -34,6 +34,18 @@ alternative design patters, particularly concepts such as the [`Result`](https:/
 Doing so would allow us to turn errors into data that can be pattern-matched
 on, which will make the code a bit easier to organize.
 
-## Other Work
+## The sh file is blocking alembic from generating user lists table
 
-https://ctds-planx.atlassian.net/browse/BDC-329
+Currently, if you run the sh files and the gen3 data library
+postgres databases are not set up, the sh files will make
+them. However, in doing so, if we then run alembic to
+generate the tables, the user list table is not generated.
+
+Ideally, we don’t want running the sh files to break the
+alembic command, so we should look into this further and
+figure out why alembic isn’t able to create the user list
+table.
+
+In the meantime, the workaround is to create the
+databases manually, run alembic, and then you may run the
+sh files

@@ -5,10 +5,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from black.trans import defaultdict
+from gen3authz.client.arborist.async_client import ArboristClient
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_list_by_id_endpoint
-from gen3userdatalibrary.main import route_aggregator
+from gen3userdatalibrary.main import route_aggregator, get_app
 from gen3userdatalibrary.utils.core import add_to_dict_set
 from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
 from tests.helpers import create_basic_list, get_id_from_response
@@ -112,25 +113,63 @@ class TestUserListsRouter(BaseTestRouter):
 
     # region Create Lists
 
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_arborist_calls(
+        self, get_token_claims, arborist, app_client_pair, monkeypatch
+    ):
+
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        arborist.auth_request = AsyncMock()
+        get_token_claims.return_value = {"sub": "foo"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        app, test_client = app_client_pair
+        app.state.arborist_client.create_user_if_not_exist = AsyncMock()
+        create_user = app.state.arborist_client.create_user_if_not_exist
+        create_user.return_value = "foo"
+
+        class MockError(Exception):
+            pass
+
+        create_user.side_effect = MockError
+        with pytest.raises(MockError):
+            response = await test_client.put(
+                "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
+            )
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
+
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch.object(
+        ArboristClient, "create_user_if_not_exist", return_value="Mocked User Created"
+    )
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_create_single_valid_list(
-        self, get_token_claims, arborist, endpoint, user_list, client, monkeypatch
+        self,
+        get_token_claims,
+        mock_create_user,
+        arborist,
+        endpoint,
+        user_list,
+        app_client_pair,
+        monkeypatch,
     ):
         """
         Test the response for creating a single valid list
         """
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.put(
+        response = await test_client.put(
             endpoint, headers=headers, json={"lists": [user_list]}
         )
 
@@ -165,17 +204,19 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_create_multiple_valid_lists(
-        self, get_token_claims, arborist, endpoint, client, monkeypatch
+        self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.put(
+        response = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A, VALID_LIST_B]}
         )
 
@@ -219,23 +260,25 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_create_list_non_unique_name_diff_user(
-        self, get_token_claims, arborist, client, endpoint, monkeypatch
+        self, get_token_claims, arborist, app_client_pair, endpoint, monkeypatch
     ):
         """
         Test creating a list with a non-unique name for different user, ensure 200
 
-        :param get_token_claims: for token
-        :param arborist: for successful auth
-        :param endpoint: which route to hit
-        :param client: router
+         get_token_claims: for token
+         arborist: for successful auth
+         endpoint: which route to hit
+         client: router
         """
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.put(
+        response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
         assert response_1.status_code == 201
@@ -245,7 +288,7 @@ class TestUserListsRouter(BaseTestRouter):
         user_id = "80"
         get_token_claims.return_value = {"sub": user_id}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
         assert response_2.status_code == 201
@@ -256,18 +299,20 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_create_no_lists_provided(
-        self, get_token_claims, arborist, endpoint, client
+        self, get_token_claims, arborist, endpoint, app_client_pair
     ):
         """
         Ensure 400 when no list is provided
         """
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         # Simulate an authorized request and a valid token
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response = await client.put(endpoint, headers=headers, json={"lists": []})
+        response = await test_client.put(endpoint, headers=headers, json={"lists": []})
 
         assert response
         assert response.status_code == 400
@@ -317,47 +362,55 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_duplicate_list(self, get_token_claims, arborist, endpoint, client):
+    async def test_duplicate_list(
+        self, get_token_claims, arborist, endpoint, app_client_pair
+    ):
         """
         Test creating a list with non-unique name for given user, ensure 400
 
-        :param get_token_claims: for token
-        :param arborist: for successful auth
-        :param endpoint: which route to hit
-        :param client: router
+         get_token_claims: for token
+         arborist: for successful auth
+         endpoint: which route to hit
+         client: router
         """
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.put(
+        response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
-        assert response_2.status_code == 400
+        assert response_2.status_code == 409
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_db_create_lists_other_error(
-        self, get_token_claims, arborist, client, endpoint
+        self, get_token_claims, arborist, app_client_pair, endpoint
     ):
         """
         Test db.create_lists raising some error other than unique constraint, ensure 400
         """
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
 
         arborist.auth_request.return_value = True
         user_id = "79"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         r1 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
-        r2 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_A]})
-        assert r2.status_code == 400
-        r3 = await client.put("/lists", headers=headers, json={"lists": []})
+        r2 = await test_client.put(
+            "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
+        )
+        assert r2.status_code == 409
+        r3 = await test_client.put("/lists", headers=headers, json={"lists": []})
         assert r3.status_code == 400
 
     # endregion
@@ -367,38 +420,41 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_reading_lists_success(
-        self, get_token_claims, arborist, client, monkeypatch
+        self, get_token_claims, arborist, app_client_pair, monkeypatch
     ):
         """
         Test I'm able to get back all lists for a user
         """
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.get("/lists", headers=headers)
+        response_1 = await test_client.get("/lists", headers=headers)
         r1 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         r2 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
         r3 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers, "2"
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers, "2"
         )
         r4 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers, "2"
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers, "2"
         )
         r5 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers, "3"
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers, "3"
         )
         get_token_claims.return_value = {"sub": "1"}
-        response_6 = await client.get("/lists", headers=headers)
+        response_6 = await test_client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "2"}
-        response_7 = await client.get("/lists", headers=headers)
+        response_7 = await test_client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "3"}
-        response_8 = await client.get("/lists", headers=headers)
+        response_8 = await test_client.get("/lists", headers=headers)
 
         def get_creator_to_id_from_resp(resp):
             return map_creator_to_list_ids(
@@ -426,20 +482,22 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_reading_for_non_existent_user_fails(
-        self, get_token_claims, arborist, client
+        self, get_token_claims, arborist, app_client_pair
     ):
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
-        response_1 = await client.get("/lists", headers=headers)
+        response_1 = await test_client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "bar"}
-        response_2 = await client.get("/lists", headers=headers)
+        response_2 = await test_client.get("/lists", headers=headers)
 
     # endregion
 
@@ -449,8 +507,10 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_creating_and_updating_lists(
-        self, get_token_claims, arborist, endpoint, client, monkeypatch
+        self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         # Simulate an authorized request and a valid token
@@ -458,12 +518,12 @@ class TestUserListsRouter(BaseTestRouter):
         user_id = "fsemr"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.put(
+        response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A, VALID_LIST_B]}
         )
         updated_list_a = VALID_LIST_A
         updated_list_a["items"] = VALID_LIST_C["items"]
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_C, updated_list_a]}
         )
 
@@ -514,18 +574,20 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_updating_two_lists_twice(
-        self, get_token_claims, arborist, endpoint, client, monkeypatch
+        self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         # update one list, update two lists
         # update twice
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
         arborist.auth_request.return_value = True
         user_id = "qqqqqq"
@@ -534,7 +596,7 @@ class TestUserListsRouter(BaseTestRouter):
         updated_list_a["items"] = VALID_LIST_C["items"]
         updated_list_b = VALID_LIST_B
         updated_list_b["items"] = VALID_LIST_C["items"]
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [updated_list_a, updated_list_b]}
         )
         updated_lists = json.loads(response_2.text).get("lists", {})
@@ -546,11 +608,13 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_bad_lists_contents(
-        self, get_token_claims, arborist, endpoint, client
+        self, get_token_claims, arborist, endpoint, app_client_pair
     ):
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         headers = {"Authorization": "Bearer ofa.valid.token"}
         resp1 = await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         test_body = {
             "name": "My Saved List 1",
@@ -562,7 +626,7 @@ class TestUserListsRouter(BaseTestRouter):
                 }
             },
         }
-        resp2 = await client.put(endpoint, headers=headers, json=test_body)
+        resp2 = await test_client.put(endpoint, headers=headers, json=test_body)
         assert resp2.status_code == 400
 
     @pytest.mark.parametrize("endpoint", ["/lists"])
@@ -586,47 +650,53 @@ class TestUserListsRouter(BaseTestRouter):
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_deleting_lists_success(self, get_token_claims, arborist, client):
+    async def test_deleting_lists_success(
+        self, get_token_claims, arborist, app_client_pair
+    ):
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
-        response_1 = await client.get("/lists", headers=headers)
-        response_2 = await client.delete("/lists", headers=headers)
-        response_3 = await client.get("/lists", headers=headers)
+        response_1 = await test_client.get("/lists", headers=headers)
+        response_2 = await test_client.delete("/lists", headers=headers)
+        response_3 = await test_client.get("/lists", headers=headers)
         list_content = json.loads(response_3.text).get("lists", None)
         assert list_content == {}
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_deleting_lists_failures(
-        self, get_token_claims, arborist, client, monkeypatch
+        self, get_token_claims, arborist, app_client_pair, monkeypatch
     ):
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         # what should we do if a user X has no lists but requests a delete?
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers
         )
         await create_basic_list(
-            arborist, get_token_claims, client, VALID_LIST_B, headers, "2"
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers, "2"
         )
 
-        response_1 = await client.get("/lists", headers=headers)
+        response_1 = await test_client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "89", "otherstuff": "foobar"}
-        response_2 = await client.get("/lists", headers=headers)
-        response_3 = await client.delete("/lists", headers=headers)
-        response_4 = await client.get("/lists", headers=headers)
+        response_2 = await test_client.get("/lists", headers=headers)
+        response_3 = await test_client.delete("/lists", headers=headers)
+        response_4 = await test_client.get("/lists", headers=headers)
         assert response_3.status_code == 204
         assert response_4.status_code == 200
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
@@ -637,13 +707,15 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_last_updated_changes_automatically(
-        self, get_token_claims, arborist, endpoint, client
+        self, get_token_claims, arborist, endpoint, app_client_pair
     ):
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         user_id = "fsemr"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        response_1 = await client.put(
+        response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
         get_list_info = lambda r: list(json.loads(r.text)["lists"].items())[0][1]
@@ -656,14 +728,23 @@ class TestUserListsRouter(BaseTestRouter):
                 "type": "GA4GH_DRS",
             }
         }
-        response_2 = await client.put(
+        response_2 = await test_client.put(
             endpoint, headers=headers, json={"lists": [updated_list_a]}
         )
-        res_2_info = get_list_info(response_2)
+        l_id = get_id_from_response(response_2)
+        resp_3 = await test_client.get(f"/lists/{l_id}", headers=headers)
+        res_2_info = list(resp_3.json().items())[0][1]
+        created_time_did_not_change = (
+            res_1_info["created_time"] == res_2_info["created_time"]
+        )
+        updated_time_changed = res_1_info["updated_time"] != res_2_info["updated_time"]
+        update_create_is_not_same_time_as_update = (
+            res_2_info["created_time"] != res_2_info["updated_time"]
+        )
         assert (
-            (res_1_info["created_time"] == res_2_info["created_time"])
-            and res_1_info["updated_time"] != res_2_info["updated_time"]
-            and res_2_info["created_time"] != res_2_info["updated_time"]
+            created_time_did_not_change
+            and updated_time_changed
+            and update_create_is_not_same_time_as_update
         )
 
 
@@ -678,3 +759,13 @@ def map_creator_to_list_ids(lists: dict):
 
 
 # endregion
+
+
+@pytest.fixture
+def app_with_mocked_arborist():
+
+    app = get_app()
+    # Mock the create_user_if_not_exist function
+    mock_create_user_if_not_exist = AsyncMock(return_value={"outcome": "success"})
+    app.state.arborist_client.create_user_if_not_exist = mock_create_user_if_not_exist
+    return app, mock_create_user_if_not_exist

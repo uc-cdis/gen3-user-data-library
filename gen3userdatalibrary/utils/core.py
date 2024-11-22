@@ -9,6 +9,15 @@ identity = lambda P: P
 
 
 def mutate_keys(mutator, updated_user_lists: dict):
+    """
+
+    Args:
+        mutator: function that takes a key k and return the key mutated in some way
+        updated_user_lists: id => user_list dictionary
+
+    Returns:
+
+    """
     return dict(map(lambda kvp: (mutator(kvp[0]), kvp[1]), updated_user_lists.items()))
 
 

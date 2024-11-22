@@ -15,14 +15,14 @@ jobs:
     with:
       python-poetry: 'true'
     secrets: inherit
-
-  UnitTest:
-    name: Python Unit Test with Postgres
-    uses: uc-cdis/.github/.github/workflows/python_unit_test.yaml@master
-    with:
-      test-script: 'bin/test.sh'
-      python-version: '3.9'
-      use-cache: true
+# TODO: Uncomment after repo is public
+#  UnitTest:
+#    name: Python Unit Test with Postgres
+#    uses: uc-cdis/.github/.github/workflows/python_unit_test.yaml@master
+#    with:
+#      test-script: 'test.sh'
+#      python-version: '3.9'
+#      use-cache: true
 
   # this creates linter settings and uploads to an artifact so the configs can be pulled and used across jobs
   LintConfig:
@@ -53,28 +53,29 @@ jobs:
   #          path: |
   #            .github/linters/
   #          if-no-files-found: error
+# TODO: Uncomment after repo is public
 
-  RequiredLint:
-    name: Run Required Linters
-    needs: [ LintConfig ]
-    uses: uc-cdis/.github/.github/workflows/required_lint_check.yaml@master
-    with:
-      python-version: '3.9'
-      use-cache: true
-
-  InformationalLint:
-    name: Run Informational Linters
-    needs: [ LintConfig, UnitTest ]
-    if: github.ref != 'refs/heads/main'
-    uses: uc-cdis/.github/.github/workflows/optional_lint_check.yaml@master
-    with:
-      python-version: '3.9'
-      use-cache: true
+#  RequiredLint:
+#    name: Run Required Linters
+#    needs: [ LintConfig ]
+#    uses: uc-cdis/.github/.github/workflows/required_lint_check.yaml@master
+#    with:
+#      python-version: '3.9'
+#      use-cache: true
+# TODO: Uncomment after repo is public
+#  InformationalLint:
+#    name: Run Informational Linters
+#    needs: [ LintConfig ] #TODO Add UnitTest
+#    if: github.ref != 'refs/heads/main'
+#    uses: uc-cdis/.github/.github/workflows/optional_lint_check.yaml@master
+#    with:
+#      python-version: '3.9'
+#      use-cache: true
 
   ImageBuildAndPush:
     name: Build Image and Push
     uses: uc-cdis/.github/.github/workflows/image_build_push.yaml@master
-    needs: [ RequiredLint, Security, UnitTest ]
+    needs: [ Security ] #TODO Add UnitTest RequiredLint
     with:
       BUILD_PLATFORMS: "linux/amd64"
     secrets:

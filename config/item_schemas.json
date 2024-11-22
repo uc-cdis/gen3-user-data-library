@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ctds.uchicago.edu/data-library/items_config.schema.json",
+  "$id": "https://raw.githubusercontent.com/uc-cdis/gen3-user-data-library/refs/head/main/config/item_schemas.json",
   "type": "object",
   "title": "Schema Definitions",
   "description": "A configuration file containing definitions of valid user list item schemas.",

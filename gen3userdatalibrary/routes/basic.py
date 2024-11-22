@@ -7,20 +7,33 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.routes.dependencies import parse_and_auth_request
 
 basic_router = APIRouter()
 
 
-@basic_router.get("/", include_in_schema=False)
+@basic_router.get(
+    "/",
+    description="Directs client to the docs",
+    summary="Get swagger docs",
+)
 async def redirect_to_docs():
     """
     Redirects to the API docs if they hit the base endpoint.
     """
-    return RedirectResponse(url="/redoc")
+    return RedirectResponse(url="/docs")
 
 
-@basic_router.get("/_version/", dependencies=[])
+@basic_router.get(
+    "/_version/",
+    status_code=status.HTTP_200_OK,
+    description="Gets the current version of the service",
+    summary="Get current version",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "No content",
+        },
+    },
+)
 @basic_router.get("/_version", include_in_schema=False, dependencies=[])
 async def get_version(request: Request) -> dict:
     """
@@ -33,7 +46,17 @@ async def get_version(request: Request) -> dict:
     return {"version": service_version}
 
 
-@basic_router.get("/_status/", dependencies=[])
+@basic_router.get(
+    "/_status/",
+    dependencies=[],
+    description="Gets the current status of the service",
+    summary="Get service status",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "No content",
+        },
+    },
+)
 @basic_router.get("/_status", include_in_schema=False, dependencies=[])
 async def get_status(
     request: Request,
@@ -43,8 +66,8 @@ async def get_status(
     Return the status of the running service
 
     Args:
-        request: the data in request
-        data_access_layer: how we interface with the db
+         request (Request): FastAPI request (so we can check authorization)
+         data_access_layer (DataAccessLayer): how we interface with db
 
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
@@ -61,3 +84,6 @@ async def get_status(
     response = {"status": status_text, "timestamp": time.time()}
 
     return JSONResponse(status_code=return_status, content=response)
+
+
+PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
