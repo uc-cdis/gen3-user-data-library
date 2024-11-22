@@ -1,16 +1,15 @@
-FROM quay.io/cdis/amazonlinux:python3.9-master AS build-deps
-
-USER root
+ARG AZLINUX_BASE_VERSION=master
+# Base stage with python-build-base
+FROM quay.io/cdis/python-nginx-al:${AZLINUX_BASE_VERSION} AS base
 
 ENV appname=gen3userdatalibrary
-
-RUN pip3 install --no-cache-dir --upgrade poetry
-
-RUN yum update -y && yum install -y --setopt install_weak_deps=0 \
-    kernel-devel libffi-devel libxml2-devel libxslt-devel postgresql-devel python3-devel \
-    git && yum clean all
-
+COPY --chown=gen3:gen3 . /${appname}
 WORKDIR /$appname
+
+FROM base AS builder
+
+USER gen3
+
 
 # copy ONLY poetry artifact, install the dependencies but not gen3userdatalibrary
 # this will make sure that the dependencies are cached
@@ -20,7 +19,7 @@ RUN poetry config virtualenvs.in-project true \
     && poetry show -v
 
 # copy source code ONLY after installing dependencies
-COPY . /$appname
+COPY --chown=gen3:gen3 . /${appname}
 
 # install gen3userdatalibrary
 RUN poetry config virtualenvs.in-project true \
@@ -28,24 +27,10 @@ RUN poetry config virtualenvs.in-project true \
     && poetry show -v
 
 # Creating the runtime image
-FROM quay.io/cdis/amazonlinux:python3.9-master
+FROM base
 
-ENV appname=gen3userdatalibrary
+COPY --from=builder --chown=appuser:appuser /$appname /$appname
 
-USER root
+USER gen3
 
-RUN pip3 install --no-cache-dir --upgrade poetry
-
-RUN yum update -y && yum install -y --setopt install_weak_deps=0 \
-    postgresql-devel shadow-utils\
-    bash && yum clean all
-
-RUN useradd -ms /bin/bash appuser
-
-COPY --from=build-deps --chown=appuser:appuser /$appname /$appname
-
-WORKDIR /$appname
-
-USER appuser
-
-CMD ["poetry", "run", "gunicorn", "gen3userdatalibrary.main:app", "-k", "uvicorn.workers.UvicornWorker", "-c", "gunicorn.conf.py", "--user", "appuser", "--group", "appuser"]
+CMD ["poetry", "run", "gunicorn", "gen3userdatalibrary.main:app", "-k", "uvicorn.workers.UvicornWorker", "-c", "gunicorn.conf.py", "--user", "gen3", "--group", "gen3"]

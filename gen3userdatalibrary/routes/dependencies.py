@@ -40,6 +40,7 @@ async def ensure_user_exists(request: Request):
     if policy:
         return True
 
+    request.app.state.arborist_client.create_user_if_not_exist(username)
     logging.info(f"Policy does not exist for user_id {user_id}")
     role_ids = ["create", "read", "update", "delete"]
     resource = get_lists_endpoint(user_id)
@@ -50,7 +51,7 @@ async def ensure_user_exists(request: Request):
             path='/', resource_json={
                 "name": resource,
                 "description": f"Library for user_id {user_id}",
-            }, merge=True
+            }, merge=True, create_parents=True
         )
     except ArboristError as e:
         logging.error(e)
@@ -66,7 +67,8 @@ async def ensure_user_exists(request: Request):
     try:
         request.app.state.arborist_client.update_policy(
             policy_id=user_id,
-            policy_json=policy_json
+            policy_json=policy_json,
+            create_if_not_exist=True
         )
     except ArboristError as ae:
         logging.error(f"Error creating policy in arborist: {str(ae)}")
