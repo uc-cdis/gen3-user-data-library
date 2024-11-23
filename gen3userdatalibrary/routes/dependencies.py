@@ -1,9 +1,9 @@
 import json
+from _testcapi import raise_exception
 
 from fastapi import HTTPException, Request, Depends
 from gen3authz.client.arborist.errors import ArboristError
 from jsonschema.validators import validate
-from pydantic import ValidationError
 from starlette import status
 
 from gen3userdatalibrary import config, logging
@@ -13,9 +13,12 @@ from gen3userdatalibrary.auth import (
     get_user_data_library_endpoint,
 )
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
-from gen3userdatalibrary.models.helpers import try_conforming_list
-from gen3userdatalibrary.models.user_list import ItemToUpdateModel
+from gen3userdatalibrary.models.helpers import (
+    try_conforming_list,
+    conform_to_item_update,
+)
 from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEXT
+from gen3userdatalibrary.utils.core import build_switch_case
 
 
 async def ensure_user_exists(request: Request):
@@ -67,65 +70,6 @@ def validate_user_list_item(item_contents: dict):
     validate(instance=item_contents, schema=matching_schema)
 
 
-def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
-    """
-    Before any endpoint is hit, we should verify that the requester has access to the endpoint.
-    This middleware function handles that.
-    """
-
-    endpoint_type = endpoint_context.get("type", None)
-    get_resource = endpoint_context.get("resource", None)
-    if endpoint_type == "all":
-        resource = get_resource(user_id)
-    elif endpoint_type == "id":
-        list_id = path_params["list_id"]
-        resource = get_resource(user_id, list_id)
-    else:  # None
-        resource = get_resource
-    return resource
-
-
-async def parse_and_auth_request(
-    request: Request, created_user=Depends(ensure_user_exists)
-):
-    user_id = await get_user_id(request=request)
-    path_params = request.scope["path_params"]
-    route_function = request.scope["route"].name
-    endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
-    resource = get_resource_from_endpoint_context(
-        endpoint_context, user_id, path_params
-    )
-    logging.debug(f"Authorizing user: {user_id}")
-    await authorize_request(
-        request=request,
-        authz_access_method=endpoint_context["method"],
-        authz_resources=[resource],
-    )
-
-
-def ensure_any_items_match_schema(endpoint_context, conformed_body):
-    item_dict = endpoint_context.get("items", lambda _: [])(conformed_body)
-    body_type = type(item_dict)
-    if body_type is list:
-        for item_set in item_dict:
-            for item_contents in item_set.values():
-                validate_user_list_item(item_contents)
-    else:  # is (or should be) dict
-        for item_contents in item_dict.values():
-            validate_user_list_item(item_contents)
-
-
-def conform_to_item_update(items_to_update_as_dict) -> ItemToUpdateModel:
-    try:
-        validated_data = ItemToUpdateModel(**items_to_update_as_dict)
-        return validated_data
-    except ValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Bad data structure, cannot process",
-        )
-
-
 async def validate_items(
     request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
 ):
@@ -143,31 +87,45 @@ async def validate_items(
             detail="Problem trying to validate body. Is your body formatted "
             "correctly?",
         )
-    if route_function == "upsert_user_lists":
-        raw_lists = conformed_body["lists"]
-        new_lists_as_orm = [
-            await try_conforming_list(user_id, conform_to_item_update(user_list))
-            for user_list in raw_lists
-        ]
-        unique_list_identifiers = {
-            (user_list.creator, user_list.name): user_list
-            for user_list in new_lists_as_orm
-        }
-        lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
-            dal, unique_list_identifiers, new_lists_as_orm
+
+    validation_handle_mapping = build_switch_case(
+        {
+            "upsert_user_lists": validate_upsert_items,
+            "append_items_to_list": validate_items_to_append,
+            "update_list_by_id": ensure_list_exists_and_items_less_than_max,
+        },
+        lambda _1, _2, _3: raise_exception(
+            Exception("Invalid route function identified! ")
+        ),
+    )
+    # todo: test raise_exception works correctly
+    validation_handle_mapping(route_function)(conformed_body, dal, list_id)
+
+
+async def validate_items_to_append(conformed_body, dal, list_id):
+    try:
+        list_to_append = await dal.get_existing_list_or_throw(list_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not recognized!"
         )
-        await check_lists_to_update(lists_to_update, unique_list_identifiers)
-        await check_lists_to_create(lists_to_create)
-    elif route_function == "append_items_to_list":
-        try:
-            list_to_append = await dal.get_existing_list_or_throw(list_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="list_id not recognized!"
-            )
-        ensure_items_less_than_max(len(conformed_body), len(list_to_append.items))
-    else:  # 'update_list_by_id'
-        await ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_id)
+    ensure_items_less_than_max(len(conformed_body), len(list_to_append.items))
+
+
+async def validate_upsert_items(conformed_body, dal, user_id):
+    raw_lists = conformed_body["lists"]
+    new_lists_as_orm = [
+        await try_conforming_list(user_id, conform_to_item_update(user_list))
+        for user_list in raw_lists
+    ]
+    unique_list_identifiers = {
+        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
+    }
+    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
+        dal, unique_list_identifiers, new_lists_as_orm
+    )
+    await check_lists_to_update(lists_to_update, unique_list_identifiers)
+    await check_lists_to_create(lists_to_create)
 
 
 async def check_lists_to_create(lists_to_create):
@@ -258,3 +216,67 @@ async def sort_lists_into_create_or_update(
         )
     )
     return lists_to_create, lists_to_update
+
+
+# region List Items
+
+
+def ensure_any_items_match_schema(endpoint_context, conformed_body):
+    item_dict = endpoint_context.get("items", lambda _: [])(conformed_body)
+    body_type = type(item_dict)
+    if body_type is list:
+        for item_set in item_dict:
+            for item_contents in item_set.values():
+                validate_user_list_item(item_contents)
+    else:  # is (or should be) dict
+        for item_contents in item_dict.values():
+            validate_user_list_item(item_contents)
+
+
+# endregion
+
+# region Auth
+
+
+async def parse_and_auth_request(
+    request: Request, created_user=Depends(ensure_user_exists)
+):
+    user_id = await get_user_id(request=request)
+    path_params = request.scope["path_params"]
+    route_function = request.scope["route"].name
+    endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
+    resource = get_resource_from_endpoint_context(
+        endpoint_context, user_id, path_params
+    )
+    logging.debug(f"Authorizing user: {user_id}")
+    await authorize_request(
+        request=request,
+        authz_access_method=endpoint_context["method"],
+        authz_resources=[resource],
+    )
+
+
+# endregion
+
+# region Helpers
+
+
+def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
+    """
+    Before any endpoint is hit, we should verify that the requester has access to the endpoint.
+    This middleware function handles that.
+    """
+
+    endpoint_type = endpoint_context.get("type", None)
+    get_resource = endpoint_context.get("resource", None)
+    if endpoint_type == "all":
+        resource = get_resource(user_id)
+    elif endpoint_type == "id":
+        list_id = path_params["list_id"]
+        resource = get_resource(user_id, list_id)
+    else:  # None
+        resource = get_resource
+    return resource
+
+
+# endregion

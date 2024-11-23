@@ -2,12 +2,22 @@ import datetime
 
 from fastapi import HTTPException
 from jsonschema.exceptions import ValidationError
-from sqlalchemy.exc import IntegrityError
 from starlette import status
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_lists_endpoint
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel, UserList
+
+
+def conform_to_item_update(items_to_update_as_dict) -> ItemToUpdateModel:
+    try:
+        validated_data = ItemToUpdateModel(**items_to_update_as_dict)
+        return validated_data
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bad data structure, cannot process",
+        )
 
 
 async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList:
