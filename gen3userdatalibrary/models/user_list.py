@@ -1,5 +1,5 @@
-import datetime
 import uuid
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -23,8 +23,8 @@ class UserListModel(BaseModel):
     version: int
     creator: str = Field(min_length=1)
     authz: Dict[str, Any]
-    created_time: Any = Field(default_factory=lambda: datetime.datetime.now())
-    updated_time: Any = Field(default_factory=lambda: datetime.datetime.now())
+    created_time: Any = Field(default_factory=lambda: datetime.now())
+    updated_time: Any = Field(default_factory=lambda: datetime.now())
     name: str = Field(min_length=1)
     items: Dict[str, Any]
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")

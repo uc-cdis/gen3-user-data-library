@@ -4,9 +4,11 @@ from json import JSONDecodeError
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from jsonschema.exceptions import ValidationError
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.main import route_aggregator
+from gen3userdatalibrary.routes.dependencies import validate_user_list_item
 from gen3userdatalibrary.utils.metrics import get_from_cfg_metadata
 from tests.data.example_lists import VALID_LIST_A
 from tests.routes.conftest import BaseTestRouter

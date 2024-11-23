@@ -6,8 +6,8 @@ from fastapi.routing import APIRoute
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.models.data import PUBLIC_ROUTES
 from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.routes.basic import PUBLIC_ROUTES
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
