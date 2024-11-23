@@ -1,5 +1,6 @@
 import json
 from _testcapi import raise_exception
+from typing import List
 
 from fastapi import HTTPException, Request, Depends
 from gen3authz.client.arborist.errors import ArboristError
@@ -17,43 +18,98 @@ from gen3userdatalibrary.models.helpers import (
     try_conforming_list,
     conform_to_item_update,
 )
+from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEXT
 from gen3userdatalibrary.utils.core import build_switch_case
 
 
-async def ensure_user_exists(request: Request):
-    policy_id = await get_user_id(request=request)
-    try:
-        user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
-    except Exception as e:
-        logging.error(
-            f"Something went wrong when checking whether the policy exists: {str(e)}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed checking policy!",
-        )
-    if user_exists:
-        return False
-    role_ids = ("create", "read", "update", "delete")
-    resource_paths = get_user_data_library_endpoint(policy_id)
-    policy_json = {
-        "id": policy_id,
-        "description": "policy created by requestor",
-        "role_ids": role_ids,
-        "resource_paths": resource_paths,
+async def validate_upsert_items(conformed_body, dal, user_id):
+    raw_lists = conformed_body["lists"]
+    new_lists_as_orm = [
+        await try_conforming_list(user_id, conform_to_item_update(user_list))
+        for user_list in raw_lists
+    ]
+    unique_list_identifiers = {
+        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
     }
-    logging.debug(f"Policy {policy_id} does not exist, attempting to create....")
-    try:
-        outcome = await request.app.state.arborist_client.create_policy(
-            policy_json=policy_json
+    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
+        dal, unique_list_identifiers, new_lists_as_orm
+    )
+    await check_lists_to_update(lists_to_update, unique_list_identifiers)
+    for item_to_create in lists_to_create:
+        ensure_items_less_than_max(len(item_to_create.items))
+
+
+async def check_lists_to_update(lists_to_update, unique_list_identifiers):
+    for list_to_update in lists_to_update:
+        identifier = (list_to_update.creator, list_to_update.name)
+        new_version_of_list = unique_list_identifiers.get(identifier, None)
+        if new_version_of_list is None:
+            raise ValueError("No unique identifier, cannot update list!")
+        ensure_items_less_than_max(
+            len(new_version_of_list.items), len(list_to_update.items)
         )
-    except ArboristError as ae:
-        logging.error(f"Error creating policy in arborist: {str(ae)}")
+
+
+async def ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_id):
+    try:
+        list_to_append = await dal.get_existing_list_or_throw(list_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
+        )
+    except ArboristError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal error creating a policy in arborist",
+            detail="Something went wrong while validating request!",
         )
+    ensure_items_less_than_max(len(conformed_body["items"]), len(list_to_append.items))
+
+
+# region User Lists
+
+
+async def sort_lists_into_create_or_update(
+    data_access_layer, unique_list_identifiers, new_user_list: List[UserList]
+):
+    lists_to_update = await data_access_layer.grab_all_lists_that_exist(
+        "name", list(unique_list_identifiers.keys())
+    )
+    set_of_existing_identifiers = set(
+        map(lambda ul: (ul.creator, ul.name), lists_to_update)
+    )
+    lists_to_create = list(
+        filter(
+            lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers,
+            new_user_list,
+        )
+    )
+    return lists_to_create, lists_to_update
+
+
+async def validate_lists(
+    request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
+):
+    user_id = await get_user_id(request=request)
+    conformed_body = json.loads(await request.body())
+    raw_lists = conformed_body["lists"]
+    new_lists_as_orm = [
+        await try_conforming_list(user_id, conform_to_item_update(user_list))
+        for user_list in raw_lists
+    ]
+    unique_list_identifiers = {
+        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
+    }
+    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
+        dal, unique_list_identifiers, new_lists_as_orm
+    )
+    ensure_items_exist_and_less_than_max(lists_to_create, user_id)
+    await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
+
+
+# endregion
+
+# region List Items
 
 
 def validate_user_list_item(item_contents: dict):
@@ -102,61 +158,16 @@ async def validate_items(
     validation_handle_mapping(route_function)(conformed_body, dal, list_id)
 
 
-async def validate_items_to_append(conformed_body, dal, list_id):
-    try:
-        list_to_append = await dal.get_existing_list_or_throw(list_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not recognized!"
-        )
-    ensure_items_less_than_max(len(conformed_body), len(list_to_append.items))
-
-
-async def validate_upsert_items(conformed_body, dal, user_id):
-    raw_lists = conformed_body["lists"]
-    new_lists_as_orm = [
-        await try_conforming_list(user_id, conform_to_item_update(user_list))
-        for user_list in raw_lists
-    ]
-    unique_list_identifiers = {
-        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
-    }
-    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
-        dal, unique_list_identifiers, new_lists_as_orm
-    )
-    await check_lists_to_update(lists_to_update, unique_list_identifiers)
-    await check_lists_to_create(lists_to_create)
-
-
-async def check_lists_to_create(lists_to_create):
-    for item_to_create in lists_to_create:
-        ensure_items_less_than_max(len(item_to_create.items))
-
-
-async def check_lists_to_update(lists_to_update, unique_list_identifiers):
-    for list_to_update in lists_to_update:
-        identifier = (list_to_update.creator, list_to_update.name)
-        new_version_of_list = unique_list_identifiers.get(identifier, None)
-        if new_version_of_list is None:
-            raise ValueError("No unique identifier, cannot update list!")
-        ensure_items_less_than_max(
-            len(new_version_of_list.items), len(list_to_update.items)
-        )
-
-
-async def ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_id):
-    try:
-        list_to_append = await dal.get_existing_list_or_throw(list_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="ID not recognized!"
-        )
-    except ArboristError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Something went wrong while validating request!",
-        )
-    ensure_items_less_than_max(len(conformed_body["items"]), len(list_to_append.items))
+def ensure_any_items_match_schema(endpoint_context, conformed_body):
+    item_dict = endpoint_context.get("items", lambda _: [])(conformed_body)
+    body_type = type(item_dict)
+    if body_type is list:
+        for item_set in item_dict:
+            for item_contents in item_set.values():
+                validate_user_list_item(item_contents)
+    else:  # is (or should be) dict
+        for item_contents in item_dict.values():
+            validate_user_list_item(item_contents)
 
 
 def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
@@ -170,27 +181,7 @@ def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
         )
 
 
-async def validate_lists(
-    request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
-):
-    user_id = await get_user_id(request=request)
-    conformed_body = json.loads(await request.body())
-    raw_lists = conformed_body["lists"]
-    new_lists_as_orm = [
-        await try_conforming_list(user_id, conform_to_item_update(user_list))
-        for user_list in raw_lists
-    ]
-    unique_list_identifiers = {
-        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
-    }
-    lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
-        dal, unique_list_identifiers, new_lists_as_orm
-    )
-    await ensure_items_exist_and_less_than_max(lists_to_create, user_id)
-    await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
-
-
-async def ensure_items_exist_and_less_than_max(lists_to_create, user_id):
+def ensure_items_exist_and_less_than_max(lists_to_create, user_id):
     for item_to_create in lists_to_create:
         if len(item_to_create.items) == 0:
             raise HTTPException(
@@ -200,42 +191,54 @@ async def ensure_items_exist_and_less_than_max(lists_to_create, user_id):
         ensure_items_less_than_max(len(item_to_create.items))
 
 
-async def sort_lists_into_create_or_update(
-    data_access_layer, unique_list_identifiers, new_lists_as_orm
-):
-    lists_to_update = await data_access_layer.grab_all_lists_that_exist(
-        "name", list(unique_list_identifiers.keys())
-    )
-    set_of_existing_identifiers = set(
-        map(lambda ul: (ul.creator, ul.name), lists_to_update)
-    )
-    lists_to_create = list(
-        filter(
-            lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers,
-            new_lists_as_orm,
+async def validate_items_to_append(conformed_body, dal, list_id):
+    try:
+        list_to_append = await dal.get_existing_list_or_throw(list_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not recognized!"
         )
-    )
-    return lists_to_create, lists_to_update
-
-
-# region List Items
-
-
-def ensure_any_items_match_schema(endpoint_context, conformed_body):
-    item_dict = endpoint_context.get("items", lambda _: [])(conformed_body)
-    body_type = type(item_dict)
-    if body_type is list:
-        for item_set in item_dict:
-            for item_contents in item_set.values():
-                validate_user_list_item(item_contents)
-    else:  # is (or should be) dict
-        for item_contents in item_dict.values():
-            validate_user_list_item(item_contents)
+    ensure_items_less_than_max(len(conformed_body), len(list_to_append.items))
 
 
 # endregion
 
 # region Auth
+
+
+async def ensure_user_exists(request: Request):
+    policy_id = await get_user_id(request=request)
+    try:
+        user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
+    except Exception as e:
+        logging.error(
+            f"Something went wrong when checking whether the policy exists: {str(e)}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed checking policy!",
+        )
+    if user_exists:
+        return False
+    role_ids = ("create", "read", "update", "delete")
+    resource_paths = get_user_data_library_endpoint(policy_id)
+    policy_json = {
+        "id": policy_id,
+        "description": "policy created by requestor",
+        "role_ids": role_ids,
+        "resource_paths": resource_paths,
+    }
+    logging.debug(f"Policy {policy_id} does not exist, attempting to create....")
+    try:
+        outcome = await request.app.state.arborist_client.create_policy(
+            policy_json=policy_json
+        )
+    except ArboristError as ae:
+        logging.error(f"Error creating policy in arborist: {str(ae)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error creating a policy in arborist",
+        )
 
 
 async def parse_and_auth_request(
