@@ -207,6 +207,10 @@ async def validate_items_to_append(conformed_body, dal, list_id):
 
 
 async def ensure_user_exists(request: Request):
+
+    if config.DEBUG_SKIP_AUTH:
+        return True
+    
     policy_id = await get_user_id(request=request)
     try:
         user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
