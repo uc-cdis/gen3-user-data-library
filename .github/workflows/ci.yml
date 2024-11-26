@@ -61,7 +61,7 @@ jobs:
     uses: uc-cdis/.github/.github/workflows/required_lint_check.yaml@fix/lint-path
     with:
       python-version: '3.9'
-      use-cache: true
+      use-cache: false  # TODO: temporarily testing false, switch back to true
 # TODO: Uncomment after repo is public
 #  InformationalLint:
 #    name: Run Informational Linters
