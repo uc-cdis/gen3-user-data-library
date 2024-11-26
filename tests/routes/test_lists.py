@@ -6,14 +6,14 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from black.trans import defaultdict
 from gen3authz.client.arborist.async_client import ArboristClient
-
-from gen3userdatalibrary import config
-from gen3userdatalibrary.auth import get_list_by_id_endpoint
-from gen3userdatalibrary.main import route_aggregator, get_app
-from gen3userdatalibrary.utils.core import add_to_dict_set
 from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
+
+from gen3userdatalibrary import config
+from gen3userdatalibrary.auth import get_list_by_id_endpoint
+from gen3userdatalibrary.main import get_app, route_aggregator
+from gen3userdatalibrary.utils.core import add_to_dict_set
 
 
 @pytest.mark.asyncio

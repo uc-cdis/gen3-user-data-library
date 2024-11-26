@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint, UUID
+from sqlalchemy import UUID, Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 

@@ -1,6 +1,6 @@
 import json
 
-from fastapi import HTTPException, Request, Depends
+from fastapi import Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
 from jsonschema.validators import validate
 from pydantic import ValidationError
@@ -8,11 +8,11 @@ from starlette import status
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import (
-    get_user_id,
     authorize_request,
     get_user_data_library_endpoint,
+    get_user_id,
 )
-from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
+from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEXT
 from gen3userdatalibrary.utils.modeling import try_conforming_list
@@ -22,7 +22,7 @@ async def ensure_user_exists(request: Request):
 
     if config.DEBUG_SKIP_AUTH:
         return True
-    
+
     policy_id = await get_user_id(request=request)
     try:
         user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)

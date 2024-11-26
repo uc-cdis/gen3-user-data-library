@@ -32,7 +32,7 @@ from typing import List, Optional, Tuple, Union
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import text, delete, func, tuple_
+from sqlalchemy import delete, func, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 from starlette import status

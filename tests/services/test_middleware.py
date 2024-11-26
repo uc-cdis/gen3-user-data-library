@@ -1,10 +1,10 @@
 import re
 
 import pytest
+from tests.routes.conftest import BaseTestRouter
 
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.utils.core import reg_match_key
-from tests.routes.conftest import BaseTestRouter
 
 
 @pytest.mark.asyncio

@@ -1,11 +1,11 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from tests.data.example_lists import VALID_LIST_A
+from tests.routes.conftest import BaseTestRouter
 
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.utils.metrics import get_from_cfg_metadata
-from tests.data.example_lists import VALID_LIST_A
-from tests.routes.conftest import BaseTestRouter
 
 
 @pytest.mark.asyncio

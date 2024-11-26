@@ -1,17 +1,17 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-from gen3userdatalibrary.routes import route_aggregator
 from tests.data.example_lists import (
     VALID_LIST_A,
     VALID_LIST_B,
-    VALID_REPLACEMENT_LIST,
     VALID_LIST_D,
     VALID_LIST_E,
+    VALID_REPLACEMENT_LIST,
 )
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
+
+from gen3userdatalibrary.routes import route_aggregator
 
 
 @pytest.mark.asyncio

@@ -24,15 +24,15 @@ cdispyutils = { git = "https://github.com/uc-cdis/cdis-python-utils/", rev = "fe
 # NOTE:
 # for testing with updated libaries as git repos:
 # foobar = {git = "https://github.com/uc-cdis/some-repo", rev = "feat/test"}
-httpx = "0.23.3"
+httpx = ">=0.23.3"
 pytest-asyncio = ">=0.23.8"
-jsonschema = "3.2.0"
+jsonschema = ">=3.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
 # <8.0.0 is temporary, try removing. It was causing issues because the
 # underlying pytest-* libraries hadn't updated yet to fix some breaking changes
-pytest = ">=7.3.2,<8.0.0"
+pytest = ">=7.3.2"
 coverage = ">=7.3.2"
 pytest-cov = ">=4.1.0"
 isort = ">=5.12.0"
@@ -50,15 +50,15 @@ pytest-profiling = ">=1.7.0"
 #          manually if you want to see coverage
 #
 # see .coveragerc for what the coverage omits
-#addopts = """
-#-vv --cov-config=.coveragerc
-#--cov=gen3userdatalibrary
-#--cov-report term-missing:skip-covered
-#--cov-fail-under 90
-#--cov-report html:_coverage
-#--cov-branch
-#--profile --profile-svg
-#"""
+addopts = """
+-vv --cov-config=.coveragerc
+--cov=gen3userdatalibrary
+--cov-report term-missing:skip-covered
+--cov-fail-under 90
+--cov-report html:_coverage
+--cov-branch
+--profile --profile-svg
+"""
 
 [tool.isort]
 known_first_party = ["gen3userdatalibrary"]

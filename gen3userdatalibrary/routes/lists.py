@@ -1,7 +1,7 @@
 import time
 from typing import List
 
-from fastapi import Request, Depends, HTTPException, APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import Response
 from gen3authz.client.arborist.async_client import ArboristClient
@@ -10,28 +10,22 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import (
-    get_user_id,
-    get_user_data_library_endpoint,
-)
+from gen3userdatalibrary.auth import get_user_data_library_endpoint, get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.user_list import (
-    UserListResponseModel,
+    USER_LIST_UPDATE_ALLOW_LIST,
+    ItemToUpdateModel,
     UpdateItemsModel,
     UserList,
-    ItemToUpdateModel,
-    USER_LIST_UPDATE_ALLOW_LIST,
+    UserListResponseModel,
 )
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
+    sort_lists_into_create_or_update,
     validate_items,
     validate_lists,
-    sort_lists_into_create_or_update,
 )
-from gen3userdatalibrary.utils.core import (
-    find_differences,
-    filter_keys,
-)
+from gen3userdatalibrary.utils.core import filter_keys, find_differences
 from gen3userdatalibrary.utils.metrics import add_user_list_metric
 from gen3userdatalibrary.utils.modeling import try_conforming_list
 
