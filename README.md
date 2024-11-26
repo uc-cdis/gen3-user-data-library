@@ -108,7 +108,9 @@ The default `pytest` options specified
 in the `pyproject.toml` additionally:
 
 * runs coverage and will error if it falls below the threshold
-* profiles using [pytest-profiling](https://pypi.org/project/pytest-profiling/) which outputs into `/prof`
+
+> TODO: Setup profiling. cProfile actually doesn't play well with async, so pytest-profiling won't work.
+>       Perhaps use: https://github.com/joerick/pyinstrument ?
 
 #### Automatically format code and run pylint
 

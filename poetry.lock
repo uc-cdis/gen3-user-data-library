@@ -330,7 +330,7 @@ profiling = []
 type = "git"
 url = "https://github.com/uc-cdis/cdis-python-utils/"
 reference = "feat/common_metrics"
-resolved_reference = "d92f9a66a549e21943c8c076f7ce119a394910ad"
+resolved_reference = "4c33d6cb575412bd49f2fc6fda1f5bbe60665804"
 
 [[package]]
 name = "certifi"
@@ -775,17 +775,6 @@ backoff = ">=1.6,<2.0"
 cdiserrors = "<2.0.0"
 httpx = ">=0.20.0,<1.0.0"
 six = ">=1.16.0,<2.0.0"
-
-[[package]]
-name = "gprof2dot"
-version = "2024.6.6"
-description = "Generate a dot graph from the output of several profilers."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "gprof2dot-2024.6.6-py2.py3-none-any.whl", hash = "sha256:45b14ad7ce64e299c8f526881007b9eb2c6b75505d5613e96e66ee4d5ab33696"},
-    {file = "gprof2dot-2024.6.6.tar.gz", hash = "sha256:fa1420c60025a9eb7734f65225b4da02a10fc6dd741b37fa129bc6b41951e5ab"},
-]
 
 [[package]]
 name = "greenlet"
@@ -1502,25 +1491,6 @@ pytest = ">=4.6"
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
-name = "pytest-profiling"
-version = "1.7.0"
-description = "Profiling plugin for py.test"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pytest-profiling-1.7.0.tar.gz", hash = "sha256:93938f147662225d2b8bd5af89587b979652426a8a6ffd7e73ec4a23e24b7f29"},
-    {file = "pytest_profiling-1.7.0-py2.py3-none-any.whl", hash = "sha256:999cc9ac94f2e528e3f5d43465da277429984a1c237ae9818f8cfd0b06acb019"},
-]
-
-[package.dependencies]
-gprof2dot = "*"
-pytest = "*"
-six = "*"
-
-[package.extras]
-tests = ["pytest-virtualenv"]
-
-[[package]]
 name = "referencing"
 version = "0.35.1"
 description = "JSON Referencing + Python"
@@ -1909,4 +1879,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.10.dev0"
-content-hash = "2c04687ac721ca91c2eb6318206ee7794e80fd8803ebb5e44b9db8be69b43c8a"
+content-hash = "07cdefb8826f6050b406f661c76ca8f5a1fcd6ef8687f6255451e19916c3ecaf"

@@ -30,17 +30,17 @@ def add_user_list_metric(
         return
 
     for user_list in user_lists:
-        fastapi_app.state.metrics.add_user_list_counter(
+        fastapi_app.state.metrics.add_user_list_api_interaction(
             action=action, user_id=user_id, response_time_seconds=response_time_seconds
         )
-        for item_id, item in (user_list.items or {}).items():
-            fastapi_app.state.metrics.add_user_list_item_counter(
-                action=action,
-                user_id=user_id,
-                type=item.get("type", "Unknown"),
-                schema_version=item.get("schema_version", "Unknown"),
-                response_time_seconds=response_time_seconds,
-            )
+        # for item_id, item in (user_list.items or {}).items():
+        #     fastapi_app.state.metrics.add_user_list_item_counter(
+        #         action=action,
+        #         user_id=user_id,
+        #         type=item.get("type", "Unknown"),
+        #         schema_version=item.get("schema_version", "Unknown"),
+        #         response_time_seconds=response_time_seconds,
+        #     )
 
 
 def get_from_cfg_metadata(
