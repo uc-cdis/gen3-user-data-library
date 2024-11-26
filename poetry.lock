@@ -308,7 +308,7 @@ files = [
 
 [[package]]
 name = "cdispyutils"
-version = "2.2.0"
+version = "2.3.0"
 description = "This package includes several utility Python tools for the Gen3 stack."
 optional = false
 python-versions = "^3.9"
@@ -317,7 +317,7 @@ develop = false
 
 [package.dependencies]
 cdiserrors = "*"
-cryptography = "*"
+cryptography = "^43.0.1"
 Flask = "*"
 prometheus-client = "*"
 PyJWT = "*"
@@ -330,7 +330,7 @@ profiling = []
 type = "git"
 url = "https://github.com/uc-cdis/cdis-python-utils/"
 reference = "feat/common_metrics"
-resolved_reference = "4c33d6cb575412bd49f2fc6fda1f5bbe60665804"
+resolved_reference = "f28e6c1c557d65f39b03940a4b653f39e0ec06b8"
 
 [[package]]
 name = "certifi"
