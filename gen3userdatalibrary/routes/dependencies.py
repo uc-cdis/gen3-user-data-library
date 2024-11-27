@@ -24,21 +24,21 @@ async def ensure_user_exists(request: Request):
     
     user_id = await get_user_id(request=request)
     username = await get_username(request=request)
-    try:
-        # TODO Check if user is assigned the policy, not if the policy exists.
-        # We use the user_id as the policy_id
-        policy = request.app.state.arborist_client.get_policy(user_id)
-        logging.debug(f"Got policy: {policy}")
-    except Exception as e:
-        logging.error(
-            f"Something went wrong when checking whether the policy exists: {str(e)}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed checking policy!",
-        )
-    if policy:
-        return True
+    # try:
+    #     # TODO Check if user is assigned the policy, not if the policy exists.
+    #     # We use the user_id as the policy_id
+    #     policy = request.app.state.arborist_client.get_policy(user_id)
+    #     logging.debug(f"Got policy: {policy}")
+    # except Exception as e:
+    #     logging.error(
+    #         f"Something went wrong when checking whether the policy exists: {str(e)}"
+    #     )
+    #     raise HTTPException(
+    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #         detail="Failed checking policy!",
+    #     )
+    # if policy:
+    #     return True
 
     request.app.state.arborist_client.create_user_if_not_exist(username)
     logging.info(f"Policy does not exist for user_id {user_id}")
