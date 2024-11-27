@@ -155,7 +155,7 @@ class DataAccessLayer:
         )
         for key, value in changes_that_can_be_made:
             setattr(db_list_to_update, key, value)
-        # await self.db_session.commit()
+        await self.db_session.commit()
         return db_list_to_update
 
     async def test_connection(self) -> None:
