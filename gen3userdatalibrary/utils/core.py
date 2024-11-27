@@ -82,8 +82,3 @@ def find_differences(
 def remove_keys(d: dict, keys: set):
     """Given a dictionary d and set of keys k, remove all k in d"""
     return {k: v for k, v in d.items() if k not in keys}
-
-
-def update(k, updater, dict_to_update):
-    dict_to_update[k] = updater(dict_to_update[k])
-    return dict_to_update

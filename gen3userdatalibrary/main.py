@@ -27,17 +27,36 @@ async def lifespan(app: FastAPI):
         app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    app.state.metrics = Metrics(
-        enabled=config.ENABLE_PROMETHEUS_METRICS,
-        prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
-    )
+    app_with_setup = await add_metrics_and_arborist_client(app)
 
-    app.state.arborist_client = ArboristClient(
-        arborist_base_url=config.ARBORIST_URL,
-        logger=get_logger("user_syncer.arborist_client"),
-        authz_provider="user-sync",
-    )
+    await check_db_connection()
 
+    if not config.DEBUG_SKIP_AUTH:
+        await check_arborist_is_healthy(app_with_setup)
+
+    yield
+
+    # teardown
+
+    # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker  #
+    # "child_exit" is defined in the gunicorn.conf.py
+
+
+async def check_arborist_is_healthy(app_with_setup):
+    try:
+        logging.debug("Startup policy engine (Arborist) connection test initiating...")
+        arborist_client = app_with_setup.state.arborist_client
+        if not arborist_client.healthy():
+            raise Exception("Arborist unhealthy,aborting...")
+    except Exception as exc:
+        logging.exception(
+            "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
+        )
+        logging.debug(exc)
+        raise
+
+
+async def check_db_connection():
     try:
         logging.debug(
             "Startup database connection test initiating. Attempting a simple query..."
@@ -53,26 +72,18 @@ async def lifespan(app: FastAPI):
         logging.debug(exc)
         raise
 
-    if not config.DEBUG_SKIP_AUTH:
-        try:
-            logging.debug(
-                "Startup policy engine (Arborist) connection test initiating..."
-            )
-            if not app.state.arborist_client.healthy():
-                raise Exception("Arborist unhealthy,aborting...")
-        except Exception as exc:
-            logging.exception(
-                "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
-            )
-            logging.debug(exc)
-            raise
 
-    yield
-
-    # teardown
-
-    # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker  #
-    # "child_exit" is defined in the gunicorn.conf.py
+async def add_metrics_and_arborist_client(app):
+    app.state.metrics = Metrics(
+        enabled=config.ENABLE_PROMETHEUS_METRICS,
+        prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
+    )
+    app.state.arborist_client = ArboristClient(
+        arborist_base_url=config.ARBORIST_URL,
+        logger=get_logger("user_syncer.arborist_client"),
+        authz_provider="user-sync",
+    )
+    return app
 
 
 def get_app() -> fastapi.FastAPI:
