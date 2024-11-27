@@ -40,6 +40,7 @@ from starlette import status
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_list_by_id_endpoint
 from gen3userdatalibrary.models.user_list import UserList
+from gen3userdatalibrary.utils.metrics import MetricModel
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
@@ -63,7 +64,7 @@ class DataAccessLayer:
             creator_id: matching name of whoever made the list
             lists_to_add: number of lists to add to existing user's list set
         """
-        lists_so_far = await self.get_list_count_for_creator(creator_id)
+        lists_so_far = await self.get_list_count(creator_id)
         total = lists_so_far + lists_to_add
         if total > config.MAX_LISTS:
             raise HTTPException(
@@ -123,6 +124,18 @@ class DataAccessLayer:
         user_list = result.scalar_one_or_none()
         return user_list
 
+    async def get_list_by_id(self, creator_id=None, list_id=None):
+        if creator_id:
+            query = select(UserList).where(UserList.creator == creator_id)
+        elif list_id:
+            query = select(UserList).where(UserList.id == list_id)
+        else:
+            return None
+
+        result = await self.db_session.execute(query)
+        user_list = result.scalar_one_or_none()
+        return user_list
+
     async def get_existing_list_or_throw(self, list_id: UUID) -> UserList:
         """
         List SHOULD exist, so throw if it doesn't
@@ -164,23 +177,49 @@ class DataAccessLayer:
         """
         await self.db_session.execute(text("SELECT 1;"))
 
-    async def get_list_count_for_creator(self, creator_id):
+    async def get_list_count(self, creator_id=None, list_id=None):
         """
         Args:
-            creator_id: matching name of whoever made the list
+            creator_id (int): matching name of whoever made the list
+            list_id (UUID): unique ID of the list.
 
         Returns:
             the number of lists associated with that creator
         """
-        query = (
-            select(func.count())
-            .select_from(UserList)
-            .where(UserList.creator == creator_id)
-        )
+        query = select(func.count()).select_from(UserList)
+
+        if creator_id:
+            query = query.where(UserList.creator == creator_id)
+
+        if list_id:
+            query = query.where(UserList.id == list_id)
+
         result = await self.db_session.execute(query)
         count = result.scalar()
         count = count or 0
         return count
+
+    async def get_list_and_item_count(self, creator_id=None, list_id=None) -> tuple:
+        """
+        Retrieves the number of lists and total items (keys) associated with a creator / list_id.
+
+        Args:
+            creator_id (int): The ID of the creator.
+            list_id (UUID): unique ID of the list.
+
+        Returns:
+            tuple: A tuple containing two values:
+                1. int: The number of lists associated with the creator.
+                2. int: The total count of keys in JSON objects across all lists.
+        """
+        # Get the list count
+        list_count = await self.get_list_count(creator_id=creator_id, list_id=list_id)
+
+        # count items
+        user_list = await self.get_list_by_id(creator_id=creator_id, list_id=list_id)
+        item_count = len(user_list.items)
+
+        return list_count, item_count
 
     async def delete_all_lists(self, sub_id: str):
         """
@@ -189,11 +228,11 @@ class DataAccessLayer:
         Args:
             sub_id: id of creator
         """
-        count = await self.get_list_count_for_creator(sub_id)
+        list_count, item_count = await self.get_list_and_item_count(creator_id=sub_id)
         query = delete(UserList).where(UserList.creator == sub_id)
         query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(query)
-        return count
+        return MetricModel(lists_deleted=list_count, items_deleted=item_count)
 
     async def delete_list(self, list_id: UUID):
         """
@@ -202,16 +241,10 @@ class DataAccessLayer:
         Args:
             list_id: id of list
         """
-        count_query = (
-            select(func.count()).select_from(UserList).where(UserList.id == list_id)
-        )
-        count_result = await self.db_session.execute(count_query)
-        count = count_result.scalar()
+        list_count, item_count = await self.get_list_and_item_count(list_id=list_id)
         del_query = delete(UserList).where(UserList.id == list_id)
-        count_query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(del_query)
-        # await self.db_session.commit()
-        return count
+        return MetricModel(lists_deleted=list_count, items_deleted=item_count)
 
     async def add_items_to_list(self, list_id: UUID, item_data: dict):
         """
@@ -222,9 +255,22 @@ class DataAccessLayer:
             list_id: id of list
             item_data: dict of items to add to item component of list
         """
+        _, prev_item_count = await self.get_list_and_item_count(list_id=list_id)
+        new_items_count = len(item_data.keys())
+        amount_of_new_items = new_items_count - prev_item_count
+
+        items_added = 0
+        items_deleted = 0
+        if amount_of_new_items > 0:
+            items_added = amount_of_new_items
+        elif amount_of_new_items < 0:
+            items_deleted = abs(amount_of_new_items)
+
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.update(item_data)
-        return user_list
+        return user_list, MetricModel(
+            items_added=items_added, items_deleted=items_deleted
+        )
 
     async def grab_all_lists_that_exist(
         self,
@@ -262,12 +308,26 @@ class DataAccessLayer:
         Delete the original list, replace it with the new one!
         Does not check that list exists
 
+        TODO: THIS SHOULD NOT DELETE AND REPLACE
         """
+        _, prev_item_count = await self.get_list_and_item_count(list_id=existing_obj.id)
+        new_items_count = len(new_list_as_orm.items.keys())
+        amount_of_new_items = new_items_count - prev_item_count
+
+        items_added = 0
+        items_deleted = 0
+        if amount_of_new_items > 0:
+            items_added = amount_of_new_items
+        elif amount_of_new_items < 0:
+            items_deleted = abs(amount_of_new_items)
+
         await self.db_session.delete(existing_obj)
         await self.db_session.flush()
         self.db_session.add(new_list_as_orm)
         await self.db_session.flush()
-        return new_list_as_orm
+        return new_list_as_orm, MetricModel(
+            items_added=items_added, items_deleted=items_deleted
+        )
 
 
 async def get_data_access_layer() -> DataAccessLayer:

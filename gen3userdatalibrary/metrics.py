@@ -27,7 +27,7 @@ class Metrics(BaseMetrics):
             prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR, enabled=enabled
         )
 
-    def handle_user_list_gauge(self, value: float, **kwargs: Dict[str, Any]) -> None:
+    def handle_user_lists_gauge(self, value: float, **kwargs: Dict[str, Any]) -> None:
         """
         Update the gauge for total User Lists.
         This expects the provided keyword arguments to provide information about
@@ -44,11 +44,30 @@ class Metrics(BaseMetrics):
             return
 
         if kwargs.get("action") == "CREATE":
-            self.inc_gauge(labels=kwargs, value=value, **API_USER_LIST_COUNTER)
+            self.inc_gauge(labels=kwargs, value=value, **TOTAL_USER_LISTS_GAUGE)
         elif kwargs.get("action") == "DELETE":
-            self.dec_gauge(labels=kwargs, value=value, **API_USER_LIST_COUNTER)
+            self.dec_gauge(labels=kwargs, value=value, **TOTAL_USER_LISTS_GAUGE)
 
-        # TODO: add this into the actual code, implement same thing for items in the list
+    def handle_user_items_gauge(self, value: float, **kwargs: Dict[str, Any]) -> None:
+        """
+        Update the gauge for total User ITEMS (e.g. the number of things contained in lists).
+        This expects the provided keyword arguments to provide information about
+        the action taken
+
+        Args:
+            value (float): amount to inc/dec/set
+            **kwargs: Arbitrary keyword arguments used as labels for the counter.
+                must contain action: string representing what CRUD action was taken,
+                    CREATE and DELETE are the only ones
+                    that prompt action on updating the gauge
+        """
+        if not self.enabled:
+            return
+
+        if kwargs.get("action") == "CREATE":
+            self.inc_gauge(labels=kwargs, value=value, **TOTAL_USER_ITEMS_GAUGE)
+        elif kwargs.get("action") == "DELETE":
+            self.dec_gauge(labels=kwargs, value=value, **TOTAL_USER_ITEMS_GAUGE)
 
     def add_user_list_api_interaction(self, **kwargs: Dict[str, Any]) -> None:
         """
