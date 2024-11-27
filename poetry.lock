@@ -311,26 +311,19 @@ name = "cdispyutils"
 version = "2.3.0"
 description = "This package includes several utility Python tools for the Gen3 stack."
 optional = false
-python-versions = "^3.9"
-files = []
-develop = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "cdispyutils-2.3.0-py3-none-any.whl", hash = "sha256:7f8a60074726da818bae18b1e89aa76db1301cfec142596df88039c1f6d82aa8"},
+    {file = "cdispyutils-2.3.0.tar.gz", hash = "sha256:6e581ea1efb1019c12398474a995aeed0b926cf8377fe17502b92cf0602c5826"},
+]
 
 [package.dependencies]
 cdiserrors = "*"
-cryptography = "^43.0.1"
+cryptography = ">=43.0.1,<44.0.0"
 Flask = "*"
 prometheus-client = "*"
 PyJWT = "*"
 requests = "*"
-
-[package.extras]
-profiling = []
-
-[package.source]
-type = "git"
-url = "https://github.com/uc-cdis/cdis-python-utils/"
-reference = "feat/common_metrics"
-resolved_reference = "f28e6c1c557d65f39b03940a4b653f39e0ec06b8"
 
 [[package]]
 name = "certifi"
@@ -1879,4 +1872,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.10.dev0"
-content-hash = "07cdefb8826f6050b406f661c76ca8f5a1fcd6ef8687f6255451e19916c3ecaf"
+content-hash = "dc9428b5f99c1c64f5b14de97c2f9ea65e6b8d7042de6022780f1054acf1372a"

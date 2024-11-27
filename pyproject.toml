@@ -20,8 +20,7 @@ authutils = ">=6.2.5"
 alembic = ">=1.13.2"
 sqlalchemy = { extras = ["asyncio"], version = ">=2.0.31" }
 asyncpg = ">=0.29.0"
-# TODO: Update cdispyutils to 2.3.0 once branch is merged
-cdispyutils = { git = "https://github.com/uc-cdis/cdis-python-utils/", rev = "feat/common_metrics" }
+cdispyutils = ">=2.3.0"
 # NOTE:
 # for testing with updated libaries as git repos:
 # foobar = {git = "https://github.com/uc-cdis/some-repo", rev = "feat/test"}
@@ -57,7 +56,6 @@ addopts = """
 --cov-fail-under 90
 --cov-report html:_coverage
 --cov-branch
---profile --profile-svg
 """
 
 [tool.isort]
