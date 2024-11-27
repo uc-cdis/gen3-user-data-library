@@ -27,7 +27,7 @@ async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList
     user_list: dict representation of the user's list
     """
     try:
-        list_as_orm = await create_user_list_instance(user_id, user_list)
+        list_as_orm = create_user_list_instance(user_id, user_list)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -51,7 +51,7 @@ async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList
     return list_as_orm
 
 
-async def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
+def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
     """
     Creates a user list orm given the user's id and a dictionary representation.
     Tests the type

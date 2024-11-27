@@ -351,3 +351,27 @@ class TestUserListsRouter(BaseTestRouter):
             endpoint(ul_id_2), headers=headers
         )
         assert second_delete_attempt_1.status_code == 204
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_get_by_id_list_not_exist(
+        self, get_token_claims, arborist, user_list, client
+    ):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        l_id = "550e8400-e29b-41d4-a716-446655440000"
+        outcome = await client.get(f"/lists/{l_id}", headers=headers)
+        assert outcome.status_code == 404
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_update_by_id_list_not_exist(
+        self, get_token_claims, arborist, user_list, client
+    ):
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        l_id = "550e8400-e29b-41d4-a716-446655440000"
+        outcome = await client.put(
+            f"/lists/{l_id}", headers=headers, json={"name": "fizz", "items": {}}
+        )
+        assert outcome.status_code == 404

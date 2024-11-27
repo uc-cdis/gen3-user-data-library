@@ -16,5 +16,4 @@ if [ ! -f ".coveragerc" ]; then
 fi
 
 echo "running tests w/ 'pytest'..."
-# TODO Update cov-fail-under to 66 after merging https://github.com/uc-cdis/gen3-user-data-library/pull/7
-poetry run pytest -vv --cov-config=.coveragerc --cov=gen3userdatalibrary --cov-context=test
+poetry run pytest -vv --cov-report=html --cov-config=.coveragerc --cov=gen3userdatalibrary --cov-context=test

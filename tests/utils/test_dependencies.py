@@ -347,17 +347,17 @@ class TestConfigRouter(BaseTestRouter):
         response = await client.put(
             "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
         )
-        id = get_id_from_response(response)
+        l_id = get_id_from_response(response)
         mocker.patch(
             "gen3userdatalibrary.routes.dependencies.DataAccessLayer.get_existing_list_or_throw",
             side_effect=ValueError("mock exception"),
         )
-        with pytest.raises(ValueError):
-            response = await client.patch(
-                f"/lists/{id}",
-                headers=headers,
-                json=PATCH_BODY,
-            )
+        response = await client.patch(
+            f"/lists/{l_id}",
+            headers=headers,
+            json=PATCH_BODY,
+        )
+        assert response.status_code == 404
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")

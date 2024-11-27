@@ -138,5 +138,4 @@ class TestAuthRouter(BaseTestRouter):
                 None,
                 example_request,
             )
-        assert 1 == 1
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)

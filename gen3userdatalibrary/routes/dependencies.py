@@ -146,16 +146,21 @@ async def validate_items(
 
     validation_handle_mapping = build_switch_case(
         {
-            "upsert_user_lists": validate_upsert_items,
-            "append_items_to_list": validate_items_to_append,
-            "update_list_by_id": ensure_list_exists_and_items_less_than_max,
+            "upsert_user_lists": lambda: validate_upsert_items(
+                conformed_body, dal, user_id
+            ),
+            "append_items_to_list": lambda: validate_items_to_append(
+                conformed_body, dal, list_id
+            ),
+            "update_list_by_id": lambda: ensure_list_exists_and_items_less_than_max(
+                conformed_body, dal, list_id
+            ),
         },
         lambda _1, _2, _3: raise_exception(
             Exception("Invalid route function identified! ")
         ),
     )
-    # todo: test raise_exception works correctly
-    validation_handle_mapping(route_function)(conformed_body, dal, list_id)
+    await validation_handle_mapping(route_function)()
 
 
 def ensure_any_items_match_schema(endpoint_context, conformed_body):
@@ -210,7 +215,7 @@ async def ensure_user_exists(request: Request):
 
     if config.DEBUG_SKIP_AUTH:
         return True
-    
+
     policy_id = await get_user_id(request=request)
     try:
         user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
