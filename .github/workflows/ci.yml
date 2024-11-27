@@ -55,7 +55,7 @@ jobs:
   #          if-no-files-found: error
 # TODO: Uncomment after repo is public
 
-# TODO: Uncomment after repo is public, this was having some import issues, check out the "fix/lint-path" for some ideas 
+# TODO: Uncomment after repo is public, this was having some import issues, check out the "fix/lint-path" for some ideas
 #       https://github.com/uc-cdis/.github/compare/master...fix/lint-path
   # RequiredLint:
   #   name: Run Required Linters
@@ -63,7 +63,7 @@ jobs:
   #   uses: uc-cdis/.github/.github/workflows/required_lint_check.yaml@master
   #   with:
   #     python-version: '3.9'
-  #     use-cache: true  
+  #     use-cache: true
 # TODO: Uncomment after repo is public
 #  InformationalLint:
 #    name: Run Informational Linters
