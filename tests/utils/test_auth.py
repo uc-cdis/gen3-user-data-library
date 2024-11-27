@@ -61,6 +61,11 @@ class TestAuthRouter(BaseTestRouter):
                 assert output == token_param
 
     async def test_authorize_request(self, monkeypatch):
+        """
+        Just test the behavior of the authorize request function
+        """
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         example_creds = HTTPAuthorizationCredentials(
             scheme="Bearer", credentials="my_access_token"
         )
@@ -81,13 +86,12 @@ class TestAuthRouter(BaseTestRouter):
                 None,  # example_creds,
                 example_request,
             )
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
-    async def test_id(
-        self,
-        arborist,
-        mocker,
-    ):
+    async def test_id(self, arborist, mocker, monkeypatch):
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         arborist.auth_request.return_value = True
         mock_token = mocker.patch(
             "gen3userdatalibrary.auth._get_token", new_callable=AsyncMock
@@ -95,15 +99,15 @@ class TestAuthRouter(BaseTestRouter):
         mock_token.return_value = HTTPAuthorizationCredentials(
             scheme="Bearer", credentials="my_access_token"
         )
-        mock_get_id = mocker.patch(
+        mock_get_user_id = mocker.patch(
             "gen3userdatalibrary.auth.get_user_id", new_callable=AsyncMock
         )
-        mock_get_id.return_value = "mock id"
+        mock_get_user_id.return_value = "mock id"
 
         class MockException(Exception):
             pass
 
-        mock_get_id.side_effect = MockException("mock throw")
+        mock_get_user_id.side_effect = MockException("mock throw")
         example_request = Request(
             {
                 "type": "http",
@@ -121,7 +125,7 @@ class TestAuthRouter(BaseTestRouter):
                 None,  # example_creds,
                 example_request,
             )
-        mock_get_id.side_effect = None
+        mock_get_user_id.side_effect = None
 
         class MockExceptionTwo(Exception):
             pass
@@ -135,3 +139,4 @@ class TestAuthRouter(BaseTestRouter):
                 example_request,
             )
         assert 1 == 1
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)

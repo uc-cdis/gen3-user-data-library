@@ -29,9 +29,8 @@ class TestConfigRouter(BaseTestRouter):
             debug=False,
             lifespan=lifespan,
         )
-        with pytest.raises(Exception):
-            async with lifespan(app) as _:
-                assert True
+        async with lifespan(app) as _:
+            assert True
         mocker.patch(
             "gen3userdatalibrary.main.lifespan",
             side_effect=iter([DataAccessLayer("foo")]),

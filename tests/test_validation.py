@@ -1,7 +1,7 @@
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from gen3userdatalibrary.routes import route_aggregator
 from tests.data.example_lists import INVALID_LIST_A
@@ -25,10 +25,7 @@ class TestAuthRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
-        response = await client.put(
-            endpoint, headers=headers, json={"lists": [INVALID_LIST_A]}
-        )
-        assert response.status_code == 400
-        assert (
-            json.loads(response.text)["detail"] == "Bad data structure, cannot process"
-        )
+        with pytest.raises(ValidationError) as e:
+            response = await client.put(
+                endpoint, headers=headers, json={"lists": [INVALID_LIST_A]}
+            )

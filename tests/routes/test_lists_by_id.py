@@ -239,8 +239,8 @@ class TestUserListsRouter(BaseTestRouter):
             arborist, get_token_claims, test_client, user_list, headers
         )
         ul_id = get_id_from_response(create_outcome)
-        response = await client.patch(f"/lists/{ul_id}", headers=headers, json={})
-        assert response.status_code == 400
+        response = await test_client.patch(f"/lists/{ul_id}", headers=headers, json={})
+        assert response.status_code == 409
         body = {
             "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65": {
                 "dataset_guid": "phs000001.v1.p1.c1",

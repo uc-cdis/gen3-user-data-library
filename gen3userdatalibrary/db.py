@@ -68,7 +68,7 @@ class DataAccessLayer:
         total = lists_so_far + lists_to_add
         if total > config.MAX_LISTS:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
                 detail="Max number of lists reached!",
             )
 

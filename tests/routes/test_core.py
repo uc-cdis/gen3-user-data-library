@@ -56,11 +56,9 @@ class TestUserListsRouter(BaseTestRouter):
         resp8 = (await client.patch(id_url, headers=headers, json=VALID_PATCH_BODY),)
         resp9 = await client.delete(basic_url, headers=headers)
         get_code = lambda r: r[0].status_code
-        two_hundred_codes = set(map(get_code, [resp2, resp3, resp7, resp8])).union(
-            {resp4.status_code}
-        )
+        two_hundred_codes = set(map(get_code, [resp2, resp3, resp7, resp8])).union({})
         two_o_one_codes = set(map(get_code, [resp1, resp5, resp6]))
-        two_o_four = {resp9.status_code}
+        two_o_four = {resp4.status_code, resp9.status_code}
         assert (
             two_hundred_codes == {200}
             and two_o_one_codes == {201}

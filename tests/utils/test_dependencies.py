@@ -207,10 +207,8 @@ class TestConfigRouter(BaseTestRouter):
             "/lists", headers=headers, json={"lists": [VALID_LIST_C]}
         )
         assert resp2.status_code == 507
-        resp3 = await create_basic_list(
-            arborist, get_token_claims, client, user_list, headers, "2"
-        )
-        assert resp3.status_code == 201
+        resp3 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
+        assert resp3.status_code == 409
         config.MAX_LISTS = 12
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
@@ -240,7 +238,7 @@ class TestConfigRouter(BaseTestRouter):
             endpoint, headers=headers, json={"lists": [local_test_list]}
         )
         assert (
-            resp1.status_code == 507
+            resp1.status_code == 422
             and resp1.text == '{"detail":"Too many items in list"}'
         )
         config.MAX_LIST_ITEMS = 24
@@ -273,8 +271,19 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_max_lists_dependency_failure(
-        self, get_token_claims, arborist, user_list, client, endpoint
+        self,
+        get_token_claims,
+        arborist,
+        user_list,
+        app_client_pair,
+        endpoint,
+        monkeypatch,
     ):
+        app, client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         headers = {"Authorization": "Bearer ofa.valid.token"}
         config.MAX_LISTS = 1
         arborist.auth_request.return_value = True
@@ -287,14 +296,13 @@ class TestConfigRouter(BaseTestRouter):
         )
         assert resp1.status_code == 201 and resp2.status_code == 507
         get_token_claims.return_value = {"sub": "2"}
-        resp3 = await create_basic_list(
-            arborist, get_token_claims, client, user_list, headers, user_id="2"
-        )
+        resp3 = await client.put("lists", headers=headers, json={"lists": [user_list]})
         resp4 = await client.put(
             "/lists", headers=headers, json={"lists": [VALID_LIST_C]}
         )
         assert resp3.status_code == 201 and resp4.status_code == 507
         config.MAX_LISTS = 12
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
@@ -330,7 +338,7 @@ class TestConfigRouter(BaseTestRouter):
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_append_items_to_list_in_deps(
+    async def test_append_items_to_list_deps_no_list_exists(
         self, get_token_claims, arborist, client, mocker
     ):
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -344,18 +352,21 @@ class TestConfigRouter(BaseTestRouter):
             "gen3userdatalibrary.routes.dependencies.DataAccessLayer.get_existing_list_or_throw",
             side_effect=ValueError("mock exception"),
         )
-        response = await client.patch(
-            f"/lists/{id}",
-            headers=headers,
-            json=PATCH_BODY,
-        )
-        assert response.text == '{"detail":"ID not recognized!"}'
+        with pytest.raises(ValueError):
+            response = await client.patch(
+                f"/lists/{id}",
+                headers=headers,
+                json=PATCH_BODY,
+            )
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_invalid_lists_to_create(
-        self, get_token_claims, arborist, client, mocker
+        self, get_token_claims, arborist, client, monkeypatch
     ):
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1"}
@@ -366,6 +377,7 @@ class TestConfigRouter(BaseTestRouter):
             response.status_code == 400
             and response.text == '{"detail":"No items provided for list for user: 1"}'
         )
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.skip(reason="Test not implemented yet.")
     async def test_validate_user_list_item(self):

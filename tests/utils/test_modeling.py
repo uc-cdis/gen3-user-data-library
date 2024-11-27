@@ -18,7 +18,7 @@ class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
 
     @patch(
-        "gen3userdatalibrary.utils.modeling.create_user_list_instance",
+        "gen3userdatalibrary.models.helpers.create_user_list_instance",
         side_effect=raise_exce,
     )
     async def test_try_conforming_list(self, modeling):
@@ -31,7 +31,6 @@ class TestConfigRouter(BaseTestRouter):
             outcome = await try_conforming_list(ValueError, example_list)
             assert False
         except HTTPException as e:
-            print(e)
             assert e.detail["error"] == "ValueError"
 
         class CustomError(Exception):
@@ -41,5 +40,4 @@ class TestConfigRouter(BaseTestRouter):
             outcome = await try_conforming_list(CustomError, example_list)
             assert False
         except HTTPException as e:
-            print(e)
             assert e.detail["error"] == "CustomError"
