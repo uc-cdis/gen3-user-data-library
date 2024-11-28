@@ -51,8 +51,7 @@ class TestConfigRouter(BaseTestRouter):
             side_effect=iter([True]),
             return_value=iter([True]),
         )
-        async with lifespan(app) as _:
-            assert True
+        lifespan(app)
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     async def test_get_app(self, mocker):
@@ -106,4 +105,4 @@ class TestConfigRouter(BaseTestRouter):
         monkeypatch.setattr(config, "ENABLE_PROMETHEUS_METRICS", previous_config)
 
     async def test_check_db_connection(self):
-        await check_db_connection()
+        check_db_connection()

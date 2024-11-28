@@ -13,7 +13,6 @@ from gen3userdatalibrary.metrics import Metrics
 from gen3userdatalibrary.routes import route_aggregator
 
 
-@asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Parse the configuration, setup and instantiate necessary classes.
@@ -56,6 +55,7 @@ async def check_arborist_is_healthy(app_with_setup):
         raise
 
 
+@asynccontextmanager
 async def check_db_connection():
     try:
         logging.debug(
