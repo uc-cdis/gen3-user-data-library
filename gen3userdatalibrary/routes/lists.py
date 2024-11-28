@@ -341,6 +341,21 @@ async def sort_persist_and_get_changed_lists(
         data_access_layer, unique_list_identifiers, new_lists_as_orm
     )
     updated_lists = []
+    await persist_lists_to_update(
+        data_access_layer, lists_to_update, unique_list_identifiers, updated_lists
+    )
+    for list_to_create in lists_to_create:
+        await data_access_layer.persist_user_list(user_id, list_to_create)
+    response_user_lists = {}
+    for user_list in lists_to_create + updated_lists:
+        response_user_lists[user_list.id] = user_list.to_dict()
+        del response_user_lists[user_list.id]["id"]
+    return response_user_lists
+
+
+async def persist_lists_to_update(
+    data_access_layer, lists_to_update, unique_list_identifiers, updated_lists
+):
     for list_to_update in lists_to_update:
         identifier = (list_to_update.creator, list_to_update.name)
         new_version_of_list = unique_list_identifiers.get(identifier, None)
@@ -350,13 +365,6 @@ async def sort_persist_and_get_changed_lists(
             list_to_update.id, changes_to_make
         )
         updated_lists.append(updated_list)
-    for list_to_create in lists_to_create:
-        await data_access_layer.persist_user_list(user_id, list_to_create)
-    response_user_lists = {}
-    for user_list in lists_to_create + updated_lists:
-        response_user_lists[user_list.id] = user_list.to_dict()
-        del response_user_lists[user_list.id]["id"]
-    return response_user_lists
 
 
 # endregion

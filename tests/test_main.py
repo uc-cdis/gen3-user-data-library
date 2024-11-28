@@ -105,5 +105,5 @@ class TestConfigRouter(BaseTestRouter):
         assert isinstance(outcome, FastAPI)
         monkeypatch.setattr(config, "ENABLE_PROMETHEUS_METRICS", previous_config)
 
-    def test_check_db_connection(self):
-        check_db_connection()
+    async def test_check_db_connection(self):
+        await check_db_connection()

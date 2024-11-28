@@ -238,7 +238,7 @@ class TestConfigRouter(BaseTestRouter):
             endpoint, headers=headers, json={"lists": [local_test_list]}
         )
         assert (
-            resp1.status_code == 422
+            resp1.status_code == 409
             and resp1.text == '{"detail":"Too many items in list"}'
         )
         config.MAX_LIST_ITEMS = 24

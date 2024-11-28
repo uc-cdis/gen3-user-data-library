@@ -181,7 +181,7 @@ def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
     )
     if more_items_than_max:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Too many items in list",
         )
 
@@ -278,7 +278,6 @@ def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
     Before any endpoint is hit, we should verify that the requester has access to the endpoint.
     This middleware function handles that.
     """
-
     endpoint_type = endpoint_context.get("type", None)
     get_resource = endpoint_context.get("resource", None)
     if endpoint_type == "all":
