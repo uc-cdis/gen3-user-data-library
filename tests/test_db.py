@@ -1,9 +1,9 @@
+from datetime import datetime
 from uuid import UUID
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.sql.functions import now
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_lists_endpoint
@@ -58,17 +58,21 @@ class TestConfigRouter(BaseTestRouter):
 
     async def test_update_and_persist_list(self, session):
         dal = DataAccessLayer(session)
-        new_list = UserList(
+        l_id = "550e8400-e29b-41d4-a716-446655440000"
+        with pytest.raises(ValueError):
+            outcome1 = await dal.update_and_persist_list(UUID(l_id), {"name": "abcd"})
+        example = UserList(
             version=0,
             creator=str("1"),
             # temporarily set authz without the list list_id since we haven't created the list in the db yet
             authz={"version": 0, "authz": [get_lists_endpoint("1")]},
             name="aaa",
-            created_time=now,
-            updated_time=now,
+            created_time=datetime.now(),
+            updated_time=datetime.now(),
             items={"foo": "bar"},
         )
-        outcome = await dal.update_and_persist_list(new_list, {"name": "abcd"})
+        outcome2 = await dal.persist_user_list("1", example)
+        outcome3 = await dal.update_and_persist_list(outcome2.id, {"name": "abcd"})
 
     async def test_delete_all_lists(self, session):
         dal = DataAccessLayer(session)
@@ -82,12 +86,35 @@ class TestConfigRouter(BaseTestRouter):
     async def test_add_items_to_list(self, session):
         dal = DataAccessLayer(session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
-        outcome = await dal.add_items_to_list(UUID(l_id), {})
+        with pytest.raises(ValueError):
+            outcome = await dal.add_items_to_list(UUID(l_id), {})
 
     async def test_grab_all_lists_that_exist(self, session):
         dal = DataAccessLayer(session)
-        outcome = await dal.grab_all_lists_that_exist("id", [1])
+        l_id = "550e8400-e29b-41d4-a716-446655440000"
+        outcome = await dal.grab_all_lists_that_exist("id", [UUID(l_id)])
 
     async def test_replace_list(self, session):
         dal = DataAccessLayer(session)
-        outcome = await dal.replace_list(UserList(), UserList())
+        old_list = UserList(
+            version=0,
+            creator=str("1"),
+            # temporarily set authz without the list list_id since we haven't created the list in the db yet
+            authz={"version": 0, "authz": [get_lists_endpoint("1")]},
+            name="aaa",
+            created_time=datetime.now(),
+            updated_time=datetime.now(),
+            items={"foo": "bar"},
+        )
+        await dal.persist_user_list("1", old_list)
+        new_list = UserList(
+            version=0,
+            creator=str("1"),
+            # temporarily set authz without the list list_id since we haven't created the list in the db yet
+            authz={"version": 0, "authz": [get_lists_endpoint("1")]},
+            name="bbb",
+            created_time=datetime.now(),
+            updated_time=datetime.now(),
+            items={"fizz": "buzz"},
+        )
+        # outcome = await dal.replace_list(old_list, new_list)

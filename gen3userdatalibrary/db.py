@@ -226,7 +226,7 @@ class DataAccessLayer:
         self,
         by,
         identifier_list: Union[
-            List[int],
+            List[UUID],
             List[
                 Tuple[
                     str,
