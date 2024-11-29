@@ -12,6 +12,7 @@ from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
     ensure_list_exists_and_items_less_than_max,
+    validate_user_list_item,
 )
 from tests.data.example_lists import (
     VALID_LIST_A,
@@ -379,9 +380,9 @@ class TestConfigRouter(BaseTestRouter):
         )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
-    @pytest.mark.skip(reason="Test not implemented yet.")
     async def test_validate_user_list_item(self):
-        pass
+        with pytest.raises(HTTPException):
+            outcome = validate_user_list_item({"type": "foo"})
 
     async def test_ensure_list_exists_and_items_less_than_max(self, mocker):
         with pytest.raises(Exception):
