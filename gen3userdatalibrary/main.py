@@ -44,17 +44,14 @@ async def lifespan(app: FastAPI):
 
 
 async def check_arborist_is_healthy(app_with_setup):
-    try:
-        logging.debug("Startup policy engine (Arborist) connection test initiating...")
-        arborist_client = app_with_setup.state.arborist_client
-        if not arborist_client.healthy():
-            raise Exception("Arborist unhealthy,aborting...")
-    except Exception as exc:
+    logging.debug("Startup policy engine (Arborist) connection test initiating...")
+    arborist_client = app_with_setup.state.arborist_client
+    if not arborist_client.healthy():
         logging.exception(
             "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
         )
-        logging.debug(exc)
-        raise
+        logging.debug("Arborist is unhealthy")
+        raise Exception("Arborist unhealthy, aborting...")
 
 
 async def check_db_connection():

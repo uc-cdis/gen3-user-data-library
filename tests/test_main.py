@@ -6,7 +6,11 @@ from fastapi import FastAPI
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.db import DataAccessLayer
-from gen3userdatalibrary.main import lifespan, get_app, check_db_connection
+from gen3userdatalibrary.main import (
+    lifespan,
+    get_app,
+    check_db_connection,
+)
 from gen3userdatalibrary.routes import route_aggregator
 from tests.routes.conftest import BaseTestRouter
 
@@ -118,3 +122,8 @@ class TestConfigRouter(BaseTestRouter):
         mock_get_dal.return_value = mock_dal_context()
         await check_db_connection()
         mock_dal.test_connection.assert_called_once()
+
+    @patch("gen3userdatalibrary.main.get_data_access_layer")
+    async def test_check_arborist_is_healthy(self, mock_get_dal):
+        # check_arborist_is_healthy
+        pass
