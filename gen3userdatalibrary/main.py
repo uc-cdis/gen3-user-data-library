@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from importlib.metadata import version
+from typing import AsyncIterable
 
 import fastapi
 from cdislogging import get_logger
@@ -8,11 +9,12 @@ from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.db import get_data_access_layer
+from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.metrics import Metrics
 from gen3userdatalibrary.routes import route_aggregator
 
 
+@asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Parse the configuration, setup and instantiate necessary classes.
@@ -55,13 +57,12 @@ async def check_arborist_is_healthy(app_with_setup):
         raise
 
 
-@asynccontextmanager
 async def check_db_connection():
     try:
         logging.debug(
             "Startup database connection test initiating. Attempting a simple query..."
         )
-        dals = get_data_access_layer()
+        dals: AsyncIterable[DataAccessLayer] = get_data_access_layer()
         async for data_access_layer in dals:
             outcome = await data_access_layer.test_connection()
             logging.debug("Startup database connection test PASSED.")

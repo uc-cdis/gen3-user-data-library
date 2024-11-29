@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch, AsyncMock
 
 import pytest
 from fastapi import FastAPI
@@ -33,14 +34,15 @@ class TestConfigRouter(BaseTestRouter):
             debug=False,
             lifespan=lifespan,
         )
+        mocker.patch(
+            "gen3authz.client.arborist.client.ArboristClient.healthy",
+            side_effect=iter([False]),
+            return_value=iter([False]),
+        )
+        # todo: suppress errors
         with pytest.raises(Exception):
             async with lifespan(app) as _:
                 assert True
-        mocker.patch(
-            "gen3userdatalibrary.main.lifespan",
-            side_effect=iter([DataAccessLayer("foo")]),
-            return_value=iter(["foo"]),
-        )
         mocker.patch(
             "gen3userdatalibrary.db.DataAccessLayer.test_connection",
             side_effect=iter([DataAccessLayer("foo")]),
@@ -51,7 +53,8 @@ class TestConfigRouter(BaseTestRouter):
             side_effect=iter([True]),
             return_value=iter([True]),
         )
-        lifespan(app)
+        async with lifespan(app) as _:
+            assert True
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     async def test_get_app(self, mocker):
@@ -104,5 +107,14 @@ class TestConfigRouter(BaseTestRouter):
         assert isinstance(outcome, FastAPI)
         monkeypatch.setattr(config, "ENABLE_PROMETHEUS_METRICS", previous_config)
 
-    async def test_check_db_connection(self):
-        check_db_connection()
+    @patch("gen3userdatalibrary.main.get_data_access_layer")
+    async def test_check_db_connection(self, mock_get_dal):
+        mock_dal = AsyncMock()
+        mock_dal.test_connection.return_value = True
+
+        async def mock_dal_context():
+            yield mock_dal
+
+        mock_get_dal.return_value = mock_dal_context()
+        await check_db_connection()
+        mock_dal.test_connection.assert_called_once()

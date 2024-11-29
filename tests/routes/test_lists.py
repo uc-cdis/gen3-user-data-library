@@ -427,7 +427,6 @@ class TestUserListsRouter(BaseTestRouter):
         """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
-
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         arborist.auth_request.return_value = True
@@ -478,6 +477,25 @@ class TestUserListsRouter(BaseTestRouter):
         three_matches = creator_to_list_ids["3"] == {id_5}
         assert one_matches and two_matches and three_matches
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_read_all_lists_unknown_error(
+        self, get_token_claims, arborist, app_client_pair, monkeypatch, mocker
+    ):
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "foo"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        mocker.patch(
+            "gen3userdatalibrary.routes.lists.DataAccessLayer.get_all_lists",
+            side_effect=ValueError("mock exception"),
+        )
+        response_1 = await test_client.get("/lists", headers=headers)
+        assert response_1.status_code == 500
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
@@ -675,14 +693,14 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_deleting_lists_failures(
         self, get_token_claims, arborist, app_client_pair, monkeypatch
     ):
-        app, test_client = app_client_pair
-        app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
-        # what should we do if a user X has no lists but requests a delete?
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        await create_basic_list(
+        # todo: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+        outcome = await create_basic_list(
             arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
         await create_basic_list(

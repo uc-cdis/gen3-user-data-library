@@ -160,7 +160,8 @@ async def validate_items(
             Exception("Invalid route function identified! ")
         ),
     )
-    await validation_handle_mapping(route_function)()
+    item_validator_for_endpoint = validation_handle_mapping(route_function)
+    await item_validator_for_endpoint()
 
 
 def ensure_any_items_match_schema(endpoint_context, conformed_body):

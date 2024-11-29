@@ -1,5 +1,6 @@
 import importlib
 import os
+import warnings
 from json import JSONDecodeError
 from unittest.mock import AsyncMock, patch
 
@@ -91,7 +92,13 @@ class TestConfigRouter(BaseTestRouter):
         assert None in item_schema
         mock_file = mocker.patch("os.path.isfile", return_value=False)
         with pytest.raises(OSError):
-            importlib.reload(config)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    category=UserWarning,
+                    message="Config file '.*' not found.",
+                )
+                importlib.reload(config)
         assert config.ITEM_SCHEMAS is None
 
         mock_file = mocker.patch("os.path.isfile", return_value=True)
