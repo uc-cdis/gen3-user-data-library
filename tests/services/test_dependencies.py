@@ -1,15 +1,19 @@
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
-from fastapi import Request, Depends
+from fastapi import Request, Depends, HTTPException
 from fastapi.routing import APIRoute
+from gen3authz.client.arborist.errors import ArboristError
+from starlette.datastructures import Headers
 
+from gen3userdatalibrary import config
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.routes.basic import PUBLIC_ROUTES
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
+    ensure_user_exists,
 )
 from tests.data.example_lists import VALID_LIST_A, PATCH_BODY, VALID_LIST_B
 from tests.routes.conftest import BaseTestRouter
@@ -191,4 +195,53 @@ class TestConfigRouter(BaseTestRouter):
             response = await client_instance.patch(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
 
-    # todo: add max config tests
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.routes.dependencies.get_user_id")
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_ensure_user_exists(
+        self, arborist, get_token_claims, get_user_id, monkeypatch
+    ):
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0", "app": "foo"}
+        get_user_id.return_value = "0"
+        example_app = MagicMock()
+        example_app.state.arborist_client.policies_not_exist.side_effect = Exception
+        example_request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/example",
+                "headers": Headers({"host": "127.0.0.1:8000"}).raw,
+                "query_string": b"name=example",
+                "client": ("127.0.0.1", 8000),
+                "app": example_app,
+            }
+        )
+
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        try:
+            outcome = await ensure_user_exists(example_request)
+        except HTTPException as e:
+            assert e.status_code == 500 and e.detail == "Failed checking policy!"
+        finally:
+            example_app.state.arborist_client.policies_not_exist.side_effect = None
+            monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
+
+        example_app.state.arborist_client.policies_not_exist.return_value = False
+        example_app.state.arborist_client.create_policy.side_effect = ArboristError(
+            message="fake error", code=0
+        )
+
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+
+        try:
+            outcome = await ensure_user_exists(example_request)
+        except HTTPException as e:
+            assert (
+                e.status_code == 500
+                and e.detail == "Internal error creating a policy in arborist"
+            )
+        finally:
+            monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
