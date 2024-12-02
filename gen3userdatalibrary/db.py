@@ -124,7 +124,17 @@ class DataAccessLayer:
         user_list = result.scalar_one_or_none()
         return user_list
 
-    async def get_list_by_id(self, creator_id=None, list_id=None):
+    async def get_user_lists_by_id(self, creator_id: str = None, list_id: UUID = None):
+        """
+        Retrieves a list of users' lists by their creator ID or list ID.
+
+        Args:
+            creator_id (str, optional): The ID of the creator. Defaults to None.
+            list_id (UUID, optional): The ID of the list. Defaults to None.
+
+        Returns:
+            List[UserList]: A list of user's lists that match the given criteria.
+        """
         if creator_id:
             query = select(UserList).where(UserList.creator == creator_id)
         elif list_id:
@@ -132,9 +142,9 @@ class DataAccessLayer:
         else:
             return None
 
-        result = await self.db_session.execute(query)
-        user_list = result.scalar_one_or_none()
-        return user_list
+        results = await self.db_session.execute(query)
+        user_lists = results.scalars().all()
+        return user_lists
 
     async def get_existing_list_or_throw(self, list_id: UUID) -> UserList:
         """
@@ -216,8 +226,14 @@ class DataAccessLayer:
         list_count = await self.get_list_count(creator_id=creator_id, list_id=list_id)
 
         # count items
-        user_list = await self.get_list_by_id(creator_id=creator_id, list_id=list_id)
-        item_count = len(user_list.items)
+        user_lists = await self.get_user_lists_by_id(
+            creator_id=creator_id, list_id=list_id
+        )
+
+        item_count = 0
+        for user_list in user_lists:
+            if user_list:
+                item_count += len(user_list.items)
 
         return list_count, item_count
 

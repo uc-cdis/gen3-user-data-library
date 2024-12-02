@@ -49,8 +49,8 @@ async def ensure_user_exists(request: Request):
         outcome = await request.app.state.arborist_client.create_policy(
             policy_json=policy_json
         )
-    except ArboristError as ae:
-        logging.error(f"Error creating policy in arborist: {str(e)}")
+    except ArboristError as exc:
+        logging.error(f"Error creating policy in arborist: {str(exc)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal error creating a policy in arborist",
@@ -95,7 +95,11 @@ async def parse_and_auth_request(
     user_id = await get_user_id(request=request)
     path_params = request.scope["path_params"]
     route_function = request.scope["route"].name
-    endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
+
+    if route_function not in ENDPOINT_TO_CONTEXT:
+        raise Exception(f"Undefined route '{route_function}', unable to auth")
+
+    endpoint_context = ENDPOINT_TO_CONTEXT[route_function]
     resource = get_resource_from_endpoint_context(
         endpoint_context, user_id, path_params
     )

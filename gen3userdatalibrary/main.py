@@ -1,3 +1,4 @@
+import time
 from contextlib import asynccontextmanager
 from importlib.metadata import version
 
@@ -6,11 +7,15 @@ from cdislogging import get_logger
 from fastapi import FastAPI
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
+from starlette.requests import Request
 
 from gen3userdatalibrary import config, logging
+from gen3userdatalibrary.auth import get_user_id
 from gen3userdatalibrary.db import get_data_access_layer
 from gen3userdatalibrary.metrics import Metrics
 from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.utils.core import log_user_data_library_api_call
+from gen3userdatalibrary.utils.metrics import update_api_call_metric
 
 
 @asynccontextmanager
@@ -92,13 +97,61 @@ def get_app() -> fastapi.FastAPI:
         lifespan=lifespan,
     )
     fastapi_app.include_router(route_aggregator)
-    # This line can be added to add a middleman check on all endpoints
-    # fastapi_app.middleware("http")(middleware_catcher)
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:
         metrics_app = make_metrics_app(config.PROMETHEUS_MULTIPROC_DIR)
         fastapi_app.mount("/metrics", metrics_app)
+
+    @fastapi_app.middleware("http")
+    async def middleware_log_response_and_api_metric(
+        request: Request, call_next
+    ) -> None:
+        """
+        This FastAPI middleware effectively allows pre and post logic to a request.
+
+        We are using this to log the response consistently across defined endpoints (including execution time).
+
+        Args:
+            request (Request): the incoming HTTP request
+            call_next (Callable): function to call (this is handled by FastAPI's middleware support)
+        """
+        start_time = time.perf_counter()
+        response = await call_next(request)
+        response_time_seconds = time.perf_counter() - start_time
+
+        path = request.url.path
+        method = request.method
+        user_id = await get_user_id(request=request)
+        response_body = getattr(response, "body", None)
+
+        # don't add logs or metrics for the actual metrics gathering endpoint
+        # TODO: Make list of ignored endpoints configurable
+        if path not in ["/metrics", "/metrics/"]:
+            log_user_data_library_api_call(
+                logging=logging,
+                debug_log=(
+                    f"Response body: {getattr(response, 'body', None)}"
+                    if response_body
+                    else None
+                ),
+                method=method,
+                path=path,
+                status_code=response.status_code,
+                response_time_seconds=response_time_seconds,
+                user_id=user_id,
+            )
+
+            update_api_call_metric(
+                fastapi_app=request.app,
+                method=method,
+                path=path,
+                response=response,
+                response_time_seconds=response_time_seconds,
+                user_id=user_id,
+            )
+
+        return response
 
     return fastapi_app
 

@@ -1,4 +1,3 @@
-import time
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -26,7 +25,7 @@ from gen3userdatalibrary.routes.dependencies import (
     validate_lists,
 )
 from gen3userdatalibrary.utils.core import filter_keys, find_differences
-from gen3userdatalibrary.utils.metrics import MetricModel, log_user_list_metric
+from gen3userdatalibrary.utils.metrics import MetricModel, update_user_list_metric
 from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 lists_router = APIRouter()
@@ -35,11 +34,15 @@ lists_router = APIRouter()
 @lists_router.get(
     "/",
     include_in_schema=False,
-    dependencies=[Depends(parse_and_auth_request)],
+    dependencies=[
+        Depends(parse_and_auth_request),
+    ],
 )
 @lists_router.get(
     "",
-    dependencies=[Depends(parse_and_auth_request)],
+    dependencies=[
+        Depends(parse_and_auth_request),
+    ],
     response_model=UserListResponseModel,
     status_code=status.HTTP_200_OK,
     description="Returns all lists that user can read",
@@ -71,7 +74,6 @@ async def read_all_lists(
         request (Request): FastAPI request (so we can check authorization)
         data_access_layer (DataAccessLayer): how we interface with db
     """
-    start_time = time.time()
     user_id = await get_user_id(request=request)
     # dynamically create user policy
 
@@ -84,24 +86,12 @@ async def read_all_lists(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="There was a problem trying to get list for the user. Try again later!",
         )
+
     id_to_list_dict = _map_list_id_to_list_dict(user_lists)
     json_conformed_data = jsonable_encoder(id_to_list_dict)
-    response = {"lists": json_conformed_data}
-    end_time = time.time()
-    response_time_seconds = end_time - start_time
-    action = "READ"
-    logging.info(
-        f"Gen3 User Data Library Response. Action: {action}. "
-        f"response={response}, response_time_seconds={response_time_seconds} user_id={user_id}"
-    )
-    logging.debug(response)
-    log_user_list_metric(
-        fastapi_app=request.app,
-        action=action,
-        response_time_seconds=response_time_seconds,
-        user_id=user_id,
-    )
-    return JSONResponse(status_code=status.HTTP_200_OK, content=response)
+    response_data = {"lists": json_conformed_data}
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=response_data)
 
 
 @lists_router.put(
@@ -161,16 +151,14 @@ async def upsert_user_lists(
     Returns:
 
     """
-    start_time = time.time()
-
-    creator_id = await get_user_id(request=request)
+    user_id = await get_user_id(request=request)
 
     if not config.DEBUG_SKIP_AUTH:
         # make sure the user exists in Arborist
         # IMPORTANT: This is using the user's unique subject ID
         try:
             arb_client: ArboristClient = request.app.state.arborist_client
-            create_outcome = await arb_client.create_user_if_not_exist(creator_id)
+            create_outcome = await arb_client.create_user_if_not_exist(user_id)
         except ArboristError as ae:
             logging.error(f"Error creating user in arborist: {(ae.code, ae.message)}")
             raise HTTPException(
@@ -178,7 +166,7 @@ async def upsert_user_lists(
                 detail="Internal error interfacing with arborist",
             )
 
-        resource = get_user_data_library_endpoint(creator_id)
+        resource = get_user_data_library_endpoint(user_id)
 
         try:
             logging.debug("attempting to update arborist resource: {}".format(resource))
@@ -194,29 +182,21 @@ async def upsert_user_lists(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!"
         )
+
     updated_user_lists, metrics_info = await sort_persist_and_get_changed_lists(
-        data_access_layer, raw_lists, creator_id
+        data_access_layer, raw_lists, user_id
     )
     json_conformed_data = jsonable_encoder(updated_user_lists)
-    end_time = time.time()
-    response_time_seconds = end_time - start_time
-    response = {"lists": json_conformed_data}
 
-    action = "CREATE"
-    logging.info(
-        f"Gen3 User Data Library Response. Action: {action}. "
-        f"Lists={requested_lists.lists}, response={response}, "
-        f"Response Time Seconds={response_time_seconds} User ID={creator_id}"
-    )
-    logging.debug(response)
-    log_user_list_metric(
+    response_data = {"lists": json_conformed_data}
+    response = JSONResponse(status_code=status.HTTP_201_CREATED, content=response_data)
+
+    update_user_list_metric(
         fastapi_app=request.app,
-        action=action,
-        response_time_seconds=response_time_seconds,
-        user_id=creator_id,
+        user_id=user_id,
         **metrics_info.model_dump(),
     )
-    return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
+    return response
 
 
 @lists_router.delete(
@@ -252,7 +232,6 @@ async def delete_all_lists(
         request (Request): FastAPI request (so we can check authorization)
         data_access_layer (DataAccessLayer): how we interface with db
     """
-    start_time = time.time()
     user_id = await get_user_id(request=request)
     try:
         metrics_info = await data_access_layer.delete_all_lists(user_id)
@@ -265,25 +244,15 @@ async def delete_all_lists(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid list information provided",
         )
-    end_time = time.time()
-    response_time_seconds = end_time - start_time
 
-    action = "DELETE"
-    response = {"lists_deleted": metrics_info.lists_deleted}
-    logging.info(
-        f"Gen3 User Data Library Response. Action: {action}. "
-        f"count={metrics_info.lists_deleted}, response={response}, "
-        f"response_time_seconds={response_time_seconds} user_id={user_id}"
-    )
-    logging.debug(response)
-    log_user_list_metric(
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    update_user_list_metric(
         fastapi_app=request.app,
-        action=action,
-        response_time_seconds=response_time_seconds,
         user_id=user_id,
         **metrics_info.model_dump(),
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return response
 
 
 # region Helpers

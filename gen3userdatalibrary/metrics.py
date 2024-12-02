@@ -6,16 +6,16 @@ from gen3userdatalibrary import config
 
 TOTAL_USER_LISTS_GAUGE = {
     "name": "gen3_user_data_library_user_lists",
-    "description": "Gen3 User Data Library User Lists. Does not count the items WITHIN the list, just the lists themselves.",
+    "description": "Gen3 User Data Library User Lists. Does NOT count the items within the list, just the lists themselves.",
 }
 
 TOTAL_USER_ITEMS_GAUGE = {
     "name": "gen3_user_data_library_user_items",
-    "description": "Gen3 User Data Library User Items (within Lists). This counts the amount of items within lists, rather than the lists themselves.",
+    "description": "Gen3 User Data Library User Items (within Lists). This counts the amount of items WITHIN lists, rather than the lists themselves.",
 }
 
-API_USER_LIST_COUNTER = {
-    "name": "gen3_user_data_library_api_user_lists",
+API_REQUESTS_COUNTER = {
+    "name": "gen3_user_data_library_api_requests",
     "description": "API requests for modifying Gen3 User Data Library User Lists. This includes "
     "all CRUD actions.",
 }
@@ -80,4 +80,4 @@ class Metrics(BaseMetrics):
         if not self.enabled:
             return
 
-        self.increment_counter(labels=kwargs, **API_USER_LIST_COUNTER)
+        self.increment_counter(labels=kwargs, **API_REQUESTS_COUNTER)
