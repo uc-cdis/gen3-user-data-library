@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import UUID
 
 import pytest
@@ -439,7 +439,7 @@ class TestUserListsRouter(BaseTestRouter):
             ),
         )
         update_outcome = await update_list_by_id(
-            EXAMPLE_REQUEST, l_id, info_to_update_with[0], dal
+            EXAMPLE_ENDPOINT_REQUEST, l_id, info_to_update_with[0], dal
         )
         assert update_outcome.status_code == 200
 
@@ -454,7 +454,7 @@ class TestUserListsRouter(BaseTestRouter):
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
         l_id = r1.id
         append_outcome = await append_items_to_list(
-            EXAMPLE_REQUEST, l_id, {"bug": "bear"}, dal
+            EXAMPLE_ENDPOINT_REQUEST, l_id, {"bug": "bear"}, dal
         )
         assert append_outcome.status_code == 200
 
@@ -468,11 +468,11 @@ class TestUserListsRouter(BaseTestRouter):
         dal = DataAccessLayer(alt_session)
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
         l_id = r1.id
-        delete_outcome = await delete_list_by_id(l_id, EXAMPLE_REQUEST, dal)
+        delete_outcome = await delete_list_by_id(l_id, EXAMPLE_ENDPOINT_REQUEST, dal)
         assert delete_outcome.status_code == 204
 
 
-EXAMPLE_REQUEST = Request(
+EXAMPLE_ENDPOINT_REQUEST = Request(
     {
         "type": "http",
         "method": "PUT",
@@ -480,5 +480,6 @@ EXAMPLE_REQUEST = Request(
         "headers": Headers({"host": "127.0.0.1:8000"}).raw,
         "query_string": b"name=example",
         "client": ("127.0.0.1", 8000),
+        "app": MagicMock(),
     }
 )

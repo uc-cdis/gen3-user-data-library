@@ -9,11 +9,20 @@ from gen3authz.client.arborist.async_client import ArboristClient
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_list_by_id_endpoint
+from gen3userdatalibrary.db import DataAccessLayer
 from gen3userdatalibrary.main import route_aggregator, get_app
+from gen3userdatalibrary.models.user_list import UpdateItemsModel, ItemToUpdateModel
+from gen3userdatalibrary.routes.lists import (
+    read_all_lists,
+    upsert_user_lists,
+    delete_all_lists,
+)
 from gen3userdatalibrary.utils.core import add_to_dict_set
 from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
+from tests.routes.test_lists_by_id import EXAMPLE_ENDPOINT_REQUEST
+from tests.test_db import EXAMPLE_USER_LIST
 
 
 @pytest.mark.asyncio
@@ -517,6 +526,18 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": "bar"}
         response_2 = await test_client.get("/lists", headers=headers)
 
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_read_all_lists_directly(
+        self, arborist, get_token_claims, alt_session
+    ):
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
+        dal = DataAccessLayer(alt_session)
+        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        read_all_outcome = await read_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)
+        assert read_all_outcome.status_code == 200
+
     # endregion
 
     # region Update Lists
@@ -662,6 +683,23 @@ class TestUserListsRouter(BaseTestRouter):
                 "/lists", headers=headers, json={"lists": [invalid_items]}
             )
 
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_upsert_user_lists_directly(
+        self, get_token_claims, arborist, alt_session
+    ):
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
+        dal = DataAccessLayer(alt_session)
+        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        example_update_items_model = UpdateItemsModel(
+            lists=[ItemToUpdateModel(name="bim bam", items={"bug": {"type": "meh"}})]
+        )
+        read_all_outcome = await upsert_user_lists(
+            EXAMPLE_ENDPOINT_REQUEST, example_update_items_model, dal
+        )
+        assert read_all_outcome.status_code == 201
+
     # endregion
 
     # region Delete Lists
@@ -718,6 +756,18 @@ class TestUserListsRouter(BaseTestRouter):
         assert response_3.status_code == 204
         assert response_4.status_code == 200
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_delete_all_lists_directly(
+        self, get_token_claims, arborist, alt_session
+    ):
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0"}
+        dal = DataAccessLayer(alt_session)
+        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        read_all_outcome = await delete_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)
+        assert read_all_outcome.status_code == 204
 
     # endregion
 
