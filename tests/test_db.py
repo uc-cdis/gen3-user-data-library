@@ -28,36 +28,49 @@ class TestConfigRouter(BaseTestRouter):
             outcome = await dal.ensure_user_has_not_reached_max_lists("1", 1)
         monkeypatch.setattr(config, "MAX_LISTS", previous_config)
 
-    async def test_persist_user_list(self, session):
-        example_user_list = create_user_list_instance(
-            "0",
-            ItemToUpdateModel(
-                name="fizzbuzz",
-                items={},
-            ),
-        )
-        dal = DataAccessLayer(session)
-        outcome = await dal.persist_user_list("0", example_user_list)
+    async def test_persist_user_list(self, alt_session):
+        dal = DataAccessLayer(alt_session)
+        outcome = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        assert outcome.id is not None
 
-    async def test_get_list_or_none(self, session):
-        dal = DataAccessLayer(session)
+    async def test_get_list_or_none(self, alt_session):
+        dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
-        outcome = await dal.get_list_or_none(
+        get_before_create_outcome = await dal.get_list_or_none(
             select(UserList).where(UserList.id == UUID(l_id))
         )
+        assert get_before_create_outcome is None
 
-    async def test_get_list_by_name_and_creator(self, session):
-        dal = DataAccessLayer(session)
-        outcome = await dal.get_list_by_name_and_creator(("", ""))
+        create_outcome = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        l_id = create_outcome.id
+        get_after_create_outcome = await dal.get_list_or_none(
+            select(UserList).where(UserList.id == l_id)
+        )
+        assert get_after_create_outcome is not None
 
-    async def test_get_existing_list_or_throw(self, session):
-        dal = DataAccessLayer(session)
+    async def test_get_list_by_name_and_creator(self, alt_session):
+        dal = DataAccessLayer(alt_session)
+        get_before_create_outcome = await dal.get_list_by_name_and_creator(
+            ("foo", "bar")
+        )
+        assert get_before_create_outcome is None
+
+        create_outcome = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        get_after_create_outcome = await dal.get_list_by_name_and_creator(
+            ("0", "fizzbuzz")
+        )
+        assert get_after_create_outcome is not None
+
+    async def test_get_existing_list_or_throw(self, alt_session):
+        dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         with pytest.raises(ValueError):
-            outcome = await dal.get_existing_list_or_throw(UUID(l_id))
+            fail_outcome = await dal.get_existing_list_or_throw(UUID(l_id))
+        create_outcome = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        success_outcome = await dal.get_existing_list_or_throw(create_outcome.id)
 
-    async def test_update_and_persist_list(self, session):
-        dal = DataAccessLayer(session)
+    async def test_update_and_persist_list(self, alt_session):
+        dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         with pytest.raises(ValueError):
             outcome1 = await dal.update_and_persist_list(UUID(l_id), {"name": "abcd"})
@@ -73,29 +86,59 @@ class TestConfigRouter(BaseTestRouter):
         )
         outcome2 = await dal.persist_user_list("1", example)
         outcome3 = await dal.update_and_persist_list(outcome2.id, {"name": "abcd"})
+        assert outcome3.name == "abcd"
 
-    async def test_delete_all_lists(self, session):
-        dal = DataAccessLayer(session)
-        outcome = await dal.delete_all_lists("1")
+    async def test_delete_all_lists(self, alt_session):
+        dal = DataAccessLayer(alt_session)
+        create_outcome = await dal.persist_user_list("1", EXAMPLE_USER_LIST())
+        get_before_delete_outcome = await dal.get_list_by_id(create_outcome.id)
+        assert get_before_delete_outcome.id is not None
+        delete_outcome = await dal.delete_all_lists("1")
+        get_after_delete_outcome = await dal.get_all_lists("1")
+        assert get_after_delete_outcome == []
 
-    async def test_delete_list(self, session):
-        dal = DataAccessLayer(session)
-        l_id = "550e8400-e29b-41d4-a716-446655440000"
-        outcome = await dal.delete_list(UUID(l_id))
+    async def test_delete_list(self, alt_session):
+        dal = DataAccessLayer(alt_session)
+        create_outcome = await dal.persist_user_list("1", EXAMPLE_USER_LIST())
+        get_before_delete_outcome = await dal.get_list_by_id(create_outcome.id)
+        assert get_before_delete_outcome.id is not None
+        outcome = await dal.delete_list(create_outcome.id)
+        get_after_delete_outcome = await dal.get_list_by_id(create_outcome.id)
+        assert get_after_delete_outcome is None
 
-    async def test_add_items_to_list(self, session):
-        dal = DataAccessLayer(session)
+    async def test_add_items_to_list(self, alt_session):
+        dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         with pytest.raises(ValueError):
-            outcome = await dal.add_items_to_list(UUID(l_id), {})
+            add_fail_outcome = await dal.add_items_to_list(UUID(l_id), {})
+        create_outcome = await dal.persist_user_list("1", EXAMPLE_USER_LIST())
+        add_success_outcome = await dal.add_items_to_list(
+            create_outcome.id, {"foo": "bar"}
+        )
+        get_outcome = await dal.get_list_by_id(create_outcome.id)
+        assert get_outcome.items.get("foo", None) is not None
 
-    async def test_grab_all_lists_that_exist(self, session):
-        dal = DataAccessLayer(session)
+    async def test_grab_all_lists_that_exist(self, alt_session):
+        dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
-        outcome = await dal.grab_all_lists_that_exist("id", [UUID(l_id)])
+        grab_before_create_outcome = await dal.grab_all_lists_that_exist(
+            "id", [UUID(l_id)]
+        )
+        assert grab_before_create_outcome == []
 
-    async def test_replace_list(self, session):
-        dal = DataAccessLayer(session)
+        create_outcome_1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        alt_example_list = EXAMPLE_USER_LIST()
+        alt_example_list.name = "other list"
+        alt_example_list.items = {"random": "text"}
+        create_outcome_2 = await dal.persist_user_list("0", alt_example_list)
+        grab_before_create_outcome = await dal.grab_all_lists_that_exist(
+            "id", [create_outcome_1.id, create_outcome_2.id]
+        )
+        list_ids = set(map(lambda ul: ul.id, grab_before_create_outcome))
+        assert list_ids == {create_outcome_1.id, create_outcome_2.id}
+
+    async def test_replace_list(self, alt_session):
+        dal = DataAccessLayer(alt_session)
         old_list = UserList(
             version=0,
             creator=str("1"),
@@ -106,7 +149,7 @@ class TestConfigRouter(BaseTestRouter):
             updated_time=datetime.now(),
             items={"foo": "bar"},
         )
-        await dal.persist_user_list("1", old_list)
+        create_outcome = await dal.persist_user_list("1", old_list)
         new_list = UserList(
             version=0,
             creator=str("1"),
@@ -117,4 +160,15 @@ class TestConfigRouter(BaseTestRouter):
             updated_time=datetime.now(),
             items={"fizz": "buzz"},
         )
-        # outcome = await dal.replace_list(old_list, new_list)
+        replace_outcome = await dal.replace_list(new_list, old_list)
+        get_outcome = await dal.get_list_by_id(replace_outcome.id)
+        assert get_outcome is not None
+
+
+EXAMPLE_USER_LIST = lambda: create_user_list_instance(
+    "0",
+    ItemToUpdateModel(
+        name="fizzbuzz",
+        items={"fizz": "buzz"},
+    ),
+)

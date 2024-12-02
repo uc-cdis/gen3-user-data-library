@@ -19,10 +19,15 @@ More info on how this setup works:
 import asyncio
 import importlib
 import os
+from asyncio import current_task
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    async_sessionmaker,
+    create_async_engine,
+    async_scoped_session,
+)
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.models.user_list import Base
@@ -70,8 +75,28 @@ async def session(engine):
     )
 
     async with engine.connect() as conn:
-        tsx = await conn.begin()
+        transaction = await conn.begin()
         async with session_maker(bind=conn) as session:
             yield session
 
-            await tsx.rollback()
+            await transaction.rollback()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session_factory(engine):
+    """returns  a sql alchemy scoped session factory"""
+
+    session_maker = async_sessionmaker(
+        engine, expire_on_commit=False, autocommit=False, autoflush=False
+    )
+    scoped_maker = async_scoped_session(session_maker, current_task)
+    return scoped_maker
+
+
+@pytest_asyncio.fixture(scope="function")
+async def alt_session(db_session_factory):
+    session_ = db_session_factory()
+    yield session_
+
+    await session_.rollback()
+    await session_.close()

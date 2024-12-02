@@ -127,6 +127,7 @@ class DataAccessLayer:
             list_id: UUID of the list
         """
         existing_record = await self.get_list_by_id(list_id)
+        x = await self.get_all_lists("0")
         if existing_record is None:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record
