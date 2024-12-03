@@ -1,6 +1,7 @@
 # Gen3 User Data Library
 
-The user data library is a relatively
+A CRUD storage mechanism for UserLists.
+
 **Table of Contents**
 
 - [Overview](#Overview)
@@ -25,7 +26,30 @@ At the moment the lists support the following items:
 
 ## Details
 
-[long description]
+This repo is a standard CRUD REST API. This service is
+built on the fastapi framework and uses postgres as its
+storage mechanism. Our ORM interface is the `UserList`
+object as defined in the `user_list.py` file and
+all behavior captured reflects modifications the underlying
+table represented by this object. In our top level directory,
+you can use several different `.sh` files to preform common
+tasks.
+
+- Use `run.sh` to spin up a `localhost` instance of the API
+- Use `test.sh` to run to set up the database as well as run
+  all the tests
+- Use `clean.sh` to run several formatting and linting
+  commands
+
+We use `.env` files to hold all configurations for different
+environment configurations. More information about accepted
+configurations can be found under the docs folder in the
+example `env` file. We use `alembic` to handle our database
+setup as well as migrations.
+
+Endpoints paths can be in the `routes/__init__.py` file in
+combination with the paths listed above each function
+under the `routes` directory.
 
 ## Quickstart
 
@@ -90,13 +114,54 @@ The following script will migrate, setup env, and run the service locally:
 ./run.sh
 ```
 
-Hit the API:
+### Hit the API
 
-[insert example]
+#### Request Body
+
+```json
+{
+  "name": "blep3",
+  "items": {
+    "drs://dg.4503:943201c3-271d-4a04-a2b6-040272239a64": {
+      "dataset_guid": "phs000001.v1.p1.c1",
+      "type": "GA4GH_DRS"
+    }
+  }
+}
+```
+
+#### Curl Request
+
+```bash
+curl --request GET \
+  --url http://localhost:8000/library/lists/44580043-1b42-4015-bfa3-923e3db98114 \
+  --header 'ID: f5407e8d-8cc8-46c2-a6a4-5b6f136b7281' \
+  --data '{"lists": [
+  {
+    "name": "My Saved List 1",
+    "items": {
+        "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a64": {
+            "dataset_guid": "phs000001.v1.p1.c1",
+            "type": "GA4GH_DRS"}}}]}'
+```
 
 ## Authz
 
-[insert details]
+In order to ensure that users only interface with lists that
+they have access to, we utilize an `authz` mechanism to
+authorize users. We utilize [Arborist](https://github.com/uc-cdis/arborist)
+for this. Currently, there are three specific ways we utilize arborist.
+
+First, we ensure a policy exists for the user or create one if not.
+You can see this in the [dependencies](gen3userdatalibrary/routes/dependencies.py) file.
+
+Second, we create or update a resource for new lists that are created. This
+is done in the upsert function in the [lists](gen3userdatalibrary/routes/lists.py)
+route file.
+
+Third, with the prior two steps established, we authorize incoming requests
+to ensure that a user who is defined in our system has access to the list
+they're requesting to view.
 
 ## Local Dev
 
@@ -108,7 +173,9 @@ The default `pytest` options specified
 in the `pyproject.toml` additionally:
 
 * runs coverage and will error if it falls below the threshold
-* profiles using [pytest-profiling](https://pypi.org/project/pytest-profiling/) which outputs into `/prof`
+
+> TODO: Setup profiling. cProfile actually doesn't play well with async, so pytest-profiling won't work.
+> Perhaps use: https://github.com/joerick/pyinstrument ?
 
 #### Automatically format code and run pylint
 

@@ -1,7 +1,7 @@
 import time
 from typing import List
 
-from fastapi import Request, Depends, HTTPException, APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import Response
 from gen3authz.client.arborist.async_client import ArboristClient
@@ -10,30 +10,26 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import (
-    get_user_id,
-    get_user_data_library_endpoint,
-)
+from gen3userdatalibrary.auth import get_user_data_library_endpoint, get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.models.helpers import try_conforming_list
+from gen3userdatalibrary.models.helpers import (
+    try_conforming_list,
+    derive_changes_to_make,
+)
 from gen3userdatalibrary.models.user_list import (
-    UserListResponseModel,
+    ItemToUpdateModel,
     UpdateItemsModel,
     UserList,
-    ItemToUpdateModel,
-    USER_LIST_UPDATE_ALLOW_LIST,
+    UserListResponseModel,
 )
 from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
+    sort_lists_into_create_or_update,
     validate_items,
     validate_lists,
-    sort_lists_into_create_or_update,
-)
-from gen3userdatalibrary.utils.core import (
-    find_differences,
-    filter_keys,
 )
 from gen3userdatalibrary.utils.metrics import add_user_list_metric
+
 
 lists_router = APIRouter()
 
@@ -294,28 +290,6 @@ def _map_list_id_to_list_dict(new_user_lists: List[UserList]):
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
     return response_user_lists
-
-
-def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
-    """
-    Given an old list and new list, gets the changes in the new list to be added
-    to the old list
-    """
-    properties_to_old_new_difference = find_differences(list_to_update, new_list)
-    relevant_differences = filter_keys(
-        lambda k, _: k in USER_LIST_UPDATE_ALLOW_LIST, properties_to_old_new_difference
-    )
-    has_no_relevant_differences = not relevant_differences or (
-        len(relevant_differences) == 1 and "updated_time" in relevant_differences
-    )
-    if has_no_relevant_differences:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Nothing to update!"
-        )
-    property_to_change_to_make = {
-        k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()
-    }
-    return property_to_change_to_make
 
 
 async def sort_persist_and_get_changed_lists(

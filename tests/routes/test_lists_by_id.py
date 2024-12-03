@@ -17,9 +17,9 @@ from gen3userdatalibrary.routes.lists_by_id import (
 from tests.data.example_lists import (
     VALID_LIST_A,
     VALID_LIST_B,
-    VALID_REPLACEMENT_LIST,
     VALID_LIST_D,
     VALID_LIST_E,
+    VALID_REPLACEMENT_LIST,
 )
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
@@ -108,11 +108,15 @@ class TestUserListsRouter(BaseTestRouter):
             arborist, get_token_claims, test_client, user_list, headers
         )
         ul_id = get_id_from_response(create_outcome)
-        response = await test_client.put(
+        put_response = await test_client.put(
             endpoint(ul_id), headers=headers, json=VALID_REPLACEMENT_LIST
         )
-        updated_list = response.json()
-        assert response.status_code == 200
+        get_updated_list_response = await test_client.get(
+            endpoint(ul_id), headers=headers
+        )
+        updated_list = get_updated_list_response.json()
+        assert updated_list["id"] == next(iter(create_outcome.json()["lists"].keys()))
+        assert put_response.status_code == 200
         assert updated_list is not None
         assert updated_list["name"] == "My Saved List 1"
         assert updated_list["items"].get("CF_2", None) is not None

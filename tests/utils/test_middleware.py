@@ -23,9 +23,9 @@ class TestConfigRouter(BaseTestRouter):
         matcher = lambda k: re.match(k, "/lists/123e4567-e89b-12d3-a456-426614174000")
 
         # Test: Should match the UUID pattern
-        result = reg_match_key(matcher, endpoint_method_to_access_method)
-        assert result[0] == rf"^/lists/{UUID4_REGEX_PATTERN}$"
-        assert result[1] == {"GET": "blue"}
+        kv_result = reg_match_key(matcher, endpoint_method_to_access_method)
+        assert kv_result[0] == rf"^/lists/{UUID4_REGEX_PATTERN}$"
+        assert kv_result[1] == {"GET": "blue"}
 
         # Test: Should not match anything when using an endpoint that doesn't fit
         no_matcher = lambda k: None

@@ -2,16 +2,16 @@ import json
 from _testcapi import raise_exception
 from typing import List
 
-from fastapi import HTTPException, Request, Depends
+from fastapi import Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
 from jsonschema.validators import validate
 from starlette import status
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import (
-    get_user_id,
     authorize_request,
     get_user_data_library_endpoint,
+    get_user_id,
 )
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.models.helpers import (

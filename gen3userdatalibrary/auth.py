@@ -1,4 +1,4 @@
-from typing import Union, Any, Optional
+from typing import Any, Optional, Union
 
 from authutils.token.fastapi import access_token
 from fastapi import HTTPException, Request

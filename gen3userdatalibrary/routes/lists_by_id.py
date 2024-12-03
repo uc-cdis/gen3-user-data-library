@@ -1,7 +1,7 @@
-from typing import Dict, Any
+from typing import Any, Dict
 from uuid import UUID
 
-from fastapi import Request, Depends, HTTPException, APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from starlette import status
 from starlette.responses import JSONResponse, Response
@@ -126,11 +126,12 @@ async def update_list_by_id(
             status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
         )
     user_id = await get_user_id(request=request)
+    # todo: check this await
     new_list_as_orm = create_user_list_instance(user_id, info_to_update_with)
-    replace_result = await data_access_layer.replace_list(
+    change_result = await data_access_layer.change_list_contents(
         new_list_as_orm, existing_list
     )
-    data = jsonable_encoder(replace_result)
+    data = jsonable_encoder(change_result)
     return JSONResponse(status_code=status.HTTP_200_OK, content=data)
 
 

@@ -786,7 +786,7 @@ class TestUserListsRouter(BaseTestRouter):
         response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
-        get_list_info = lambda r: list(json.loads(r.text)["lists"].items())[0][1]
+        get_list_info = lambda r: next(iter(json.loads(r.text)["lists"].items()))[1]
         res_1_info = get_list_info(response_1)
         assert res_1_info["created_time"] == res_1_info["updated_time"]
         updated_list_a = VALID_LIST_A
@@ -801,7 +801,7 @@ class TestUserListsRouter(BaseTestRouter):
         )
         l_id = get_id_from_response(response_2)
         resp_3 = await test_client.get(f"/lists/{l_id}", headers=headers)
-        res_2_info = list(response_2.json().items())[0][1][l_id]
+        res_2_info = dict(resp_3.json().items())
         created_time_did_not_change = (
             res_1_info["created_time"] == res_2_info["created_time"]
         )

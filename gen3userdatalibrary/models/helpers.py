@@ -6,7 +6,34 @@ from starlette import status
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_lists_endpoint
-from gen3userdatalibrary.models.user_list import ItemToUpdateModel, UserList
+from gen3userdatalibrary.models.user_list import (
+    ItemToUpdateModel,
+    UserList,
+    USER_LIST_UPDATE_ALLOW_LIST,
+)
+from gen3userdatalibrary.utils.core import find_differences, filter_keys
+
+
+def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
+    """
+    Given an old list and new list, gets the changes in the new list to be added
+    to the old list
+    """
+    properties_to_old_new_difference = find_differences(list_to_update, new_list)
+    relevant_differences = filter_keys(
+        lambda k, _: k in USER_LIST_UPDATE_ALLOW_LIST, properties_to_old_new_difference
+    )
+    has_no_relevant_differences = not relevant_differences or (
+        len(relevant_differences) == 1 and "updated_time" in relevant_differences
+    )
+    if has_no_relevant_differences:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Nothing to update!"
+        )
+    property_to_change_to_make = {
+        k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()
+    }
+    return property_to_change_to_make
 
 
 def conform_to_item_update(items_to_update_as_dict) -> ItemToUpdateModel:
