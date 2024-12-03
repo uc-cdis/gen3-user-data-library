@@ -90,9 +90,36 @@ The following script will migrate, setup env, and run the service locally:
 ./run.sh
 ```
 
-Hit the API:
+### Hit the API
 
-[insert example]
+#### Request Body
+
+```json
+{
+  "name": "blep3",
+  "items": {
+    "drs://dg.4503:943201c3-271d-4a04-a2b6-040272239a64": {
+      "dataset_guid": "phs000001.v1.p1.c1",
+      "type": "GA4GH_DRS"
+    }
+  }
+}
+```
+
+#### Curl Request
+
+```bash
+curl --request GET \
+  --url http://localhost:8000/library/lists/44580043-1b42-4015-bfa3-923e3db98114 \
+  --header 'ID: f5407e8d-8cc8-46c2-a6a4-5b6f136b7281' \
+  --data '{"lists": [
+  {
+    "name": "My Saved List 1",
+    "items": {
+        "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a64": {
+            "dataset_guid": "phs000001.v1.p1.c1",
+            "type": "GA4GH_DRS"}}}]}'
+```
 
 ## Authz
 
@@ -110,7 +137,7 @@ in the `pyproject.toml` additionally:
 * runs coverage and will error if it falls below the threshold
 
 > TODO: Setup profiling. cProfile actually doesn't play well with async, so pytest-profiling won't work.
->       Perhaps use: https://github.com/joerick/pyinstrument ?
+> Perhaps use: https://github.com/joerick/pyinstrument ?
 
 #### Automatically format code and run pylint
 
