@@ -6,14 +6,14 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from black.trans import defaultdict
 from gen3authz.client.arborist.async_client import ArboristClient
-from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
-from tests.helpers import create_basic_list, get_id_from_response
-from tests.routes.conftest import BaseTestRouter
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_list_by_id_endpoint
 from gen3userdatalibrary.main import get_app, route_aggregator
 from gen3userdatalibrary.utils.core import add_to_dict_set
+from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
+from tests.helpers import create_basic_list, get_id_from_response
+from tests.routes.conftest import BaseTestRouter
 
 
 @pytest.mark.asyncio
@@ -721,7 +721,7 @@ class TestUserListsRouter(BaseTestRouter):
         response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
-        get_list_info = lambda r: list(json.loads(r.text)["lists"].items())[0][1]
+        get_list_info = lambda r: next(iter(json.loads(r.text)["lists"].items()))[1]
         res_1_info = get_list_info(response_1)
         assert res_1_info["created_time"] == res_1_info["updated_time"]
         updated_list_a = VALID_LIST_A
