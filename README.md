@@ -123,7 +123,21 @@ curl --request GET \
 
 ## Authz
 
-[insert details]
+In order to ensure that users only interface with lists that
+they have access to, we utilize an `authz` mechanism to
+authorize users. We utilize [Arborist](https://github.com/uc-cdis/arborist)
+for this. Currently, there are three specific ways we utilize arborist.
+
+First, we ensure a policy exists for the user or create one if not.
+You can see this in the [dependencies](gen3userdatalibrary/routes/dependencies.py) file.
+
+Second, we create or update a resource for new lists that are created. This
+is done in the upsert function in the [lists](gen3userdatalibrary/routes/lists.py)
+route file.
+
+Third, with the prior two steps established, we authorize incoming requests
+to ensure that a user who is defined in our system has access to the list
+they're requesting to view.
 
 ## Local Dev
 
