@@ -70,8 +70,10 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("method", ["put", "get", "delete"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
+    @patch("gen3userdatalibrary.routes.dependencies.is_resource_assigned_to_user")
     async def test_create_lists_unauthorized(
         self,
+        is_resource_assigned_to_user,
         get_token_claims,
         arborist,
         method,
@@ -87,8 +89,16 @@ class TestUserListsRouter(BaseTestRouter):
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
 
         # Simulate an unauthorized request but a valid token
+        is_resource_assigned_to_user.return_value = True
         arborist.auth_request.return_value = False
-        get_token_claims.return_value = {"sub": "foo"}
+        get_token_claims.return_value = {
+            "sub": "foo",
+            "context": {
+                "user": {
+                    "name": "gen3_user"
+                }
+            }
+        }
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         if method == "post":
@@ -146,8 +156,10 @@ class TestUserListsRouter(BaseTestRouter):
         ArboristClient, "create_user_if_not_exist", return_value="Mocked User Created"
     )
     @patch("gen3userdatalibrary.auth._get_token_claims")
+    @patch("gen3userdatalibrary.routes.dependencies.is_resource_assigned_to_user")
     async def test_create_single_valid_list(
         self,
+        is_resource_assigned_to_user,
         get_token_claims,
         mock_create_user,
         arborist,
@@ -164,9 +176,18 @@ class TestUserListsRouter(BaseTestRouter):
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         # Simulate an authorized request and a valid token
+        is_resource_assigned_to_user.return_value = True
         arborist.auth_request.return_value = True
         user_id = "79"
-        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+        get_token_claims.return_value = {
+            "sub": user_id,
+            "otherstuff": "foobar",
+            "context": {
+                "user": {
+                    "name": "gen3_user"
+                }
+            }
+        }
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response = await test_client.put(
@@ -203,17 +224,27 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
+    @patch("gen3userdatalibrary.routes.dependencies.is_resource_assigned_to_user")
     async def test_create_multiple_valid_lists(
-        self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
+        self, is_resource_assigned_to_user, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         # Simulate an authorized request and a valid token
+        is_resource_assigned_to_user.return_value = True
         arborist.auth_request.return_value = True
         user_id = "79"
-        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+        get_token_claims.return_value = {
+            "sub": user_id,
+            "otherstuff": "foobar",
+             "context": {
+                 "user": {
+                     "name": "gen3_user"
+                 }
+             }
+        }
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response = await test_client.put(
@@ -257,34 +288,39 @@ class TestUserListsRouter(BaseTestRouter):
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
-    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
+    @patch("gen3userdatalibrary.routes.dependencies.parse_and_auth_request")
     async def test_create_list_non_unique_name_diff_user(
-        self, get_token_claims, arborist, app_client_pair, endpoint, monkeypatch
+        self, parse_and_auth_request, get_token_claims, app_client_pair, endpoint, monkeypatch
     ):
         """
-        Test creating a list with a non-unique name for different user, ensure 200
+        Test creating a list with a non-unique name for different user, ensure 201
 
          get_token_claims: for token
          arborist: for successful auth
          endpoint: which route to hit
          client: router
         """
+        parse_and_auth_request.return_value = None
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         app, test_client = app_client_pair
-        app.state.arborist_client = AsyncMock()
-        arborist.auth_request.return_value = True
         user_id = "79"
-        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+        get_token_claims.return_value = {
+            "sub": user_id,
+            "otherstuff": "foobar",
+            "context": {
+                "user": {
+                    "name": "gen3_user"
+                }
+            }
+        }
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response_1 = await test_client.put(
             endpoint, headers=headers, json={"lists": [VALID_LIST_A]}
         )
         assert response_1.status_code == 201
 
-        # Simulating second user
-        arborist.auth_request.return_value = True
         user_id = "80"
         get_token_claims.return_value = {"sub": user_id}
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -509,14 +545,16 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
+    @patch("gen3userdatalibrary.routes.dependencies.is_resource_assigned_to_user")
     async def test_creating_and_updating_lists(
-        self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
+        self, is_resource_assigned_to_user, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         # Simulate an authorized request and a valid token
+        is_resource_assigned_to_user.return_value = True
         arborist.auth_request.return_value = True
         user_id = "fsemr"
         get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}

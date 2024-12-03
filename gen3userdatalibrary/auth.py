@@ -142,7 +142,7 @@ async def get_username(
         return "0"
 
     token_claims = await _get_token_claims(token, request)
-    if "context" not in token_claims and "user" not in token_claims["context"]:
+    if "user" not in token_claims.get("context", {}):
         raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
 
     username = token_claims["context"]["user"]["name"]

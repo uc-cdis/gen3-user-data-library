@@ -17,6 +17,24 @@ from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEXT
 from gen3userdatalibrary.utils.modeling import try_conforming_list
 
+def is_resource_assigned_to_user(request: Request, username: str, user_id: str) -> bool:
+    """
+    Checks the current user has the appropriate resource assigned to them in arborist.
+    :param request: the request object that initiated the check.
+    :param username: the user's name
+    :param user_id: the user's id
+    :return: true if the resource is assigned to the user, false if otherwise.
+    """
+    resource = get_lists_endpoint(user_id)
+    try:
+        resources = set(request.app.state.arborist_client.list_resources_for_user(username))
+        logging.debug(f"Got resources: {resources}")
+        return resource in resources
+    except Exception as e:
+        logging.error(
+            f"Something went wrong when checking whether the user has the appropriate resource: {str(e)}"
+        )
+    return False
 
 async def ensure_user_exists(request: Request):
     if config.DEBUG_SKIP_AUTH:
@@ -24,26 +42,13 @@ async def ensure_user_exists(request: Request):
     
     user_id = await get_user_id(request=request)
     username = await get_username(request=request)
-    # try:
-    #     # TODO Check if user is assigned the policy, not if the policy exists.
-    #     # We use the user_id as the policy_id
-    #     policy = request.app.state.arborist_client.get_policy(user_id)
-    #     logging.debug(f"Got policy: {policy}")
-    # except Exception as e:
-    #     logging.error(
-    #         f"Something went wrong when checking whether the policy exists: {str(e)}"
-    #     )
-    #     raise HTTPException(
-    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    #         detail="Failed checking policy!",
-    #     )
-    # if policy:
-    #     return True
+
+    if is_resource_assigned_to_user(request, username, user_id):
+        return True
 
     request.app.state.arborist_client.create_user_if_not_exist(username)
     logging.info(f"Policy does not exist for user_id {user_id}")
     role_ids = ["create", "read", "update", "delete"]
-    resource = get_lists_endpoint(user_id)
 
     try:
         logging.debug("attempting to update arborist resource: {}".format(resource))

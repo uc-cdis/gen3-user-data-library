@@ -27,7 +27,7 @@ What do we do in this file?
   a fresh session from the session maker factory
     - This is what gets injected into endpoint code using FastAPI's dep injections
 """
-
+import logging
 from typing import List, Optional, Tuple, Union
 from uuid import UUID
 
@@ -147,12 +147,13 @@ class DataAccessLayer:
             list_to_update_id: uuid of list to update
             changes_to_make: contents that go into corresponding UserList properties with their associated names
         """
+        print(changes_to_make.to_dict())
         db_list_to_update = await self.get_existing_list_or_throw(list_to_update_id)
-        changes_that_can_be_made = list(
-            filter(
-                lambda kvp: hasattr(db_list_to_update, kvp[0]), changes_to_make.items()
-            )
-        )
+        print(db_list_to_update)
+
+        changes_that_can_be_made = [
+            kvp for kvp in changes_to_make.to_dict().items() if hasattr(db_list_to_update, kvp[0])
+        ]
         for key, value in changes_that_can_be_made:
             setattr(db_list_to_update, key, value)
         await self.db_session.commit()
