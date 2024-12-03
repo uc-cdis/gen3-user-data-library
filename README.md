@@ -1,6 +1,7 @@
 # Gen3 User Data Library
 
-The user data library is a relatively
+A CRUD storage mechanism for UserLists.
+
 **Table of Contents**
 
 - [Overview](#Overview)
@@ -25,7 +26,30 @@ At the moment the lists support the following items:
 
 ## Details
 
-[long description]
+This repo is a standard CRUD REST API. This service is
+built on the fastapi framework and uses postgres as its
+storage mechanism. Our ORM interface is the `UserList`
+object as defined in the `user_list.py` file and
+all behavior captured reflects modifications the underlying
+table represented by this object. In our top level directory,
+you can use several different `.sh` files to preform common
+tasks.
+
+- Use `run.sh` to spin up a `localhost` instance of the API
+- Use `test.sh` to run to set up the database as well as run
+  all the tests
+- Use `clean.sh` to run several formatting and linting
+  commands
+
+We use `.env` files to hold all configurations for different
+environment configurations. More information about accepted
+configurations can be found under the docs folder in the
+example `env` file. We use `alembic` to handle our database
+setup as well as migrations.
+
+Endpoints paths can be in the `routes/__init__.py` file in
+combination with the paths listed above each function
+under the `routes` directory.
 
 ## Quickstart
 
