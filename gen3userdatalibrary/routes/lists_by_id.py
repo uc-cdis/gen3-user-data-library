@@ -124,7 +124,9 @@ async def update_list_by_id(
         )
     user_id = await get_user_id(request=request)
     new_list_as_orm = await create_user_list_instance(user_id, info_to_update_with)
-    existing_list = await data_access_layer.get_list(list_id)
+    existing_list = await data_access_layer.get_list(
+        (new_list_as_orm.creator, new_list_as_orm.name), "name"
+    )
     if existing_list is None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
