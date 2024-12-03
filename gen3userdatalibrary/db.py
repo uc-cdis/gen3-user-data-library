@@ -263,9 +263,7 @@ class DataAccessLayer:
         self, new_list_as_orm: UserList, existing_obj: UserList
     ):
         """
-        Delete the original list, replace it with the new one!
-        Does not check that list exists
-
+        Change the contents of a list directly, including replaces the contents of `items`
         """
         changes_to_make = derive_changes_to_make(existing_obj, new_list_as_orm)
         updated_list = await self.update_and_persist_list(
