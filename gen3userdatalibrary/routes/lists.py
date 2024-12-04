@@ -12,7 +12,6 @@ from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import get_user_data_library_endpoint, get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.user_list import (
-    USER_LIST_UPDATE_ALLOW_LIST,
     ItemToUpdateModel,
     UpdateItemsModel,
     UserList,
@@ -24,7 +23,9 @@ from gen3userdatalibrary.routes.dependencies import (
     validate_items,
     validate_lists,
 )
-from gen3userdatalibrary.utils.core import filter_keys, find_differences
+from gen3userdatalibrary.utils.modeling import (
+    derive_changes_to_make,
+)
 from gen3userdatalibrary.utils.metrics import MetricModel, update_user_list_metric
 from gen3userdatalibrary.utils.modeling import try_conforming_list
 
@@ -272,28 +273,6 @@ def _map_list_id_to_list_dict(new_user_lists: List[UserList]):
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
     return response_user_lists
-
-
-def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
-    """
-    Given an old list and new list, gets the changes in the new list to be added
-    to the old list
-    """
-    properties_to_old_new_difference = find_differences(list_to_update, new_list)
-    relevant_differences = filter_keys(
-        lambda k, _: k in USER_LIST_UPDATE_ALLOW_LIST, properties_to_old_new_difference
-    )
-    has_no_relevant_differences = not relevant_differences or (
-        len(relevant_differences) == 1 and "updated_time" in relevant_differences
-    )
-    if has_no_relevant_differences:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Nothing to update!"
-        )
-    property_to_change_to_make = {
-        k: diff_tuple[1] for k, diff_tuple in relevant_differences.items()
-    }
-    return property_to_change_to_make
 
 
 async def sort_persist_and_get_changed_lists(

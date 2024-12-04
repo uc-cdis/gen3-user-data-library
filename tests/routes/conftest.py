@@ -17,10 +17,6 @@ class BaseTestRouter:
 
     @pytest_asyncio.fixture(scope="function")
     async def client(self, session):
-        """
-        RE: "unresolved reference" ->
-        https://youtrack.jetbrains.com/issue/PY-63306/False-positive-for-unresolved-reference-of-state-instance-field-in-FastAPI-app
-        """
         app = get_app()
         app.include_router(self.router)
         app.dependency_overrides[get_data_access_layer] = lambda: DataAccessLayer(

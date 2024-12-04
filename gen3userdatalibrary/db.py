@@ -28,7 +28,7 @@ What do we do in this file?
     - This is what gets injected into endpoint code using FastAPI's dep injections
 """
 
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Any, Dict
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -40,6 +40,7 @@ from starlette import status
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_list_by_id_endpoint
 from gen3userdatalibrary.models.user_list import UserList
+from gen3userdatalibrary.utils.modeling import derive_changes_to_make
 from gen3userdatalibrary.utils.metrics import MetricModel
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
@@ -57,7 +58,9 @@ class DataAccessLayer:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    async def ensure_user_has_not_reached_max_lists(self, creator_id, lists_to_add=0):
+    async def ensure_user_has_not_reached_max_lists(
+        self, creator_id: str, lists_to_add: int = 0
+    ):
         """
 
         Args:
@@ -72,7 +75,7 @@ class DataAccessLayer:
                 detail="Max number of lists reached!",
             )
 
-    async def persist_user_list(self, user_id, user_list: UserList):
+    async def persist_user_list(self, user_id: str, user_list: UserList):
         """
         Save user list to db as well as update authz
 
@@ -91,7 +94,7 @@ class DataAccessLayer:
         user_list.authz = authz
         return user_list
 
-    async def get_all_lists(self, creator_id) -> List[UserList]:
+    async def get_all_lists(self, creator_id: str) -> List[UserList]:
         """
         Return all known lists
 
@@ -105,7 +108,7 @@ class DataAccessLayer:
         return list(result.scalars().all())
 
     async def get_list(
-        self, identifier: Union[UUID, Tuple[str, str]], by="id"
+        self, identifier: Union[UUID, Tuple[str, str]], by: str = "id"
     ) -> Optional[UserList]:
         """
         Get a list by either unique id or unique (creator, name) combo
@@ -159,7 +162,7 @@ class DataAccessLayer:
         return existing_record
 
     async def update_and_persist_list(
-        self, list_to_update_id, changes_to_make
+        self, list_to_update_id: UUID, changes_to_make: Dict[str, Any]
     ) -> UserList:
         """
         Given an id and list of changes to make, it'll update the list orm with those changes.
@@ -178,7 +181,6 @@ class DataAccessLayer:
         )
         for key, value in changes_that_can_be_made:
             setattr(db_list_to_update, key, value)
-        # await self.db_session.commit()
         return db_list_to_update
 
     async def test_connection(self) -> None:
@@ -319,12 +321,11 @@ class DataAccessLayer:
         from_sequence_to_list = [row[0] for row in existing_user_lists]
         return from_sequence_to_list
 
-    async def replace_list(self, new_list_as_orm: UserList, existing_obj: UserList):
+    async def change_list_contents(
+        self, new_list_as_orm: UserList, existing_obj: UserList
+    ):
         """
-        Delete the original list, replace it with the new one!
-        Does not check that list exists
-
-        TODO: THIS SHOULD NOT DELETE AND REPLACE
+        Change the contents of a list directly, including replaces the contents of `items`
         """
         _, prev_item_count = await self.get_list_and_item_count(list_id=existing_obj.id)
         new_items_count = len(new_list_as_orm.items.keys())
@@ -337,11 +338,11 @@ class DataAccessLayer:
         elif amount_of_new_items < 0:
             items_deleted = abs(amount_of_new_items)
 
-        await self.db_session.delete(existing_obj)
-        await self.db_session.flush()
-        self.db_session.add(new_list_as_orm)
-        await self.db_session.flush()
-        return new_list_as_orm, MetricModel(
+        changes_to_make = derive_changes_to_make(existing_obj, new_list_as_orm)
+        updated_list = await self.update_and_persist_list(
+            existing_obj.id, changes_to_make
+        )
+        return updated_list, MetricModel(
             items_added=items_added, items_deleted=items_deleted
         )
 
