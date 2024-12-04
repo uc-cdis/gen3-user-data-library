@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from black.trans import defaultdict
+from fastapi import HTTPException
 from gen3authz.client.arborist.async_client import ArboristClient
 
 from gen3userdatalibrary import config
@@ -31,10 +32,12 @@ class TestUserListsRouter(BaseTestRouter):
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         valid_single_list_body = {"lists": [user_list]}
-        response = await client.put(endpoint, json=valid_single_list_body)
+        with pytest.raises(HTTPException) as e:
+            response = await client.put(endpoint, json=valid_single_list_body)
+        response = e.value
         assert response
         assert response.status_code == 401
-        assert response.json().get("detail")
+        assert response.detail == "Unauthorized"
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
@@ -54,14 +57,15 @@ class TestUserListsRouter(BaseTestRouter):
         # not a valid token
         headers = {"Authorization": "Bearer ofbadnews"}
 
-        # with pytest.raises(HTTPException) as e:
-        response = await client.put(
-            endpoint, headers=headers, json={"lists": [user_list]}
-        )
+        with pytest.raises(HTTPException) as e:
+            response = await client.put(
+                endpoint, headers=headers, json={"lists": [user_list]}
+            )
+        response = e.value
         assert response.status_code == 401
         assert (
             "Could not verify, parse, and/or validate scope from provided access token."
-            in response.text
+            in response.detail
         )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
