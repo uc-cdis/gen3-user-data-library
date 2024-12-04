@@ -1,0 +1,5 @@
+# Ignore unnecessary files inside allowed directories
+# This should go after the allowed directories
+**/*.pyc
+**/*.egg-info
+**/__pycache__

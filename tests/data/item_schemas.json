@@ -1,0 +1,67 @@
+{
+  "GA4GH_DRS": {
+    "type": "object",
+    "properties": {
+      "dataset_guid": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "dataset_guid",
+      "type"
+    ]
+  },
+  "Gen3GraphQL": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      },
+      "schema_version": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "variables": {
+            "oneOf": [
+              {
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "query",
+          "variables"
+        ]
+      }
+    },
+    "required": [
+      "name",
+      "type",
+      "schema_version",
+      "data"
+    ]
+  },
+  "None": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "type"
+    ]
+  }
+}

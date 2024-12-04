@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/uc-cdis/gen3-user-data-library/refs/head/main/config/item_schemas.json",
+  "type": "object",
+  "title": "Schema Definitions",
+  "description": "A configuration file containing definitions of valid user list item schemas.",
+  "GA4GH_DRS": {
+    "type": "object",
+    "properties": {
+      "dataset_guid": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "dataset_guid",
+      "type"
+    ]
+  },
+  "Gen3GraphQL": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      },
+      "schema_version": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "variables": {
+            "oneOf": [
+              {
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "query",
+          "variables"
+        ]
+      }
+    },
+    "required": [
+      "name",
+      "type",
+      "schema_version",
+      "data"
+    ]
+  },
+  "None": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "type"
+    ]
+  }
+}
