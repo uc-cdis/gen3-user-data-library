@@ -1,6 +1,6 @@
 import json
 from _testcapi import raise_exception
-from typing import List
+from typing import List, Dict, Tuple, Union
 
 from fastapi import Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
@@ -23,8 +23,17 @@ from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEX
 from gen3userdatalibrary.utils.core import build_switch_case
 
 
-async def validate_upsert_items(conformed_body, dal, user_id):
-    raw_lists = conformed_body["lists"]
+async def validate_upsert_items(lists_to_upsert, dal, user_id):
+    """
+    Check that the items in lists to upsert add up to less than max config
+
+    Args:
+        lists_to_upsert (Dict["lists": List[ItemToUpdateModel]): basic info about lists that are being changed
+        dal (DataAccessLayer): the data access layer entity
+        user_id (str): creator id for lists
+
+    """
+    raw_lists = lists_to_upsert["lists"]
     new_lists_as_orm = [
         await try_conforming_list(user_id, conform_to_item_update(user_list))
         for user_list in raw_lists
@@ -35,23 +44,47 @@ async def validate_upsert_items(conformed_body, dal, user_id):
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
         dal, unique_list_identifiers, new_lists_as_orm
     )
-    await check_lists_to_update(lists_to_update, unique_list_identifiers)
+    for list_to_update in lists_to_update:
+        await check_items_in_list_to_update_less_than_max(
+            list_to_update, unique_list_identifiers
+        )
     for item_to_create in lists_to_create:
         ensure_items_less_than_max(len(item_to_create.items))
 
 
-async def check_lists_to_update(lists_to_update, unique_list_identifiers):
-    for list_to_update in lists_to_update:
-        identifier = (list_to_update.creator, list_to_update.name)
-        new_version_of_list = unique_list_identifiers.get(identifier, None)
-        if new_version_of_list is None:
-            raise ValueError("No unique identifier, cannot update list!")
-        ensure_items_less_than_max(
-            len(new_version_of_list.items), len(list_to_update.items)
-        )
+async def check_items_in_list_to_update_less_than_max(
+    old_list_to_update, identifier_to_new_user_list: Dict[Tuple[str, str], UserList]
+):
+    """
+    Checks that the items in the old version of the list + the new version of the list are less that max config
+
+    Args:
+        old_list_to_update (UserList): old version of list before the new changes
+        identifier_to_new_user_list (Dict[Tuple[str, str], UserList]): maps (creator, name) to new version of user list
+
+    Raises:
+        exception if old list doesn't have any matching new list to update, which should not happen
+    """
+    identifier = (old_list_to_update.creator, old_list_to_update.name)
+    new_version_of_list = identifier_to_new_user_list.get(identifier, None)
+    if new_version_of_list is None:
+        raise ValueError("No unique identifier, cannot update list!")
+    ensure_items_less_than_max(
+        len(new_version_of_list.items), len(old_list_to_update.items)
+    )
 
 
-async def ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_id):
+async def ensure_list_exists_and_items_less_than_max(basic_list_info, dal, list_id):
+    """
+    Check we can get the list and that items are less than max config
+
+    Args:
+        basic_list_info (ItemToUpdateModel as Dict): basic info about the list; name and creator
+        dal (DataAccessLayer): data access layer instance
+        list_id (UUID): id of the list
+    Raises:
+        HTTPException if the id is not recognized or if something happened with arborist
+    """
     try:
         list_to_append = await dal.get_existing_list_or_throw(list_id)
     except ValueError:
@@ -63,15 +96,26 @@ async def ensure_list_exists_and_items_less_than_max(conformed_body, dal, list_i
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Something went wrong while validating request!",
         )
-    ensure_items_less_than_max(len(conformed_body["items"]), len(list_to_append.items))
+    ensure_items_less_than_max(len(basic_list_info["items"]), len(list_to_append.items))
 
 
 # region User Lists
 
 
 async def sort_lists_into_create_or_update(
-    data_access_layer, unique_list_identifiers, new_user_list: List[UserList]
+    data_access_layer, unique_list_identifiers, new_user_lists: List[UserList]
 ):
+    """
+    Discerns if a list is to be created or updated, so we know whether to compare it against an existing user list
+
+    Args:
+        data_access_layer (DataAccessLayer): data access instance
+        unique_list_identifiers (Dict[Tuple(str, str)], UserList]): (name, creator) => new user list
+        new_user_lists (List[UserList]): list of user lists to either create or update
+
+    Returns:
+
+    """
     lists_to_update = await data_access_layer.grab_all_lists_that_exist(
         "name", list(unique_list_identifiers.keys())
     )
@@ -81,7 +125,7 @@ async def sort_lists_into_create_or_update(
     lists_to_create = list(
         filter(
             lambda ul: (ul.creator, ul.name) not in set_of_existing_identifiers,
-            new_user_list,
+            new_user_lists,
         )
     )
     return lists_to_create, lists_to_update
@@ -90,6 +134,17 @@ async def sort_lists_into_create_or_update(
 async def validate_lists(
     request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
 ):
+    """
+    Ensures user hasn't added too many lists
+
+    Args:
+        request (Request): fastapi request entity
+        dal (DataAccessLayer): data access instance
+
+    Raises:
+        exceptions from sorting, validating items, or validating lists
+
+    """
     user_id = await get_user_id(request=request)
     conformed_body = json.loads(await request.body())
     raw_lists = conformed_body["lists"]
@@ -115,6 +170,11 @@ async def validate_lists(
 def validate_user_list_item(item_contents: dict):
     """
     Ensures that the item component of a user list has the correct setup for type property
+
+    Args:
+        item_contents (Dict[str, Any): the item component of a user list
+    Raises:
+        exception based on the outcome of validate
     """
     content_type = item_contents.get("type", None)
     matching_schema = config.ITEM_SCHEMAS.get(content_type, None)
@@ -129,6 +189,16 @@ def validate_user_list_item(item_contents: dict):
 async def validate_items(
     request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
 ):
+    """
+    General item validator dependency for all kinds of endpoints
+
+    Args:
+        request (Request): fast api request entity
+        dal (DataAccessLayer): data access instance
+
+    Raises:
+        HTTPException if body is not correctly formatted
+    """
     route_function = request.scope["route"].name
     endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
     conformed_body = json.loads(await request.body())
@@ -164,8 +234,17 @@ async def validate_items(
     await item_validator_for_endpoint()
 
 
-def ensure_any_items_match_schema(endpoint_context, conformed_body):
-    item_dict = endpoint_context.get("items", lambda _: [])(conformed_body)
+def ensure_any_items_match_schema(endpoint_context, basic_user_lists):
+    """
+    Ensure lists from the request validate against schema config
+    Args:
+        endpoint_context (Dict[str, Any]): endpoint specific information for validation purposes
+        basic_user_lists (Dict["lists": List[ItemToUpdateModel as Dict]]):
+
+    Returns:
+
+    """
+    item_dict = endpoint_context.get("items", lambda _: [])(basic_user_lists)
     body_type = type(item_dict)
     if body_type is list:
         for item_set in item_dict:
@@ -177,6 +256,17 @@ def ensure_any_items_match_schema(endpoint_context, conformed_body):
 
 
 def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
+    """
+    Basic check to see total item count is less than max config
+
+    Args:
+        number_of_new_items (int): count of new items to add
+        existing_item_count (int): count of existing items
+
+    Raises:
+        HTTPException if too many items in list
+
+    """
     more_items_than_max = (
         existing_item_count + number_of_new_items > config.MAX_LIST_ITEMS
     )
@@ -212,8 +302,14 @@ async def validate_items_to_append(conformed_body, dal, list_id):
 # region Auth
 
 
-async def ensure_user_exists(request: Request):
-
+async def ensure_user_exists(request: Request) -> Union[bool, None]:
+    """
+    Handles ensuring a policy exists for the user or creates one otherwise
+    Args:
+        request (Request): fastapi request obj to get the policy id (user id)
+    Raises:
+        HTTPException if error when checking a policy or when creating a policy
+    """
     if config.DEBUG_SKIP_AUTH:
         return True
 
@@ -254,6 +350,16 @@ async def ensure_user_exists(request: Request):
 async def parse_and_auth_request(
     request: Request, created_user=Depends(ensure_user_exists)
 ):
+    """
+    Authorize the request with arborist to ensure the request can be made
+
+    Args:
+        request (Request): fastapi request entity
+        created_user (Union[bool, None]): not used, just ensures user exists first before continuing
+
+    Raises:
+        HTTPException based on authorize_request outcome
+    """
     user_id = await get_user_id(request=request)
     path_params = request.scope["path_params"]
     route_function = request.scope["route"].name
@@ -278,6 +384,14 @@ def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
     """
     Before any endpoint is hit, we should verify that the requester has access to the endpoint.
     This middleware function handles that.
+
+    Args:
+        endpoint_context (Dict[str, Any]): information about an endpoint from the ENDPOINT_TO_CONTEXT data structure
+        user_id (str): creator id
+        path_params (dict): any params from the request scope
+
+    Returns:
+        The resource from endpoint_to_context based on the kind of endpoint
     """
     endpoint_type = endpoint_context.get("type", None)
     get_resource = endpoint_context.get("resource", None)

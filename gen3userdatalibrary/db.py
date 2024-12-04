@@ -227,7 +227,7 @@ class DataAccessLayer:
 
     async def grab_all_lists_that_exist(
         self,
-        by,
+        by: str,
         identifier_list: Union[
             List[UUID],
             List[
