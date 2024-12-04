@@ -7,7 +7,9 @@ set -e
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source "${CURRENT_DIR}/_common_setup.sh"
+export ENV="production"
+source "${CURRENT_DIR}/.env"
+source "${CURRENT_DIR}/bin/_common_setup.sh"
 
 poetry run gunicorn \
   gen3userdatalibrary.main:app \
@@ -16,4 +18,3 @@ poetry run gunicorn \
   --reload \
   --access-logfile - \
   --error-logfile -
-

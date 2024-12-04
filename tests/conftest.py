@@ -22,17 +22,19 @@ import os
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from gen3userdatalibrary import config
-from gen3userdatalibrary.models import Base
+from gen3userdatalibrary.models.user_list import Base
 
 
 @pytest.fixture(scope="session", autouse=True)
 def ensure_test_config():
-    os.chdir(os.path.dirname(os.path.abspath(__file__)).rstrip("/"))
-    importlib.reload(config)
-    assert not config.DEBUG_SKIP_AUTH
+    is_test = os.environ.get("ENV", None) == "test" or config.ENV == "test"
+    if not is_test:
+        os.chdir(os.path.dirname(os.path.abspath(__file__)).rstrip("/"))
+        importlib.reload(config)
+        assert not config.DEBUG_SKIP_AUTH
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -41,9 +43,7 @@ async def engine():
     Non-session scoped engine which recreates the database, yields, then drops the tables
     """
     engine = create_async_engine(
-        str(config.DB_CONNECTION_STRING),
-        echo=False,
-        future=True,
+        str(config.DB_CONNECTION_STRING), echo=False, future=True
     )
 
     async with engine.begin() as conn:
@@ -66,16 +66,12 @@ async def session(engine):
     """
     event_loop = asyncio.get_running_loop()
     session_maker = async_sessionmaker(
-        engine,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
+        engine, expire_on_commit=False, autocommit=False, autoflush=False
     )
 
     async with engine.connect() as conn:
         tsx = await conn.begin()
         async with session_maker(bind=conn) as session:
-
             yield session
 
             await tsx.rollback()

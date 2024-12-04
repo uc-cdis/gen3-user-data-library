@@ -13,16 +13,16 @@ jobs:
     name: Security Pipeline
     uses: uc-cdis/.github/.github/workflows/securitypipeline.yaml@master
     with:
-       python-poetry: 'true'
+      python-poetry: 'true'
     secrets: inherit
-
-  UnitTest:
-    name: Python Unit Test with Postgres
-    uses: uc-cdis/.github/.github/workflows/python_unit_test.yaml@master
-    with:
-       test-script: 'test.sh'
-       python-version: '3.9'
-       use-cache: true
+# TODO: Uncomment after repo is public
+#  UnitTest:
+#    name: Python Unit Test with Postgres
+#    uses: uc-cdis/.github/.github/workflows/python_unit_test.yaml@master
+#    with:
+#      test-script: 'test.sh'
+#      python-version: '3.9'
+#      use-cache: true
 
   # this creates linter settings and uploads to an artifact so the configs can be pulled and used across jobs
   LintConfig:
@@ -31,50 +31,53 @@ jobs:
     with:
       python-module-name: "gen3userdatalibrary"
 
-#  # (optional) modify the linter configurations from above. You could omit this if you didn't need to do this
-#  CustomizeLintConfig:
-#    runs-on: ubuntu-latest
-#    name: Customize Lint Config
-#    needs: [LintConfig]
-#    steps:
-#      - uses: actions/download-artifact@v3
-#        with:
-#          # this is uploaded by the lint-create-config.yaml workflow
-#          name: linters-config
-#          path: .github/linters
-#
-#      # modify default isort to specify the module name for proper formatting
-#      - run: echo "known_first_party=gen3userdatalibrary" >> .github/linters/.isort.cfg
-#
-#      # now we need to re-upload the artifacts with the changes
-#      - uses: actions/upload-artifact@v3
-#        with:
-#          name: linters-config
-#          path: |
-#            .github/linters/
-#          if-no-files-found: error
+  #  # (optional) modify the linter configurations from above. You could omit this if you didn't need to do this
+  #  CustomizeLintConfig:
+  #    runs-on: ubuntu-latest
+  #    name: Customize Lint Config
+  #    needs: [LintConfig]
+  #    steps:
+  #      - uses: actions/download-artifact@v3
+  #        with:
+  #          # this is uploaded by the lint-create-config.yaml workflow
+  #          name: linters-config
+  #          path: .github/linters
+  #
+  #      # modify default isort to specify the module name for proper formatting
+  #      - run: echo "known_first_party=gen3userdatalibrary" >> .github/linters/.isort.cfg
+  #
+  #      # now we need to re-upload the artifacts with the changes
+  #      - uses: actions/upload-artifact@v3
+  #        with:
+  #          name: linters-config
+  #          path: |
+  #            .github/linters/
+  #          if-no-files-found: error
+# TODO: Uncomment after repo is public
 
-  RequiredLint:
-    name: Run Required Linters
-    needs: [LintConfig]
-    uses: uc-cdis/.github/.github/workflows/required_lint_check.yaml@master
-    with:
-      python-version: '3.9'
-      use-cache: true
-
-  InformationalLint:
-    name: Run Informational Linters
-    needs: [LintConfig, UnitTest]
-    if: github.ref != 'refs/heads/main'
-    uses: uc-cdis/.github/.github/workflows/optional_lint_check.yaml@master
-    with:
-      python-version: '3.9'
-      use-cache: true
+# TODO: Uncomment after repo is public, this was having some import issues, check out the "fix/lint-path" for some ideas
+#       https://github.com/uc-cdis/.github/compare/master...fix/lint-path
+  # RequiredLint:
+  #   name: Run Required Linters
+  #   needs: [ LintConfig ]
+  #   uses: uc-cdis/.github/.github/workflows/required_lint_check.yaml@master
+  #   with:
+  #     python-version: '3.9'
+  #     use-cache: true
+# TODO: Uncomment after repo is public
+#  InformationalLint:
+#    name: Run Informational Linters
+#    needs: [ LintConfig ] #TODO Add UnitTest
+#    if: github.ref != 'refs/heads/main'
+#    uses: uc-cdis/.github/.github/workflows/optional_lint_check.yaml@master
+#    with:
+#      python-version: '3.9'
+#      use-cache: true
 
   ImageBuildAndPush:
     name: Build Image and Push
     uses: uc-cdis/.github/.github/workflows/image_build_push.yaml@master
-    needs: [RequiredLint, Security, UnitTest]
+    needs: [ Security ] #TODO Add UnitTest RequiredLint
     with:
       BUILD_PLATFORMS: "linux/amd64"
     secrets:

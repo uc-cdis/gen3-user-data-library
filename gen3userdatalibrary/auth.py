@@ -1,3 +1,5 @@
+from typing import Any, Optional, Union
+
 from authutils.token.fastapi import access_token
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -9,6 +11,12 @@ from gen3userdatalibrary import config, logging
 
 get_bearer_token = HTTPBearer(auto_error=False)
 arborist = ArboristClient()
+
+get_user_data_library_endpoint = lambda user_id: f"/users/{user_id}/user-data-library"
+get_lists_endpoint = lambda user_id: f"/users/{user_id}/user-data-library/lists"
+get_list_by_id_endpoint = (
+    lambda user_id, list_id: f"/users/{user_id}/user-data-library/lists/{list_id}"
+)
 
 
 async def authorize_request(
@@ -59,7 +67,7 @@ async def authorize_request(
     try:
         is_authorized = await arborist.auth_request(
             token.credentials,
-            service="gen3_data_library",
+            service="gen3_user_data_library",
             methods=authz_access_method,
             resources=authz_resources,
         )
@@ -77,7 +85,7 @@ async def authorize_request(
 
 async def get_user_id(
     token: HTTPAuthorizationCredentials = None, request: Request = None
-):
+) -> Union[int, Any]:
     """
     Retrieves the user ID from the provided token/request
 
@@ -99,7 +107,7 @@ async def get_user_id(
         logging.warning(
             "DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING user_id = 0"
         )
-        return 0
+        return "0"
 
     token_claims = await _get_token_claims(token, request)
     if "sub" not in token_claims:
@@ -111,9 +119,11 @@ async def get_user_id(
 async def _get_token_claims(
     token: HTTPAuthorizationCredentials = None,
     request: Request = None,
-):
+) -> dict:
     """
     Retrieves and validates token claims from the provided token.
+
+    handler for proccessing token
 
     Args:
         token (HTTPAuthorizationCredentials): an authorization token (optional, you can also provide request
@@ -146,9 +156,8 @@ async def _get_token_claims(
         logging.debug(
             f"checking access token for scopes: `user` and `openid` and audience: `{audience}`"
         )
-        token_claims = await access_token(
-            "user", "openid", audience=audience, purpose="access"
-        )(token)
+        g = access_token("user", "openid", audience=audience, purpose="access")
+        token_claims = await g(token)
     except Exception as exc:
         logging.error(exc.detail if hasattr(exc, "detail") else exc, exc_info=True)
         raise HTTPException(
@@ -159,7 +168,9 @@ async def _get_token_claims(
     return token_claims
 
 
-async def _get_token(token, request):
+async def _get_token(
+    token: Union[HTTPAuthorizationCredentials, str], request: Optional[Request]
+):
     """
     Retrieves the token from the request's Bearer header or if there's no request, returns token
 

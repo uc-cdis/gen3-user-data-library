@@ -5,12 +5,12 @@ from tests.routes.conftest import BaseTestRouter
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import _get_token
-from gen3userdatalibrary.main import root_router
+from gen3userdatalibrary.main import route_aggregator
 
 
 @pytest.mark.asyncio
 class TestAuthRouter(BaseTestRouter):
-    router = root_router
+    router = route_aggregator
 
     @pytest.mark.parametrize(
         "endpoint",
@@ -23,18 +23,15 @@ class TestAuthRouter(BaseTestRouter):
             "/_status/",
         ],
     )
-    async def test_debug_skip_auth_gets(self, monkeypatch, client, endpoint):
+    async def test_debug_skip_auth_gets(self, monkeypatch, endpoint, client):
         """
         Test that DEBUG_SKIP_AUTH configuration allows access to endpoints without auth
         """
+        headers = {"Authorization": "Bearer ofa.valid.token"}
         previous_config = config.DEBUG_SKIP_AUTH
-
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", True)
-
         response = await client.get(endpoint)
-
         assert str(response.status_code).startswith("20")
-
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("token_param", [None, "something"])
