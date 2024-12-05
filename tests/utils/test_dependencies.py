@@ -19,7 +19,6 @@ from tests.data.example_lists import (
     PATCH_BODY,
     VALID_LIST_B,
     VALID_LIST_C,
-    VALID_LIST_D,
     REPLACE_LIST_A,
     INVALID_LIST_B,
 )
@@ -195,10 +194,11 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_max_lists_against_two_different_users(
-        self, get_token_claims, arborist, user_list, client
+        self, get_token_claims, arborist, user_list, client, monkeypatch
     ):
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        config.MAX_LISTS = 1
+        previous_config = config.MAX_LISTS
+        monkeypatch.setattr(config, "MAX_LISTS", 1)
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1"}
         resp1 = await create_basic_list(
@@ -207,10 +207,10 @@ class TestConfigRouter(BaseTestRouter):
         resp2 = await client.put(
             "/lists", headers=headers, json={"lists": [VALID_LIST_C]}
         )
-        assert resp2.status_code == 507
+        assert resp2.status_code == 422
         resp3 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
         assert resp3.status_code == 409
-        config.MAX_LISTS = 12
+        monkeypatch.setattr(config, "MAX_LISTS", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
@@ -249,23 +249,42 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_max_lists_dependency_success(
-        self, get_token_claims, arborist, user_list, client, endpoint
+        self,
+        get_token_claims,
+        arborist,
+        user_list,
+        app_client_pair,
+        endpoint,
+        monkeypatch,
     ):
+        previous_max_lists_config = config.MAX_LISTS
+        monkeypatch.setattr(config, "MAX_LISTS", 1)
+        previous_skip_auth_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+
+        app, test_client = app_client_pair
+        app.state.arborist_client = AsyncMock()
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        config.MAX_LISTS = 12
         arborist.auth_request.return_value = True
-        resp1 = await create_basic_list(
-            arborist, get_token_claims, client, user_list, headers
-        )
-        resp2 = await client.put(
+        arborist.create_user_if_not_exist.return_value = True
+        get_token_claims.return_value = {"sub": "1"}
+
+        resp2 = await test_client.put(
             "/lists", headers=headers, json={"lists": [VALID_LIST_C]}
         )
         assert resp2.status_code == 201
-        user_list["items"] = VALID_LIST_C["items"]
-        resp3 = await client.put(
-            "/lists", headers=headers, json={"lists": [VALID_LIST_D]}
+
+        resp1 = await create_basic_list(
+            arborist, get_token_claims, test_client, user_list, headers, "2"
+        )
+        get_token_claims.return_value = {"sub": "2"}
+        test_list = {"name": user_list["name"], "items": VALID_LIST_C["items"]}
+        resp3 = await test_client.put(
+            "/lists", headers=headers, json={"lists": [test_list]}
         )
         assert resp3.status_code == 201
+        monkeypatch.setattr(config, "MAX_LISTS", previous_max_lists_config)
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_skip_auth_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
@@ -280,30 +299,35 @@ class TestConfigRouter(BaseTestRouter):
         endpoint,
         monkeypatch,
     ):
-        app, client = app_client_pair
+        app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
 
-        previous_config = config.DEBUG_SKIP_AUTH
+        previous_skip_auth_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        config.MAX_LISTS = 1
+        previous_max_lists_config = config.MAX_LISTS
+        monkeypatch.setattr(config, "MAX_LISTS", 1)
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1"}
         resp1 = await create_basic_list(
-            arborist, get_token_claims, client, user_list, headers
+            arborist, get_token_claims, test_client, user_list, headers
         )
-        resp2 = await client.put(
+        resp2 = await test_client.put(
             "/lists", headers=headers, json={"lists": [VALID_LIST_B]}
         )
-        assert resp1.status_code == 201 and resp2.status_code == 507
+        assert resp1.status_code == 201 and resp2.status_code == 422
+        assert resp2.json()["detail"] == "Max number of lists reached!"
         get_token_claims.return_value = {"sub": "2"}
-        resp3 = await client.put("lists", headers=headers, json={"lists": [user_list]})
-        resp4 = await client.put(
+        resp3 = await test_client.put(
+            "lists", headers=headers, json={"lists": [user_list]}
+        )
+        resp4 = await test_client.put(
             "/lists", headers=headers, json={"lists": [VALID_LIST_C]}
         )
-        assert resp3.status_code == 201 and resp4.status_code == 507
-        config.MAX_LISTS = 12
-        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
+        assert resp3.status_code == 201 and resp4.status_code == 422
+        assert resp4.json()["detail"] == "Max number of lists reached!"
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_skip_auth_config)
+        monkeypatch.setattr(config, "MAX_LISTS", previous_max_lists_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
@@ -327,15 +351,15 @@ class TestConfigRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1"}
-        response = await client.put(
+        response1 = await client.put(
             "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
         )
-        response = await client.put(
+        response2 = await client.put(
             "/lists",
             headers=headers,
             json={"lists": [REPLACE_LIST_A, VALID_LIST_B, VALID_LIST_C]},
         )
-        assert response.status_code == 201
+        assert response2.status_code == 201
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")

@@ -29,7 +29,6 @@ from gen3userdatalibrary.routes.dependencies import (
 )
 from gen3userdatalibrary.utils.metrics import MetricModel, update_user_list_metric
 
-
 lists_router = APIRouter()
 
 
@@ -156,6 +155,7 @@ async def upsert_user_lists(
     user_id = await get_user_id(request=request)
 
     if not config.DEBUG_SKIP_AUTH:
+        # todo: should this be in dependencies?
         # make sure the user exists in Arborist
         # IMPORTANT: This is using the user's unique subject ID
         try:
@@ -309,30 +309,30 @@ async def sort_persist_and_get_changed_lists(
     )
 
     updated_lists = []
-    await persist_lists_to_update(
-        data_access_layer, lists_to_update, unique_list_identifiers, updated_lists
-    )
+    for list_to_update in lists_to_update:
+        await persist_lists_to_update(
+            data_access_layer, list_to_update, unique_list_identifiers, updated_lists
+        )
     for list_to_create in lists_to_create:
         await data_access_layer.persist_user_list(user_id, list_to_create)
     response_user_lists = {}
     for user_list in lists_to_create + updated_lists:
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
-    return response_user_lists
+    return response_user_lists, metrics_info
 
 
 async def persist_lists_to_update(
-    data_access_layer, lists_to_update, unique_list_identifiers, updated_lists
+    data_access_layer, list_to_update, unique_list_identifiers, updated_lists
 ):
-    for list_to_update in lists_to_update:
-        identifier = (list_to_update.creator, list_to_update.name)
-        new_version_of_list = unique_list_identifiers.get(identifier, None)
-        assert new_version_of_list is not None
-        changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
-        updated_list = await data_access_layer.update_and_persist_list(
-            list_to_update.id, changes_to_make
-        )
-        updated_lists.append(updated_list)
+    identifier = (list_to_update.creator, list_to_update.name)
+    new_version_of_list = unique_list_identifiers.get(identifier, None)
+    assert new_version_of_list is not None
+    changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
+    updated_list = await data_access_layer.update_and_persist_list(
+        list_to_update.id, changes_to_make
+    )
+    updated_lists.append(updated_list)
 
 
 # endregion

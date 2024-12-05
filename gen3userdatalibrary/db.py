@@ -186,7 +186,7 @@ class DataAccessLayer:
     async def get_list_count(self, creator_id=None, list_id=None):
         """
         Args:
-            creator_id (int): matching name of whoever made the list
+            creator_id (str): matching name of whoever made the list
             list_id (UUID): unique ID of the list.
 
         Returns:
@@ -210,7 +210,7 @@ class DataAccessLayer:
         Retrieves the number of lists and total items (keys) associated with a creator / list_id.
 
         Args:
-            creator_id (int): The ID of the creator.
+            creator_id (str): The ID of the creator.
             list_id (UUID): unique ID of the list.
 
         Returns:
