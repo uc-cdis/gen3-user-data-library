@@ -65,7 +65,6 @@ async def authorize_request(
             f"Unable to determine user_id. Defaulting to `Unknown`. Exc: {exc}"
         )
         user_id = "Unknown"
-
     is_authorized = await arborist.auth_request(
         token.credentials,
         service="gen3_user_data_library",
@@ -249,16 +248,10 @@ async def create_user_policy(user_id, username, arborist_client):
         arborist_client: client for sending requests to arborist.
     """
     resource = get_lists_endpoint(user_id)
-    is_resource_assigned_to_user = False
 
-    try:
-        resources = await arborist_client.list_resources_for_user(username)
-        logging.debug(f"Got resources: {resources}")
-        is_resource_assigned_to_user = resource in set(resources)
-    except Exception as e:
-        logging.error(
-            f"Something went wrong when checking whether the user has the appropriate resource: {str(e)}"
-        )
+    resources = await arborist_client.list_resources_for_user(username)
+    logging.debug(f"Got resources: {resources}")
+    is_resource_assigned_to_user = resource in set(resources)
 
     if is_resource_assigned_to_user:
         return
@@ -267,23 +260,16 @@ async def create_user_policy(user_id, username, arborist_client):
     logging.info(f"Policy does not exist for user_id {user_id}")
     role_ids = ["create", "read", "update", "delete"]
 
-    try:
-        logging.debug("Attempting to create arborist resource: {}".format(resource))
-        await arborist_client.update_resource(
-            path='/',
-            resource_json={
-                "name": resource,
-                "description": f"Library for user_id {user_id}",
-            },
-            merge=True,
-            create_parents=True
-        )
-    except ArboristError as e:
-        logging.error(e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal error creating a user resource in arborist",
-        )
+    logging.debug("Attempting to create arborist resource: {}".format(resource))
+    await arborist_client.update_resource(
+        path='/',
+        resource_json={
+            "name": resource,
+            "description": f"Library for user_id {user_id}",
+        },
+        merge=True,
+        create_parents=True
+    )
 
     policy_json = {
         "id": user_id,
@@ -294,26 +280,12 @@ async def create_user_policy(user_id, username, arborist_client):
 
     logging.debug(f"Policy {user_id} does not exist, attempting to create....")
 
-    try:
-        await arborist_client.update_policy(
-            policy_id=user_id,
-            policy_json=policy_json,
-            create_if_not_exist=True
-        )
-    except ArboristError as ae:
-        logging.error(f"Error creating policy in arborist: {str(ae)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal error creating a policy in arborist",
-        )
+    await arborist_client.update_policy(
+        policy_id=user_id,
+        policy_json=policy_json,
+        create_if_not_exist=True
+    )
 
     logging.debug(f"Granting {user_id} to {username}....")
 
-    try:
-        await arborist_client.grant_user_policy(username=username, policy_id=user_id)
-    except ArboristError as ae:
-        logging.error(f"Error granting policy in arborist: {str(ae)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal error granting policy in arborist",
-        )
+    await arborist_client.grant_user_policy(username=username, policy_id=user_id)
