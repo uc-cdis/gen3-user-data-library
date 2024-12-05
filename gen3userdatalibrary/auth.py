@@ -252,9 +252,9 @@ async def create_user_policy(user_id, username, arborist_client):
     is_resource_assigned_to_user = False
 
     try:
-        resources = set(arborist_client.list_resources_for_user(username))
+        resources = await arborist_client.list_resources_for_user(username)
         logging.debug(f"Got resources: {resources}")
-        is_resource_assigned_to_user = resource in resources
+        is_resource_assigned_to_user = resource in set(resources)
     except Exception as e:
         logging.error(
             f"Something went wrong when checking whether the user has the appropriate resource: {str(e)}"
@@ -263,13 +263,13 @@ async def create_user_policy(user_id, username, arborist_client):
     if is_resource_assigned_to_user:
         return
 
-    arborist_client.create_user_if_not_exist(username)
+    await arborist_client.create_user_if_not_exist(username)
     logging.info(f"Policy does not exist for user_id {user_id}")
     role_ids = ["create", "read", "update", "delete"]
 
     try:
         logging.debug("Attempting to create arborist resource: {}".format(resource))
-        arborist_client.update_resource(
+        await arborist_client.update_resource(
             path='/',
             resource_json={
                 "name": resource,
@@ -295,7 +295,7 @@ async def create_user_policy(user_id, username, arborist_client):
     logging.debug(f"Policy {user_id} does not exist, attempting to create....")
 
     try:
-        arborist_client.update_policy(
+        await arborist_client.update_policy(
             policy_id=user_id,
             policy_json=policy_json,
             create_if_not_exist=True
@@ -310,7 +310,7 @@ async def create_user_policy(user_id, username, arborist_client):
     logging.debug(f"Granting {user_id} to {username}....")
 
     try:
-        arborist_client.grant_user_policy(username=username, policy_id=user_id)
+        await arborist_client.grant_user_policy(username=username, policy_id=user_id)
     except ArboristError as ae:
         logging.error(f"Error granting policy in arborist: {str(ae)}")
         raise HTTPException(
