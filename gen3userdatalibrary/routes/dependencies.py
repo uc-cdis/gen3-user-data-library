@@ -1,60 +1,19 @@
 import json
 
-from fastapi import Depends, HTTPException, Request
-from gen3authz.client.arborist.errors import ArboristError
+from fastapi import HTTPException, Request, Depends
 from jsonschema.validators import validate
 from pydantic import ValidationError
 from starlette import status
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import (
-    authorize_request,
-    get_user_data_library_endpoint,
     get_user_id,
+    authorize_request,
 )
-from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from gen3userdatalibrary.routes.context_configurations import ENDPOINT_TO_CONTEXT
 from gen3userdatalibrary.utils.modeling import try_conforming_list
-
-
-async def ensure_user_exists(request: Request):
-
-    if config.DEBUG_SKIP_AUTH:
-        return True
-
-    policy_id = await get_user_id(request=request)
-    try:
-        user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
-    except Exception as e:
-        logging.error(
-            f"Something went wrong when checking whether the policy exists: {str(e)}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed checking policy!",
-        )
-    if user_exists:
-        return False
-    role_ids = ("create", "read", "update", "delete")
-    resource_paths = get_user_data_library_endpoint(policy_id)
-    policy_json = {
-        "id": policy_id,
-        "description": "policy created by requestor",
-        "role_ids": role_ids,
-        "resource_paths": resource_paths,
-    }
-    logging.debug(f"Policy {policy_id} does not exist, attempting to create....")
-    try:
-        outcome = await request.app.state.arborist_client.create_policy(
-            policy_json=policy_json
-        )
-    except ArboristError as ae:
-        logging.error(f"Error creating policy in arborist: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal error creating a policy in arborist",
-        )
 
 
 def validate_user_list_item(item_contents: dict):
@@ -90,7 +49,7 @@ def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
 
 
 async def parse_and_auth_request(
-    request: Request, created_user=Depends(ensure_user_exists)
+    request: Request
 ):
     user_id = await get_user_id(request=request)
     path_params = request.scope["path_params"]
