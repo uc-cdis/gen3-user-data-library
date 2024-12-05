@@ -1,6 +1,6 @@
 import json
 from _testcapi import raise_exception
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union, Callable, Optional
 
 from fastapi import Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
@@ -197,15 +197,7 @@ async def validate_lists(
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
         dal, unique_list_identifiers, new_lists_as_orm
     )
-    for item_to_create in lists_to_create:
-        if len(item_to_create.items) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"No items provided for list for user: {user_id}",
-            )
-        ensure_items_less_than_max(len(item_to_create.items))
-    # todo: check this v
-    # ensure_items_exist_and_less_than_max(lists_to_create, user_id)
+    ensure_items_exist_and_less_than_max(lists_to_create, user_id)
     await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
 
 
@@ -246,9 +238,8 @@ def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
     Returns:
         The resource from endpoint_to_context based on the kind of endpoint
     """
-    endpoint_type = endpoint_context.get("type", None)
-    get_resource = endpoint_context.get("resource", None)
-    # todo: check this
+    endpoint_type: Optional[str, None] = endpoint_context.get("type", None)
+    get_resource: Optional[Callable, None] = endpoint_context.get("resource", None)
     if endpoint_type == "all":
         resource = get_resource(user_id)
     elif endpoint_type == "id":
@@ -299,14 +290,15 @@ def ensure_any_items_match_schema(endpoint_context, basic_user_lists):
         basic_user_lists (Dict["lists": List[ItemToUpdateModel as Dict]]):
 
     """
-    item_dict = endpoint_context.get("items", lambda _: [])(basic_user_lists)
+    item_dict: Union[List, Dict] = endpoint_context.get("items", lambda _: [])(
+        basic_user_lists
+    )
     body_type = type(item_dict)
     if body_type is list:
         for item_set in item_dict:
             for item_contents in item_set.values():
                 validate_user_list_item(item_contents)
-    else:  # is (or should be) dict
-        # todo: check this
+    elif body_type is dict:
         for item_contents in item_dict.values():
             validate_user_list_item(item_contents)
 
