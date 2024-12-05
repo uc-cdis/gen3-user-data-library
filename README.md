@@ -240,3 +240,66 @@ you can use `debug_run.py` in the root folder as an entrypoint.
 > NOTE: There are some setup steps that the bash scripts do that you'll need to ensure
 > are done. A key one is ensuring that the `PROMETHEUS_MULTIPROC_DIR` env var is set (default
 > is `/var/tmp/prometheus_metrics`). And make sure the database exists and is migrated.
+
+## Metrics
+
+Metrics can be exposed at a `/metrics` endpoint compatible with Prometheus scraping and visualize in Prometheus or Graphana, etc.
+
+The metrics are defined in `gen3userdatalibrary/metrics.py` and in 1.0.0 are as follows:
+
+* **gen3_user_data_library_user_lists**: Gen3 User Data Library User Lists. Does not count the items WITHIN the list, just the lists themselves.
+* **gen3_user_data_library_user_items**: Gen3 User Data Library User Items (within Lists). This counts the amount of items within lists, rather than the lists themselves.
+* **gen3_user_data_library_api_requests_total**:  API requests for modifying Gen3 User Data Library User Lists. This includes all CRUD actions.
+
+You can [run Prometheus locally](https://github.com/prometheus/prometheus) if you want to test or visualize these.
+
+### tl;dr
+
+Run the service locally using `poetry run bash run.sh`.
+
+Create a [`prometheus.yml` config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration), such as: `~/Documents/prometheus/conf/prometheus.yml`.
+
+Put this in:
+
+```yaml
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'gen3_user_data_library'
+
+    # Override the global default and scrape targets from this job every 5 seconds.
+    scrape_interval: 5s
+
+    static_configs:
+      # NOTE: The `host.docker.internal` below is so docker on MacOS can properly find the locally running service
+      - targets: ['host.docker.internal:8000']
+```
+
+> Note: Tested the above config on MacOS, with Linux you can maybe adjust these commands to actually expose the local
+> network to the running prometheus container.
+
+Then run this:
+
+```
+docker run --name prometheus -v ~/Documents/prometheus/conf/prometheus.yml:/etc/prometheus/prometheus.yml -d -p 127.0.0.1:9090:9090 prom/prometheus
+```
+
+Then go to [http://127.0.0.1:9090](http://127.0.0.1:9090).
+
+And some recommended PromQL queries:
+
+```promql
+sum by (user_id) (gen3_user_data_library_user_lists)
+```
+
+```promql
+sum by (user_id) (gen3_user_data_library_user_items)
+```
+
+```promql
+sum by (status_code) (gen3_user_data_library_api_requests_total)
+```

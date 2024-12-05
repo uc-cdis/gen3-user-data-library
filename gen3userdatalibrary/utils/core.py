@@ -8,6 +8,28 @@ from sqlalchemy import inspect
 identity = lambda P: P
 
 
+def log_user_data_library_api_call(logging, debug_log: str = None, **kwargs):
+    """
+    Logs a INFO level response from the Gen3 User Data Library in a standard format with the
+    provided kwargs as CSV.
+
+    Args:
+        logging (Logger): the logger to use, must be provided for the context of the file that is actually logging.
+            if we instantiated here, the log would look like it's coming from the utils file directly.
+        debug_log (str): Optional debug log message
+        **kwargs: Additional keyword arguments to include in the log message
+    """
+    log_message = f"Gen3 User Data Library API Call. "
+    for kwarg, value in kwargs.items():
+        log_message += f"{kwarg}={value}, "
+    log_message = log_message.rstrip(", ")
+
+    logging.info(log_message)
+
+    if debug_log:
+        logging.debug(f"{debug_log}")
+
+
 def build_switch_case(cases: dict[Hashable, Any], default):
     return lambda instance: cases.get(instance, default)
 

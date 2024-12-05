@@ -99,6 +99,45 @@ async def ensure_list_exists_and_items_less_than_max(basic_list_info, dal, list_
     ensure_items_less_than_max(len(basic_list_info["items"]), len(list_to_append.items))
 
 
+async def ensure_user_exists(request: Request):
+
+    if config.DEBUG_SKIP_AUTH:
+        return True
+
+    policy_id = await get_user_id(request=request)
+    try:
+        user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
+    except Exception as e:
+        logging.error(
+            f"Something went wrong when checking whether the policy exists: {str(e)}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed checking policy!",
+        )
+    if user_exists:
+        return False
+    role_ids = ("create", "read", "update", "delete")
+    resource_paths = get_user_data_library_endpoint(policy_id)
+    policy_json = {
+        "id": policy_id,
+        "description": "policy created by requestor",
+        "role_ids": role_ids,
+        "resource_paths": resource_paths,
+    }
+    logging.debug(f"Policy {policy_id} does not exist, attempting to create....")
+    try:
+        outcome = await request.app.state.arborist_client.create_policy(
+            policy_json=policy_json
+        )
+    except ArboristError as exc:
+        logging.error(f"Error creating policy in arborist: {str(exc)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal error creating a policy in arborist",
+        )
+
+
 # region User Lists
 
 
@@ -158,7 +197,15 @@ async def validate_lists(
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
         dal, unique_list_identifiers, new_lists_as_orm
     )
-    ensure_items_exist_and_less_than_max(lists_to_create, user_id)
+    for item_to_create in lists_to_create:
+        if len(item_to_create.items) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No items provided for list for user: {user_id}",
+            )
+        ensure_items_less_than_max(len(item_to_create.items))
+    # todo: check this v
+    # ensure_items_exist_and_less_than_max(lists_to_create, user_id)
     await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
 
 
@@ -184,6 +231,84 @@ def validate_user_list_item(item_contents: dict):
             status_code=400, detail="No matching schema identified for items, aborting!"
         )
     validate(instance=item_contents, schema=matching_schema)
+
+
+def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
+    """
+    Before any endpoint is hit, we should verify that the requester has access to the endpoint.
+    This middleware function handles that.
+
+    Args:
+        endpoint_context (Dict[str, Any]): information about an endpoint from the ENDPOINT_TO_CONTEXT data structure
+        user_id (str): creator id
+        path_params (dict): any params from the request scope
+
+    Returns:
+        The resource from endpoint_to_context based on the kind of endpoint
+    """
+    endpoint_type = endpoint_context.get("type", None)
+    get_resource = endpoint_context.get("resource", None)
+    # todo: check this
+    if endpoint_type == "all":
+        resource = get_resource(user_id)
+    elif endpoint_type == "id":
+        list_id = path_params["list_id"]
+        resource = get_resource(user_id, list_id)
+    else:  # None
+        resource = get_resource
+    return resource
+
+
+async def parse_and_auth_request(
+    request: Request, created_user=Depends(ensure_user_exists)
+):
+    """
+    Authorize the request with arborist to ensure the request can be made
+
+    Args:
+        request (Request): fastapi request entity
+        created_user (Union[bool, None]): not used, just ensures user exists first before continuing
+
+    Raises:
+        HTTPException based on authorize_request outcome
+    """
+    user_id = await get_user_id(request=request)
+    path_params = request.scope["path_params"]
+    route_function = request.scope["route"].name
+
+    if route_function not in ENDPOINT_TO_CONTEXT:
+        raise Exception(f"Undefined route '{route_function}', unable to auth")
+
+    endpoint_context = ENDPOINT_TO_CONTEXT[route_function]
+    resource = get_resource_from_endpoint_context(
+        endpoint_context, user_id, path_params
+    )
+    logging.debug(f"Authorizing user: {user_id}")
+    await authorize_request(
+        request=request,
+        authz_access_method=endpoint_context["method"],
+        authz_resources=[resource],
+    )
+
+
+def ensure_any_items_match_schema(endpoint_context, basic_user_lists):
+    """
+    Ensure lists from the request validate against schema config
+    Args:
+        endpoint_context (Dict[str, Any]): endpoint specific information for validation purposes
+        basic_user_lists (Dict["lists": List[ItemToUpdateModel as Dict]]):
+
+    """
+    item_dict = endpoint_context.get("items", lambda _: [])(basic_user_lists)
+    body_type = type(item_dict)
+    if body_type is list:
+        for item_set in item_dict:
+            for item_contents in item_set.values():
+                validate_user_list_item(item_contents)
+    else:  # is (or should be) dict
+        # todo: check this
+        for item_contents in item_dict.values():
+            validate_user_list_item(item_contents)
 
 
 async def validate_items(
@@ -213,7 +338,6 @@ async def validate_items(
             detail="Problem trying to validate body. Is your body formatted "
             "correctly?",
         )
-
     validation_handle_mapping = build_switch_case(
         {
             "upsert_user_lists": lambda: validate_upsert_items(
@@ -232,27 +356,6 @@ async def validate_items(
     )
     item_validator_for_endpoint = validation_handle_mapping(route_function)
     await item_validator_for_endpoint()
-
-
-def ensure_any_items_match_schema(endpoint_context, basic_user_lists):
-    """
-    Ensure lists from the request validate against schema config
-    Args:
-        endpoint_context (Dict[str, Any]): endpoint specific information for validation purposes
-        basic_user_lists (Dict["lists": List[ItemToUpdateModel as Dict]]):
-
-    Returns:
-
-    """
-    item_dict = endpoint_context.get("items", lambda _: [])(basic_user_lists)
-    body_type = type(item_dict)
-    if body_type is list:
-        for item_set in item_dict:
-            for item_contents in item_set.values():
-                validate_user_list_item(item_contents)
-    else:  # is (or should be) dict
-        for item_contents in item_dict.values():
-            validate_user_list_item(item_contents)
 
 
 def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
@@ -345,64 +448,6 @@ async def ensure_user_exists(request: Request) -> Union[bool, None]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal error creating a policy in arborist",
         )
-
-
-async def parse_and_auth_request(
-    request: Request, created_user=Depends(ensure_user_exists)
-):
-    """
-    Authorize the request with arborist to ensure the request can be made
-
-    Args:
-        request (Request): fastapi request entity
-        created_user (Union[bool, None]): not used, just ensures user exists first before continuing
-
-    Raises:
-        HTTPException based on authorize_request outcome
-    """
-    user_id = await get_user_id(request=request)
-    path_params = request.scope["path_params"]
-    route_function = request.scope["route"].name
-    endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
-    resource = get_resource_from_endpoint_context(
-        endpoint_context, user_id, path_params
-    )
-    logging.debug(f"Authorizing user: {user_id}")
-    await authorize_request(
-        request=request,
-        authz_access_method=endpoint_context["method"],
-        authz_resources=[resource],
-    )
-
-
-# endregion
-
-# region Helpers
-
-
-def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
-    """
-    Before any endpoint is hit, we should verify that the requester has access to the endpoint.
-    This middleware function handles that.
-
-    Args:
-        endpoint_context (Dict[str, Any]): information about an endpoint from the ENDPOINT_TO_CONTEXT data structure
-        user_id (str): creator id
-        path_params (dict): any params from the request scope
-
-    Returns:
-        The resource from endpoint_to_context based on the kind of endpoint
-    """
-    endpoint_type = endpoint_context.get("type", None)
-    get_resource = endpoint_context.get("resource", None)
-    if endpoint_type == "all":
-        resource = get_resource(user_id)
-    elif endpoint_type == "id":
-        list_id = path_params["list_id"]
-        resource = get_resource(user_id, list_id)
-    else:  # None
-        resource = get_resource
-    return resource
 
 
 # endregion

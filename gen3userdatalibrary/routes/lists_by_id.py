@@ -14,6 +14,7 @@ from gen3userdatalibrary.routes.dependencies import (
     parse_and_auth_request,
     validate_items,
 )
+from gen3userdatalibrary.utils.metrics import update_user_list_metric
 
 only_auth_deps = [Depends(parse_and_auth_request)]
 auth_and_items_deps = [Depends(parse_and_auth_request), Depends(validate_items)]
@@ -70,6 +71,7 @@ async def get_list_by_id(
     else:
         data = jsonable_encoder(result)
         response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
+
     return response
 
 
@@ -123,16 +125,24 @@ async def update_list_by_id(
     existing_list = await data_access_layer.get_list_by_id(list_id)
     if existing_list is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            content=f"No UserList found with id {list_id}",
         )
     user_id = await get_user_id(request=request)
-    # todo: check this await
-    new_list_as_orm = create_user_list_instance(user_id, info_to_update_with)
-    change_result = await data_access_layer.change_list_contents(
+    new_list_as_orm = await create_user_list_instance(user_id, info_to_update_with)
+
+    replace_result, metrics_info = await data_access_layer.change_list_contents(
         new_list_as_orm, existing_list
     )
-    data = jsonable_encoder(change_result)
-    return JSONResponse(status_code=status.HTTP_200_OK, content=data)
+    data = jsonable_encoder(replace_result)
+    response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
+
+    update_user_list_metric(
+        fastapi_app=request.app,
+        user_id=user_id,
+        **metrics_info.model_dump(),
+    )
+    return response
 
 
 @lists_by_id_router.patch(
@@ -182,6 +192,8 @@ async def append_items_to_list(
     Returns:
          JSONResponse: json response with info about the request outcome
     """
+    user_id = await get_user_id(request=request)
+
     if not item_list:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Nothing to append!"
@@ -193,9 +205,17 @@ async def append_items_to_list(
             status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist"
         )
 
-    append_result = await data_access_layer.add_items_to_list(list_id, item_list)
+    append_result, metrics_info = await data_access_layer.add_items_to_list(
+        list_id, item_list
+    )
     data = jsonable_encoder(append_result)
     response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
+
+    update_user_list_metric(
+        fastapi_app=request.app,
+        user_id=user_id,
+        **metrics_info.model_dump(),
+    )
     return response
 
 
@@ -239,9 +259,18 @@ async def delete_list_by_id(
     Returns:
          JSONResponse: json response with info about the request outcome
     """
+    user_id = await get_user_id(request=request)
+
     get_result = await data_access_layer.get_list_by_id(list_id)
     if get_result is None:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
-    delete_result = await data_access_layer.delete_list(list_id)
+
+    metrics_info = await data_access_layer.delete_list(list_id)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    update_user_list_metric(
+        fastapi_app=request.app,
+        user_id=user_id,
+        **metrics_info.model_dump(),
+    )
     return response

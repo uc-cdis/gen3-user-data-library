@@ -42,6 +42,7 @@ from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_list_by_id_endpoint
 from gen3userdatalibrary.models.helpers import derive_changes_to_make
 from gen3userdatalibrary.models.user_list import UserList
+from gen3userdatalibrary.utils.metrics import MetricModel
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
@@ -67,11 +68,11 @@ class DataAccessLayer:
             creator_id: matching name of whoever made the list
             lists_to_add: number of lists to add to existing user's list set
         """
-        lists_so_far = await self.get_list_count_for_creator(creator_id)
+        lists_so_far = await self.get_list_count(creator_id)
         total = lists_so_far + lists_to_add
         if total > config.MAX_LISTS:
             raise HTTPException(
-                status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Max number of lists reached!",
             )
 
@@ -112,6 +113,26 @@ class DataAccessLayer:
         user_list = result.scalar_one_or_none()
         return user_list
 
+    async def get_list(
+        self, identifier: Union[UUID, Tuple[str, str]], by: str = "id"
+    ) -> Optional[UserList]:
+        """
+        Get a list by either unique id or unique (creator, name) combo
+
+        Args:
+            identifier: this can either be the list UUID, or a tuple in the form (creator id, list name)
+            by: how do you want to identify the list? currently only checks for "name"
+        """
+        if by == "name":  # assume identifier is (creator, name)
+            query = select(UserList).filter(
+                tuple_(UserList.creator, UserList.name).in_([identifier])
+            )
+        else:  # by id
+            query = select(UserList).where(UserList.id == identifier)
+        result = await self.db_session.execute(query)
+        user_list = result.scalar_one_or_none()
+        return user_list
+
     async def get_list_by_id(self, identifier: UUID):
         query = select(UserList).where(UserList.id == identifier)
         return await self.get_list_or_none(query)
@@ -130,7 +151,6 @@ class DataAccessLayer:
             list_id: UUID of the list
         """
         existing_record = await self.get_list_by_id(list_id)
-        x = await self.get_all_lists("0")
         if existing_record is None:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record
@@ -163,23 +183,55 @@ class DataAccessLayer:
         """
         await self.db_session.execute(text("SELECT 1;"))
 
-    async def get_list_count_for_creator(self, creator_id):
+    async def get_list_count(self, creator_id=None, list_id=None):
         """
         Args:
-            creator_id: matching name of whoever made the list
+            creator_id (int): matching name of whoever made the list
+            list_id (UUID): unique ID of the list.
 
         Returns:
             the number of lists associated with that creator
         """
-        query = (
-            select(func.count())
-            .select_from(UserList)
-            .where(UserList.creator == creator_id)
-        )
+        query = select(func.count()).select_from(UserList)
+
+        if creator_id:
+            query = query.where(UserList.creator == creator_id)
+
+        if list_id:
+            query = query.where(UserList.id == list_id)
+
         result = await self.db_session.execute(query)
         count = result.scalar()
         count = count or 0
         return count
+
+    async def get_list_and_item_count(self, creator_id=None, list_id=None) -> tuple:
+        """
+        Retrieves the number of lists and total items (keys) associated with a creator / list_id.
+
+        Args:
+            creator_id (int): The ID of the creator.
+            list_id (UUID): unique ID of the list.
+
+        Returns:
+            tuple: A tuple containing two values:
+                1. int: The number of lists associated with the creator.
+                2. int: The total count of keys in JSON objects across all lists.
+        """
+        # Get the list count
+        list_count = await self.get_list_count(creator_id=creator_id, list_id=list_id)
+
+        # count items
+        user_lists = await self.get_user_lists_by_id(
+            creator_id=creator_id, list_id=list_id
+        )
+
+        item_count = 0
+        for user_list in user_lists:
+            if user_list:
+                item_count += len(user_list.items)
+
+        return list_count, item_count
 
     async def delete_all_lists(self, sub_id: str):
         """
@@ -188,11 +240,11 @@ class DataAccessLayer:
         Args:
             sub_id: id of creator
         """
-        count = await self.get_list_count_for_creator(sub_id)
+        list_count, item_count = await self.get_list_and_item_count(creator_id=sub_id)
         query = delete(UserList).where(UserList.creator == sub_id)
         query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(query)
-        return count
+        return MetricModel(lists_deleted=list_count, items_deleted=item_count)
 
     async def delete_list(self, list_id: UUID):
         """
@@ -201,16 +253,10 @@ class DataAccessLayer:
         Args:
             list_id: id of list
         """
-        count_query = (
-            select(func.count()).select_from(UserList).where(UserList.id == list_id)
-        )
-        count_result = await self.db_session.execute(count_query)
-        count = count_result.scalar()
+        list_count, item_count = await self.get_list_and_item_count(list_id=list_id)
         del_query = delete(UserList).where(UserList.id == list_id)
-        count_query.execution_options(synchronize_session="fetch")
         await self.db_session.execute(del_query)
-        # await self.db_session.commit()
-        return count
+        return MetricModel(lists_deleted=list_count, items_deleted=item_count)
 
     async def add_items_to_list(self, list_id: UUID, item_data: dict):
         """
@@ -221,9 +267,22 @@ class DataAccessLayer:
             list_id: id of list
             item_data: dict of items to add to item component of list
         """
+        _, prev_item_count = await self.get_list_and_item_count(list_id=list_id)
+        new_items_count = len(item_data.keys())
+        amount_of_new_items = new_items_count - prev_item_count
+
+        items_added = 0
+        items_deleted = 0
+        if amount_of_new_items > 0:
+            items_added = amount_of_new_items
+        elif amount_of_new_items < 0:
+            items_deleted = abs(amount_of_new_items)
+
         user_list = await self.get_existing_list_or_throw(list_id)
         user_list.items.update(item_data)
-        return user_list
+        return user_list, MetricModel(
+            items_added=items_added, items_deleted=items_deleted
+        )
 
     async def grab_all_lists_that_exist(
         self,
@@ -262,11 +321,26 @@ class DataAccessLayer:
         """
         Change the contents of a list directly, including replaces the contents of `items`
         """
+        _, prev_item_count = await self.get_list_and_item_count(
+            list_id=existing_user_list.id
+        )
+        new_items_count = len(new_user_list.items.keys())
+        amount_of_new_items = new_items_count - prev_item_count
+
+        items_added = 0
+        items_deleted = 0
+        if amount_of_new_items > 0:
+            items_added = amount_of_new_items
+        elif amount_of_new_items < 0:
+            items_deleted = abs(amount_of_new_items)
+
         changes_to_make = derive_changes_to_make(existing_user_list, new_user_list)
         updated_list = await self.update_and_persist_list(
             existing_user_list.id, changes_to_make
         )
-        return updated_list
+        return updated_list, MetricModel(
+            items_added=items_added, items_deleted=items_deleted
+        )
 
 
 async def get_data_access_layer() -> AsyncIterable[DataAccessLayer]:

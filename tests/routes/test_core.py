@@ -1,5 +1,5 @@
 """
-For any complex tests that seek o test multiple ids together
+For any complex tests that seek to test multiple ids together
 """
 
 from unittest.mock import AsyncMock, patch
