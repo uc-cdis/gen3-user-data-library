@@ -9,6 +9,7 @@ the `items_schema.json` file. In doing so, the api will validate that I conforms
 to the schema defined at the type matching C. If you provide a schema with
 the name `"None"` (matching Python's null use case), that schema will be used
 as the default for any schemas who do not have a matching type.
+
 Example:
 
 `items_schema.json`
