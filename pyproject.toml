@@ -27,7 +27,6 @@ cdispyutils = ">=2.3.0"
 httpx = ">=0.23.3"
 pytest-asyncio = ">=0.23.8"
 jsonschema = ">=3.2.0"
-pytest-mock = "^3.14.0"
 
 
 [tool.poetry.group.dev.dependencies]
