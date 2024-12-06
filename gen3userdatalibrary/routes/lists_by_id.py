@@ -126,10 +126,10 @@ async def update_list_by_id(
     if existing_list is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            content=f"No UserList found with id {list_id}",
+            detail=f"No UserList found with id {list_id}",
         )
     user_id = await get_user_id(request=request)
-    new_list_as_orm = await create_user_list_instance(user_id, info_to_update_with)
+    new_list_as_orm = create_user_list_instance(user_id, info_to_update_with)
 
     replace_result, metrics_info = await data_access_layer.change_list_contents(
         new_list_as_orm, existing_list

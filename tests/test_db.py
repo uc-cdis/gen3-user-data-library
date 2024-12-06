@@ -161,7 +161,7 @@ class TestConfigRouter(BaseTestRouter):
             items={"fizz": "buzz"},
         )
         replace_outcome = await dal.change_list_contents(new_list, old_list)
-        get_outcome = await dal.get_list_by_id(replace_outcome.id)
+        get_outcome = await dal.get_list_by_id(replace_outcome[0].id)
         assert get_outcome is not None
 
 

@@ -43,7 +43,6 @@ from gen3userdatalibrary.auth import get_list_by_id_endpoint
 from gen3userdatalibrary.models.helpers import derive_changes_to_make
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.utils.metrics import MetricModel
-from gen3userdatalibrary.utils.modeling import derive_changes_to_make
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
