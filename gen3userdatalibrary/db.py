@@ -260,10 +260,11 @@ class DataAccessLayer:
         Args:
             list_id: id of list
         """
-        list_count, item_count = await self.get_list_and_item_count(list_id=list_id)
+        list_to_delete = await self.get_user_list_by_list_id(list_id)
+        item_count = 0 if list_to_delete is None else len(list_to_delete.items)
         del_query = delete(UserList).where(UserList.id == list_id)
         await self.db_session.execute(del_query)
-        return MetricModel(lists_deleted=list_count, items_deleted=item_count)
+        return MetricModel(lists_deleted=1, items_deleted=item_count)
 
     async def add_items_to_list(self, list_id: UUID, item_data: dict):
         """
@@ -274,7 +275,8 @@ class DataAccessLayer:
             list_id: id of list
             item_data: dict of items to add to item component of list
         """
-        _, prev_item_count = await self.get_list_and_item_count(list_id=list_id)
+        prev_list = await self.get_user_list_by_list_id(list_id)
+        prev_item_count = 0 if prev_list is None else len(prev_list.items)
         new_items_count = len(item_data.keys())
         amount_of_new_items = new_items_count - prev_item_count
 
