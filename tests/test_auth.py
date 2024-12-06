@@ -195,6 +195,67 @@ async def test_create_user_policy_resource_already_assigned(
     mock_arborist_client.update_policy.assert_not_called()
     mock_arborist_client.grant_user_policy.assert_not_called()
 
+@pytest.mark.asyncio
+async def test_create_user_policy_resource_already_assigned(
+    monkeypatch
+):
+    """
+    Test that the function does nothing if the user already has the necessary resource assigned.
+    """
+    mock_arborist_client = AsyncMock()
+    user_id = "test_user"
+    username = "test_username"
+    resource = "/users/test_user/user-data-library/lists"
+
+    mock_arborist_client.list_resources_for_user.return_value.side_effect = ArboristError("Arborist down", 500)
+
+    await create_user_policy(user_id, username, mock_arborist_client)
+
+    mock_arborist_client.create_user_if_not_exist.assert_not_called()
+    mock_arborist_client.update_resource.assert_not_called()
+    mock_arborist_client.update_policy.assert_not_called()
+    mock_arborist_client.grant_user_policy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_user_policy_resource_user_not_found(
+    monkeypatch
+):
+    """
+    Test that the function does nothing if the user already has the necessary resource assigned.
+    """
+    mock_arborist_client = AsyncMock()
+    user_id = "test_user"
+    username = "test_username"
+    resource = "/users/test_user/user-data-library/lists"
+
+    mock_arborist_client.list_resources_for_user.side_effect = ArboristError("User doesn't exist", 404)
+
+    await create_user_policy(user_id, username, mock_arborist_client)
+
+    mock_arborist_client.create_user_if_not_exist.assert_called_once_with(username)
+    mock_arborist_client.update_resource.assert_called_once_with(
+        path="/",
+        resource_json={
+            "name": resource,
+            "description": f"Library for user_id {user_id}"
+        },
+        merge=True,
+        create_parents=True,
+    )
+    mock_arborist_client.update_policy.assert_called_once_with(
+        policy_id=user_id,
+        policy_json={
+            "id": user_id,
+            "description": "policy created by gen3-user-data-library",
+            "role_ids": ["create", "read", "update", "delete"],
+            "resource_paths": [resource],
+        },
+        create_if_not_exist=True,
+    )
+    mock_arborist_client.grant_user_policy.assert_called_once_with(
+        username=username, policy_id=user_id
+    )
 
 @pytest.mark.asyncio
 async def test_create_user_policy_create_resource_success(

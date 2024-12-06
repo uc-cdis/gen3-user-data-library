@@ -248,10 +248,16 @@ async def create_user_policy(user_id, username, arborist_client):
         arborist_client: client for sending requests to arborist.
     """
     resource = get_lists_endpoint(user_id)
-
-    resources = await arborist_client.list_resources_for_user(username)
-    logging.debug(f"Got resources: {resources}")
-    is_resource_assigned_to_user = resource in set(resources)
+    is_resource_assigned_to_user = False
+    try:
+        resources = await arborist_client.list_resources_for_user(username)
+        logging.info(f"Found user's data-library assigned to user in arborist, skipping policy generation")
+        is_resource_assigned_to_user = resource in set(resources)
+    except ArboristError as e:
+        if e.code == 404:
+            logging.info(f"Unable to find {username} in arborist, creating and setting up data-library policy")
+        else:
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from e
 
     if is_resource_assigned_to_user:
         return
@@ -260,7 +266,7 @@ async def create_user_policy(user_id, username, arborist_client):
     logging.info(f"Policy does not exist for user_id {user_id}")
     role_ids = ["create", "read", "update", "delete"]
 
-    logging.debug("Attempting to create arborist resource: {}".format(resource))
+    logging.info("Attempting to create arborist resource: {}".format(resource))
     await arborist_client.update_resource(
         path='/',
         resource_json={
@@ -278,7 +284,7 @@ async def create_user_policy(user_id, username, arborist_client):
         "resource_paths": [resource],
     }
 
-    logging.debug(f"Policy {user_id} does not exist, attempting to create....")
+    logging.info(f"Policy {user_id} does not exist, attempting to create....")
 
     await arborist_client.update_policy(
         policy_id=user_id,
@@ -286,6 +292,6 @@ async def create_user_policy(user_id, username, arborist_client):
         create_if_not_exist=True
     )
 
-    logging.debug(f"Granting {user_id} to {username}....")
+    logging.info(f"Granting resource {resource} to {username} with policy_id {user_id}....")
 
     await arborist_client.grant_user_policy(username=username, policy_id=user_id)
