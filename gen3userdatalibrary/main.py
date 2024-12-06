@@ -16,7 +16,6 @@ from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.metrics import Metrics
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.utils.core import log_user_data_library_api_call
-from gen3userdatalibrary.utils.metrics import update_api_call_metric
 
 
 @asynccontextmanager
@@ -132,8 +131,7 @@ def get_app() -> fastapi.FastAPI:
         response_body = getattr(response, "body", None)
 
         # don't add logs or metrics for the actual metrics gathering endpoint
-        # TODO: Make list of ignored endpoints configurable
-        if path not in ["/metrics", "/metrics/"]:
+        if path not in config.ENDPOINTS_WITHOUT_METRICS:
             log_user_data_library_api_call(
                 logging=logging,
                 debug_log=(
@@ -148,13 +146,16 @@ def get_app() -> fastapi.FastAPI:
                 user_id=user_id,
             )
 
-            update_api_call_metric(
-                fastapi_app=request.app,
+            if not getattr(fastapi_app.state, "metrics", None):
+                return
+            metrics = fastapi_app.state.metrics
+            # todo: test
+            metrics.add_user_list_api_interaction(
                 method=method,
                 path=path,
-                response=response,
-                response_time_seconds=response_time_seconds,
                 user_id=user_id,
+                response_time_seconds=response_time_seconds,
+                status_code=response.status_code,
             )
 
         return response

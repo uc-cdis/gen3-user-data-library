@@ -192,8 +192,6 @@ async def append_items_to_list(
     Returns:
          JSONResponse: json response with info about the request outcome
     """
-    user_id = await get_user_id(request=request)
-
     if not item_list:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Nothing to append!"
@@ -210,7 +208,7 @@ async def append_items_to_list(
     )
     data = jsonable_encoder(append_result)
     response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
-
+    user_id = await get_user_id(request=request)
     update_user_list_metric(
         fastapi_app=request.app,
         user_id=user_id,

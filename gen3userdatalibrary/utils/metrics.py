@@ -1,8 +1,8 @@
+import logging
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
-from starlette.responses import Response
 
 
 class MetricModel(BaseModel):
@@ -83,44 +83,6 @@ def update_user_list_metric(
         )
 
 
-def update_api_call_metric(
-    fastapi_app: FastAPI,
-    response: Response,
-    method: str,
-    path: str,
-    response_time_seconds: float,
-    user_id: int,
-) -> None:
-    """
-    Add a metric to the Metrics() instance on the specified FastAPI app for managing user lists.
-
-    This method logs metrics related to the management of user lists, including the number of lists
-    added, deleted, items added, and deleted, as well as the response time. It assumes that the .state.metrics
-    contains a Metrics() instance.
-
-    Args:
-        fastapi_app (FastAPI): The FastAPI application instance where the metrics are being added.
-        response (Response): The HTTP Response.
-        method (str): The specific HTTP method
-        path (str): The HTTP path the action was taken on
-        response_time_seconds (float): The response time in seconds for the action performed.
-        user_id (int): The identifier of the user associated with the action.
-
-    Returns:
-        None
-    """
-    if not getattr(fastapi_app.state, "metrics", None):
-        return
-
-    fastapi_app.state.metrics.add_user_list_api_interaction(
-        method=method,
-        path=path,
-        user_id=user_id,
-        response_time_seconds=response_time_seconds,
-        status_code=response.status_code,
-    )
-
-
 def get_from_cfg_metadata(
     field: str, metadata: Dict[str, Any], default: Any, type_: Any
 ) -> Any:
@@ -142,7 +104,7 @@ def get_from_cfg_metadata(
         configured_value = type_(metadata.get(field, default))
     except (TypeError, ValueError):
         configured_value = default
-        print(
+        logging.error(
             f"invalid configuration: "
             f"{metadata.get(field)}. Cannot convert to {type_}. "
             f"Defaulting to {default} and continuing..."

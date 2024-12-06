@@ -86,3 +86,5 @@ if ITEM_SCHEMAS is None:
     raise OSError("No item schema json file found!")
 elif "None" in ITEM_SCHEMAS:
     ITEM_SCHEMAS[None] = ITEM_SCHEMAS["None"]
+
+ENDPOINTS_WITHOUT_METRICS = ["/metrics", "/metrics/"]
