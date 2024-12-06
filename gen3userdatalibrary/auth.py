@@ -239,13 +239,13 @@ async def _get_token(
     return token
 
 
-async def create_user_policy(user_id, username, arborist_client):
+async def create_user_policy(user_id: str, username: str, arborist_client: ArboristClient):
     """
     Creates the user policy necessary for a user to maintain lists in their data library.
     Args:
-        user_id: id of the user
-        username: username of the user
-        arborist_client: client for sending requests to arborist.
+        user_id (str): id of the user
+        username (str): username of the user
+        arborist_client (ArboristClient): client for sending requests to arborist.
     """
     resource = get_lists_endpoint(user_id)
     is_resource_assigned_to_user = False
