@@ -196,7 +196,7 @@ async def test_create_user_policy_resource_already_assigned(
     mock_arborist_client.grant_user_policy.assert_not_called()
 
 @pytest.mark.asyncio
-async def test_create_user_policy_resource_already_assigned(
+async def test_create_user_policy_failed_to_get_user_resources(
     monkeypatch
 ):
     """
@@ -205,12 +205,13 @@ async def test_create_user_policy_resource_already_assigned(
     mock_arborist_client = AsyncMock()
     user_id = "test_user"
     username = "test_username"
-    resource = "/users/test_user/user-data-library/lists"
 
-    mock_arborist_client.list_resources_for_user.return_value.side_effect = ArboristError("Arborist down", 500)
+    mock_arborist_client.list_resources_for_user.side_effect = ArboristError("Arborist down", 500)
 
-    await create_user_policy(user_id, username, mock_arborist_client)
+    with pytest.raises(HTTPException) as exc_info:
+        await create_user_policy(user_id, username, mock_arborist_client)
 
+    assert exc_info.value.status_code == 500
     mock_arborist_client.create_user_if_not_exist.assert_not_called()
     mock_arborist_client.update_resource.assert_not_called()
     mock_arborist_client.update_policy.assert_not_called()
