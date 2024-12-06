@@ -1,6 +1,7 @@
 """ General purpose functions """
 
 from functools import reduce
+from logging import Logger
 from typing import Dict, Tuple
 
 from sqlalchemy import inspect
@@ -8,7 +9,7 @@ from sqlalchemy import inspect
 identity = lambda P: P
 
 
-def log_user_data_library_api_call(logging, debug_log: str = None, **kwargs):
+def log_user_data_library_api_call(logging: Logger, debug_log: str = None, **kwargs):
     """
     Logs a INFO level response from the Gen3 User Data Library in a standard format with the
     provided kwargs as CSV.

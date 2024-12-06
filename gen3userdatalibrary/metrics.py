@@ -71,11 +71,23 @@ class Metrics(BaseMetrics):
 
     def add_user_list_api_interaction(self, **kwargs: Dict[str, Any]) -> None:
         """
+        This method logs metrics related to the management of user lists, including the number of lists
+        added, deleted, items added, and deleted, as well as the response time. It assumes that the .state.metrics
+        contains a Metrics() instance.
+
         Increment the counter for API requests related to user lists,
         this uses the provided keyword arguments as labels for the counter.
 
         Args:
             **kwargs: Arbitrary keyword arguments used as labels for the counter.
+            expected params:
+                fastapi_app (FastAPI) - The FastAPI application instance where the metrics are being added.
+                response (Response) - The HTTP Response.
+                method (str) - The specific HTTP method
+                path (str) - The HTTP path the action was taken on
+                response_time_seconds (float) - The response time in seconds for the action performed.
+                user_id (int) - The identifier of the user associated with the action.
+
         """
         if not self.enabled:
             return
