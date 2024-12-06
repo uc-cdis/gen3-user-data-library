@@ -295,9 +295,7 @@ class TestUserListsRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response = await test_client.put(endpoint, headers=headers, json={"lists": []})
 
-        assert response
-        assert response.status_code == 400
-        assert response.json().get("detail")
+        assert response.is_success
 
     @pytest.mark.parametrize(
         "input_body", [{}, {"foo": "bar"}, {"foo": {"foo": {"foo": "bar"}}}]
@@ -394,8 +392,6 @@ class TestUserListsRouter(BaseTestRouter):
             "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
         )
         assert r2.status_code == 409
-        r3 = await test_client.put("/lists", headers=headers, json={"lists": []})
-        assert r3.status_code == 400
 
     # endregion
 
