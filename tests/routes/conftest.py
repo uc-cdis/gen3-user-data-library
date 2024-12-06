@@ -2,7 +2,7 @@ from abc import abstractmethod
 from unittest.mock import MagicMock
 
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.main import get_app
@@ -26,7 +26,9 @@ class BaseTestRouter:
         app.state.metrics = MagicMock()
         app.state.arborist_client = MagicMock()
 
-        async with AsyncClient(app=app, base_url="http://test") as test_client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as test_client:
             yield test_client
 
     @pytest_asyncio.fixture(scope="function")
@@ -40,5 +42,7 @@ class BaseTestRouter:
         app.state.metrics = MagicMock()
         app.state.arborist_client = MagicMock()
 
-        async with AsyncClient(app=app, base_url="http://test") as test_client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as test_client:
             yield app, test_client
