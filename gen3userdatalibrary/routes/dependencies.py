@@ -25,6 +25,16 @@ from gen3userdatalibrary.utils.core import build_switch_case
 
 async def validate_upsert_items(lists_to_upsert, dal, user_id):
     """
+    Sort the user's provided list's items for upsert and ensure they have the correct structure
+
+    Args:
+        lists_to_upsert (Dict["lists": [ItemsToUpdateModel]]): lists to be created or added
+        dal (DataAccessLayer): data access interface
+        user_id (str): creator id
+    Raises:
+        any exceptions from sorting the lists or checking the items
+    """
+    """
     Check that the items in lists to upsert add up to less than max config
 
     Args:
@@ -100,7 +110,15 @@ async def ensure_list_exists_and_items_less_than_max(basic_list_info, dal, list_
 
 
 async def ensure_user_exists(request: Request):
+    """
+    Handles ensuring the user can be authorized, including creating the policies if need be.
 
+    Args:
+        request: fastapi request obj
+    Raises:
+        HTTPException if we could not check policy or arborist fails
+
+    """
     if config.DEBUG_SKIP_AUTH:
         return True
 
@@ -373,6 +391,15 @@ def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
 
 
 def ensure_items_exist_and_less_than_max(lists_to_create, user_id):
+    """
+    Takes items from list to create and that they're less than max config.
+
+    Args:
+        lists_to_create (List[UserList]): list of user lists to create
+        user_id (str): creator id
+    Raises:
+          exception if items less than max
+    """
     for item_to_create in lists_to_create:
         if len(item_to_create.items) == 0:
             raise HTTPException(
@@ -382,14 +409,24 @@ def ensure_items_exist_and_less_than_max(lists_to_create, user_id):
         ensure_items_less_than_max(len(item_to_create.items))
 
 
-async def validate_items_to_append(conformed_body, dal, list_id):
+async def validate_items_to_append(item_list, dal, list_id):
+    """
+    Validates items to append
+
+    Args:
+        item_list ():
+        dal (DataAccessLayer): data access interface
+        list_id (UUID): id of list
+    Raises:
+        abcd
+    """
     try:
         list_to_append = await dal.get_existing_list_or_throw(list_id)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="list_id not recognized!"
         )
-    ensure_items_less_than_max(len(conformed_body), len(list_to_append.items))
+    ensure_items_less_than_max(len(item_list), len(list_to_append.items))
 
 
 # endregion
