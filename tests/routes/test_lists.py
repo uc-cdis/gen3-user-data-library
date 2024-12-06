@@ -211,6 +211,13 @@ class TestUserListsRouter(BaseTestRouter):
             else:
                 # fail if the list is neither A or B
                 assert False
+
+        empty_create = await test_client.put(
+            endpoint,
+            headers=headers,
+            json={"lists": [{"name": "My Saved List 4", "items": {}}]},
+        )
+        assert empty_create.status_code == 201
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])

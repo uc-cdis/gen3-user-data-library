@@ -126,6 +126,14 @@ class TestUserListsRouter(BaseTestRouter):
             )
             is not None
         )
+        empty_put_response = await test_client.put(
+            endpoint(ul_id),
+            headers=headers,
+            json={"name": "My Saved List 1", "items": {}},
+        )
+        assert empty_put_response.status_code == 200
+        get_empty_list_resp = await test_client.get(endpoint(ul_id), headers=headers)
+        assert get_empty_list_resp.status_code == 200
 
     @pytest.mark.parametrize(
         "endpoint", [lambda l_id: f"/lists/{l_id}", lambda l_id: f"/lists/{l_id}/"]
