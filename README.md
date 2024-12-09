@@ -51,6 +51,10 @@ Endpoints paths can be in the `routes/__init__.py` file in
 combination with the paths listed above each function
 under the `routes` directory.
 
+### Migrations
+
+For alembic, our system uses a generic single-database configuration with an async dbapi.
+
 ## Quickstart
 
 ### Setup
@@ -85,6 +89,11 @@ DEBUG=False
 
 # DEBUG_SKIP_AUTH will COMPLETELY SKIP AUTHORIZATION for debugging purposes
 DEBUG_SKIP_AUTH=False
+
+MAX_LISTS = config("MAX_LISTS", cast=int, default=100)
+
+MAX_LIST_ITEMS = config("MAX_LIST_ITEMS", cast=int, default=1000)
+
 ```
 
 ### Running locally
@@ -153,7 +162,7 @@ authorize users. We utilize [Arborist](https://github.com/uc-cdis/arborist)
 for this. Currently, there are three specific ways we utilize arborist.
 
 First, we ensure a policy exists for the user or create one if not.
-You can see this in the [dependencies](gen3userdatalibrary/routes/dependencies.py) file.
+You can see this in the [dependencies](gen3userdatalibrary/routes/injection_dependencies.py) file.
 
 Second, we create or update a resource for new lists that are created. This
 is done in the upsert function in the [lists](gen3userdatalibrary/routes/lists.py)
@@ -163,7 +172,14 @@ Third, with the prior two steps established, we authorize incoming requests
 to ensure that a user who is defined in our system has access to the list
 they're requesting to view.
 
-## Local Dev
+## Dev Considerations
+
+If you add a new endpoint, please refer
+to [the context configuration](gen3userdatalibrary/routes/context_configurations.py)
+for information regarding expectations on what to add for an
+endpoint, such as authz parameters.
+
+### Local Dev
 
 You can `bash ./run.sh` after install to run the app locally.
 
@@ -243,13 +259,17 @@ you can use `debug_run.py` in the root folder as an entrypoint.
 
 ## Metrics
 
-Metrics can be exposed at a `/metrics` endpoint compatible with Prometheus scraping and visualize in Prometheus or Graphana, etc.
+Metrics can be exposed at a `/metrics` endpoint compatible with Prometheus scraping and visualize in Prometheus or
+Graphana, etc.
 
 The metrics are defined in `gen3userdatalibrary/metrics.py` and in 1.0.0 are as follows:
 
-* **gen3_user_data_library_user_lists**: Gen3 User Data Library User Lists. Does not count the items WITHIN the list, just the lists themselves.
-* **gen3_user_data_library_user_items**: Gen3 User Data Library User Items (within Lists). This counts the amount of items within lists, rather than the lists themselves.
-* **gen3_user_data_library_api_requests_total**:  API requests for modifying Gen3 User Data Library User Lists. This includes all CRUD actions.
+* **gen3_user_data_library_user_lists**: Gen3 User Data Library User Lists. Does not count the items WITHIN the list,
+  just the lists themselves.
+* **gen3_user_data_library_user_items**: Gen3 User Data Library User Items (within Lists). This counts the amount of
+  items within lists, rather than the lists themselves.
+* **gen3_user_data_library_api_requests_total**:  API requests for modifying Gen3 User Data Library User Lists. This
+  includes all CRUD actions.
 
 You can [run Prometheus locally](https://github.com/prometheus/prometheus) if you want to test or visualize these.
 
@@ -257,13 +277,14 @@ You can [run Prometheus locally](https://github.com/prometheus/prometheus) if yo
 
 Run the service locally using `poetry run bash run.sh`.
 
-Create a [`prometheus.yml` config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration), such as: `~/Documents/prometheus/conf/prometheus.yml`.
+Create a [`prometheus.yml` config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration), such
+as: `~/Documents/prometheus/conf/prometheus.yml`.
 
 Put this in:
 
 ```yaml
 global:
-  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+  scrape_interval: 15s # By default, scrape targets every 15 seconds.
 
 # A scrape configuration containing exactly one endpoint to scrape:
 # Here it's Prometheus itself.
@@ -276,7 +297,7 @@ scrape_configs:
 
     static_configs:
       # NOTE: The `host.docker.internal` below is so docker on MacOS can properly find the locally running service
-      - targets: ['host.docker.internal:8000']
+      - targets: [ 'host.docker.internal:8000' ]
 ```
 
 > Note: Tested the above config on MacOS, with Linux you can maybe adjust these commands to actually expose the local

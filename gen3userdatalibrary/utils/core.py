@@ -6,8 +6,6 @@ from typing import Dict, Tuple, Hashable, Any
 
 from sqlalchemy import inspect
 
-identity = lambda P: P
-
 
 def log_user_data_library_api_call(logging: Logger, debug_log: str = None, **kwargs):
     """

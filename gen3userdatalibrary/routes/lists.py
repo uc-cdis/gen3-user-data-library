@@ -9,7 +9,11 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import get_user_data_library_endpoint, get_user_id
+from gen3userdatalibrary.auth import (
+    get_user_data_library_endpoint,
+    get_user_id,
+    parse_and_auth_request,
+)
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.helpers import (
     try_conforming_list,
@@ -21,8 +25,7 @@ from gen3userdatalibrary.models.user_list import (
     UserList,
     UserListResponseModel,
 )
-from gen3userdatalibrary.routes.dependencies import (
-    parse_and_auth_request,
+from gen3userdatalibrary.routes.injection_dependencies import (
     sort_lists_into_create_or_update,
     validate_items,
     validate_lists,
@@ -289,14 +292,14 @@ async def sort_persist_and_get_changed_lists(
     Raises:
         409 HTTP exception if there is nothing to update
     """
-    new_lists_as_orm = [
+    new_user_lists = [
         await try_conforming_list(user_id, user_list) for user_list in raw_lists
     ]
     unique_list_identifiers = {
-        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
+        (user_list.creator, user_list.name): user_list for user_list in new_user_lists
     }
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
-        data_access_layer, unique_list_identifiers, new_lists_as_orm
+        data_access_layer, unique_list_identifiers, new_user_lists
     )
 
     metrics_info = MetricModel(

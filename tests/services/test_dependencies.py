@@ -3,20 +3,20 @@ from unittest.mock import patch, AsyncMock, MagicMock
 import pytest
 from fastapi import Request, Depends, HTTPException
 from fastapi.routing import APIRoute
-from tests.data.example_lists import PATCH_BODY, VALID_LIST_A, VALID_LIST_B
-from tests.routes.conftest import BaseTestRouter
 from gen3authz.client.arborist.errors import ArboristError
 from starlette.datastructures import Headers
 
 from gen3userdatalibrary import config
+from gen3userdatalibrary.auth import parse_and_auth_request
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.routes.basic import PUBLIC_ROUTES
-from gen3userdatalibrary.routes.dependencies import (
-    parse_and_auth_request,
+from gen3userdatalibrary.routes.injection_dependencies import (
     validate_items,
     ensure_user_exists,
 )
+from tests.data.example_lists import PATCH_BODY, VALID_LIST_A, VALID_LIST_B
+from tests.routes.conftest import BaseTestRouter
 
 
 class DependencyException(Exception):

@@ -78,7 +78,7 @@ async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList
     return list_as_orm
 
 
-def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
+def create_user_list_instance(user_id, user_list: ItemToUpdateModel) -> UserList:
     """
     Creates a user list orm given the user's id and a dictionary representation.
     Tests the type

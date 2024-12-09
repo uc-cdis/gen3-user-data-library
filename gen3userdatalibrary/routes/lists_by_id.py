@@ -6,14 +6,11 @@ from fastapi.encoders import jsonable_encoder
 from starlette import status
 from starlette.responses import JSONResponse, Response
 
-from gen3userdatalibrary.auth import get_user_id
+from gen3userdatalibrary.auth import get_user_id, parse_and_auth_request
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.helpers import create_user_list_instance
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
-from gen3userdatalibrary.routes.dependencies import (
-    parse_and_auth_request,
-    validate_items,
-)
+from gen3userdatalibrary.routes.injection_dependencies import validate_items
 from gen3userdatalibrary.utils.metrics import update_user_list_metric
 
 only_auth_deps = [Depends(parse_and_auth_request)]
@@ -129,10 +126,10 @@ async def update_list_by_id(
             detail=f"No UserList found with id {list_id}",
         )
     user_id = await get_user_id(request=request)
-    new_list_as_orm = create_user_list_instance(user_id, info_to_update_with)
+    new_user_list = create_user_list_instance(user_id, info_to_update_with)
 
     replace_result, metrics_info = await data_access_layer.change_list_contents(
-        new_list_as_orm, existing_list
+        new_user_list, existing_list
     )
     data = jsonable_encoder(replace_result)
     response = JSONResponse(status_code=status.HTTP_200_OK, content=data)

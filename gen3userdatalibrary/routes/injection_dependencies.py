@@ -1,6 +1,6 @@
 import json
 from _testcapi import raise_exception
-from typing import List, Dict, Tuple, Union, Callable, Optional
+from typing import List, Dict, Tuple, Union
 
 from fastapi import Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
@@ -9,7 +9,6 @@ from starlette import status
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import (
-    authorize_request,
     get_user_data_library_endpoint,
     get_user_id,
 )
@@ -44,15 +43,15 @@ async def validate_upsert_items(lists_to_upsert, dal, user_id):
 
     """
     raw_lists = lists_to_upsert["lists"]
-    new_lists_as_orm = [
+    new_user_lists = [
         await try_conforming_list(user_id, conform_to_item_update(user_list))
         for user_list in raw_lists
     ]
     unique_list_identifiers = {
-        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
+        (user_list.creator, user_list.name): user_list for user_list in new_user_lists
     }
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
-        dal, unique_list_identifiers, new_lists_as_orm
+        dal, unique_list_identifiers, new_user_lists
     )
     for list_to_update in lists_to_update:
         await check_items_in_list_to_update_less_than_max(
@@ -205,15 +204,15 @@ async def validate_lists(
     user_id = await get_user_id(request=request)
     conformed_body = json.loads(await request.body())
     raw_lists = conformed_body["lists"]
-    new_lists_as_orm = [
+    new_user_lists = [
         await try_conforming_list(user_id, conform_to_item_update(user_list))
         for user_list in raw_lists
     ]
     unique_list_identifiers = {
-        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
+        (user_list.creator, user_list.name): user_list for user_list in new_user_lists
     }
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
-        dal, unique_list_identifiers, new_lists_as_orm
+        dal, unique_list_identifiers, new_user_lists
     )
     ensure_items_exist_and_less_than_max(lists_to_create, user_id)
     await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
@@ -241,63 +240,6 @@ def validate_user_list_item(item_contents: dict):
             status_code=400, detail="No matching schema identified for items, aborting!"
         )
     validate(instance=item_contents, schema=matching_schema)
-
-
-def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
-    """
-    Before any endpoint is hit, we should verify that the requester has access to the endpoint.
-    This middleware function handles that.
-
-    Args:
-        endpoint_context (Dict[str, Any]): information about an endpoint from the ENDPOINT_TO_CONTEXT data structure
-        user_id (str): creator id
-        path_params (dict): any params from the request scope
-
-    Returns:
-        The resource from endpoint_to_context based on the kind of endpoint
-    """
-    endpoint_type: Optional[str, None] = endpoint_context.get("type", None)
-    get_resource: Optional[Callable, None] = endpoint_context.get("resource", None)
-    if endpoint_type == "all":
-        resource = get_resource(user_id)
-    elif endpoint_type == "id":
-        list_id = path_params["list_id"]
-        resource = get_resource(user_id, list_id)
-    else:  # None
-        resource = get_resource
-    return resource
-
-
-async def parse_and_auth_request(
-    request: Request, created_user=Depends(ensure_user_exists)
-):
-    """
-    Authorize the request with arborist to ensure the request can be made
-
-    Args:
-        request (Request): fastapi request entity
-        created_user (Union[bool, None]): not used, just ensures user exists first before continuing
-
-    Raises:
-        HTTPException based on authorize_request outcome
-    """
-    user_id = await get_user_id(request=request)
-    path_params = request.scope["path_params"]
-    route_function = request.scope["route"].name
-
-    if route_function not in ENDPOINT_TO_CONTEXT:
-        raise Exception(f"Undefined route '{route_function}', unable to auth")
-
-    endpoint_context = ENDPOINT_TO_CONTEXT[route_function]
-    resource = get_resource_from_endpoint_context(
-        endpoint_context, user_id, path_params
-    )
-    logging.debug(f"Authorizing user: {user_id}")
-    await authorize_request(
-        request=request,
-        authz_access_method=endpoint_context["method"],
-        authz_resources=[resource],
-    )
 
 
 def ensure_any_items_match_schema(endpoint_context, basic_user_lists):
@@ -343,10 +285,10 @@ async def validate_items(
     try:
         ensure_any_items_match_schema(endpoint_context, conformed_body)
     except Exception as e:
+        logging.error(e)
         raise HTTPException(
             status_code=400,
-            detail="Problem trying to validate body. Is your body formatted "
-            "correctly?",
+            detail=f"Problem trying to validate body. Is your body formatted correctly?",
         )
     validation_handle_mapping = build_switch_case(
         {

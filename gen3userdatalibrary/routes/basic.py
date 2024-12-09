@@ -75,12 +75,7 @@ async def get_status(
     return_status = status.HTTP_201_CREATED
     status_text = "OK"
 
-    try:
-        await data_access_layer.test_connection()
-    except Exception as e:
-        return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
-        status_text = "UNHEALTHY"
-
+    await data_access_layer.test_connection()
     response = {"status": status_text, "timestamp": time.time()}
 
     return JSONResponse(status_code=return_status, content=response)
