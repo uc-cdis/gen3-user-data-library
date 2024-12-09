@@ -307,12 +307,12 @@ async def sort_persist_and_get_changed_lists(
         items_updated=sum(len(user_list.items) for user_list in lists_to_update),
         items_deleted=0,
     )
-
-    updated_lists = []
-    for list_to_update in lists_to_update:
+    updated_lists = [
         await persist_lists_to_update(
-            data_access_layer, list_to_update, unique_list_identifiers, updated_lists
+            data_access_layer, list_to_update, unique_list_identifiers
         )
+        for list_to_update in lists_to_update
+    ]
     for list_to_create in lists_to_create:
         await data_access_layer.persist_user_list(user_id, list_to_create)
     response_user_lists = {}
@@ -323,8 +323,20 @@ async def sort_persist_and_get_changed_lists(
 
 
 async def persist_lists_to_update(
-    data_access_layer, list_to_update, unique_list_identifiers, updated_lists
+    data_access_layer, list_to_update, unique_list_identifiers
 ):
+    """
+    Handler for deriving changes to make to a list and persisting the update
+
+    Args:
+        data_access_layer (DataAccessLayer): data access interface
+        list_to_update (UserList): list that you want to update the contents of
+        unique_list_identifiers (Dict[Tuple[str, str], UserList]): (creator, name) => UserList with updates
+    Raises:
+        HTTPException if problem deriving changes
+        any errors raised by sqlalchemy during persisting
+
+    """
     identifier = (list_to_update.creator, list_to_update.name)
     new_version_of_list = unique_list_identifiers.get(identifier, None)
     assert new_version_of_list is not None
@@ -332,7 +344,7 @@ async def persist_lists_to_update(
     updated_list = await data_access_layer.update_and_persist_list(
         list_to_update.id, changes_to_make
     )
-    updated_lists.append(updated_list)
+    return updated_list
 
 
 # endregion
