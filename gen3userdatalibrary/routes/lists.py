@@ -158,10 +158,7 @@ async def upsert_user_lists(
     creator_id = await get_user_id(request=request)
 
     raw_lists = requested_lists.lists
-    if not raw_lists:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!"
-        )
+
     updated_user_lists = await sort_persist_and_get_changed_lists(
         data_access_layer, raw_lists, creator_id
     )
