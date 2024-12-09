@@ -78,7 +78,7 @@ class TestUserListsRouter(BaseTestRouter):
         user_list,
         endpoint,
         client,
-        monkeypatch,
+        monkeypatch
     ):
         """
         Test accessing the endpoint when unauthorized
@@ -88,7 +88,14 @@ class TestUserListsRouter(BaseTestRouter):
 
         # Simulate an unauthorized request but a valid token
         arborist.auth_request.return_value = False
-        get_token_claims.return_value = {"sub": "foo"}
+        get_token_claims.return_value = {
+            "sub": "foo",
+            "context": {
+                "user": {
+                    "name": "bar"
+                }
+            }
+        }
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
         if method == "post":
@@ -112,32 +119,6 @@ class TestUserListsRouter(BaseTestRouter):
     # endregion
 
     # region Create Lists
-
-    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_arborist_calls(
-        self, get_token_claims, arborist, app_client_pair, monkeypatch
-    ):
-
-        previous_config = config.DEBUG_SKIP_AUTH
-        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
-        arborist.auth_request = AsyncMock()
-        get_token_claims.return_value = {"sub": "foo"}
-        headers = {"Authorization": "Bearer ofa.valid.token"}
-        app, test_client = app_client_pair
-        app.state.arborist_client.create_user_if_not_exist = AsyncMock()
-        create_user = app.state.arborist_client.create_user_if_not_exist
-        create_user.return_value = "foo"
-
-        class MockError(Exception):
-            pass
-
-        create_user.side_effect = MockError
-        with pytest.raises(MockError):
-            response = await test_client.put(
-                "/lists", headers=headers, json={"lists": [VALID_LIST_A]}
-            )
-        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])

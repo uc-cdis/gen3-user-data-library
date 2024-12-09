@@ -4,13 +4,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import Response
-from gen3authz.client.arborist.async_client import ArboristClient
-from gen3authz.client.arborist.errors import ArboristError
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.auth import get_user_data_library_endpoint, get_user_id
+from gen3userdatalibrary import logging
+from gen3userdatalibrary.auth import get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.user_list import (
     ItemToUpdateModel,
@@ -158,30 +156,6 @@ async def upsert_user_lists(
     start_time = time.time()
 
     creator_id = await get_user_id(request=request)
-
-    if not config.DEBUG_SKIP_AUTH:
-        # make sure the user exists in Arborist
-        # IMPORTANT: This is using the user's unique subject ID
-        try:
-            arb_client: ArboristClient = request.app.state.arborist_client
-            create_outcome = await arb_client.create_user_if_not_exist(creator_id)
-        except ArboristError as ae:
-            logging.error(f"Error creating user in arborist: {(ae.code, ae.message)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal error interfacing with arborist",
-            )
-
-        resource = get_user_data_library_endpoint(creator_id)
-
-        try:
-            logging.debug("attempting to update arborist resource: {}".format(resource))
-            await request.app.state.arborist_client.update_resource(
-                "/", resource, merge=True
-            )
-        except ArboristError as e:
-            logging.error(e)
-            # keep going; maybe just some conflicts from things existing already
 
     raw_lists = requested_lists.lists
     if not raw_lists:

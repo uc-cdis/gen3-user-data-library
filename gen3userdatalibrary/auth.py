@@ -1,9 +1,12 @@
 from typing import Any, Optional, Union
 
 from authutils.token.fastapi import access_token
-from fastapi import HTTPException, Request
+from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from gen3authz.client.arborist.async_client import ArboristClient
+from gen3authz.client.arborist.errors import ArboristError
+from starlette import status
+from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED as HTTP_401_UNAUTHENTICATED
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -58,30 +61,45 @@ async def authorize_request(
     try:
         user_id = await get_user_id(token, request)
     except HTTPException as exc:
-        logging.debug(
+        logging.info(
             f"Unable to determine user_id. Defaulting to `Unknown`. Exc: {exc}"
         )
         user_id = "Unknown"
-
-    is_authorized = False
-    try:
-        is_authorized = await arborist.auth_request(
-            token.credentials,
-            service="gen3_user_data_library",
-            methods=authz_access_method,
-            resources=authz_resources,
-        )
-    except Exception as exc:
-        logging.error(f"arborist.auth_request failed, exc: {exc}")
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+    is_authorized = await arborist.auth_request(
+        token.credentials,
+        service="gen3_user_data_library",
+        methods=authz_access_method,
+        resources=authz_resources,
+    )
 
     if not is_authorized:
-        logging.debug(
-            f"user `{user_id}` does not have `{authz_access_method}` access "
-            f"on `{authz_resources}`"
-        )
-        raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+        try:
+            # Create the policy (in case it didn't exist for the auth_request), then retry
+            username = await get_username(token, request)
+            logging.debug(f"Attempting to create policy for user {user_id}...")
+            await create_user_policy(
+                user_id=user_id,
+                username=username,
+                arborist_client=arborist
+            )
 
+            logging.debug("Retrying authz request...")
+
+            is_authorized = await arborist.auth_request(
+                token.credentials,
+                service="gen3_user_data_library",
+                methods=authz_access_method,
+                resources=authz_resources,
+            )
+            if not is_authorized:
+                logging.info(
+                    f"user `{user_id}` does not have `{authz_access_method}` access "
+                    f"on `{authz_resources}`"
+                )
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+        except ArboristError as exc:
+            logging.error(f"arborist request failed, exc: {exc}")
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 async def get_user_id(
     token: HTTPAuthorizationCredentials = None, request: Request = None
@@ -114,6 +132,39 @@ async def get_user_id(
         raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
 
     return token_claims["sub"]
+
+async def get_username(
+    token: HTTPAuthorizationCredentials = None, request: Request = None
+) -> Union[int, Any]:
+    """
+    Retrieves the username from the provided token/request
+
+    Args:
+        token (HTTPAuthorizationCredentials): an authorization token (optional, you can also provide request
+            and this can be parsed from there). this has priority over any token from request.
+        request (Request): The incoming HTTP request. Used to parse tokens from header.
+
+    Returns:
+        str: The user's username.
+
+    Raises:
+        HTTPException: Raised if the token is missing or invalid.
+
+    Note:
+        If `DEBUG_SKIP_AUTH` is enabled and no token is provided, username is set to "librarian".
+    """
+    if config.DEBUG_SKIP_AUTH and not token:
+        logging.warning(
+            "DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING username = 'librarian'"
+        )
+        return "0"
+
+    token_claims = await _get_token_claims(token, request)
+    if "user" not in token_claims.get("context", {}):
+        raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
+
+    username = token_claims["context"]["user"]["name"]
+    return username
 
 
 async def _get_token_claims(
@@ -186,3 +237,61 @@ async def _get_token(
         if request:
             token = await get_bearer_token(request)
     return token
+
+
+async def create_user_policy(user_id: str, username: str, arborist_client: ArboristClient):
+    """
+    Creates the user policy necessary for a user to maintain lists in their data library.
+    Args:
+        user_id (str): id of the user
+        username (str): username of the user
+        arborist_client (ArboristClient): client for sending requests to arborist.
+    """
+    resource = get_lists_endpoint(user_id)
+    is_resource_assigned_to_user = False
+    try:
+        resources = await arborist_client.list_resources_for_user(username)
+        logging.info(f"Found user's data-library assigned to user in arborist, skipping policy generation")
+        is_resource_assigned_to_user = resource in set(resources)
+    except ArboristError as e:
+        if e.code == 404:
+            logging.info(f"Unable to find {username} in arborist, creating and setting up data-library policy")
+        else:
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from e
+
+    if is_resource_assigned_to_user:
+        return
+
+    await arborist_client.create_user_if_not_exist(username)
+    logging.info(f"Policy does not exist for user_id {user_id}")
+    role_ids = ["create", "read", "update", "delete"]
+
+    logging.info("Attempting to create arborist resource: {}".format(resource))
+    await arborist_client.update_resource(
+        path='/',
+        resource_json={
+            "name": resource,
+            "description": f"Library for user_id {user_id}",
+        },
+        merge=True,
+        create_parents=True
+    )
+
+    policy_json = {
+        "id": user_id,
+        "description": "policy created by gen3-user-data-library",
+        "role_ids": role_ids,
+        "resource_paths": [resource],
+    }
+
+    logging.info(f"Policy {user_id} does not exist, attempting to create....")
+
+    await arborist_client.update_policy(
+        policy_id=user_id,
+        policy_json=policy_json,
+        create_if_not_exist=True
+    )
+
+    logging.info(f"Granting resource {resource} to {username} with policy_id {user_id}....")
+
+    await arborist_client.grant_user_policy(username=username, policy_id=user_id)
