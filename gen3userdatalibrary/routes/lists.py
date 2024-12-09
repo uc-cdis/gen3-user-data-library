@@ -3,14 +3,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import Response
-from gen3authz.client.arborist.async_client import ArboristClient
-from gen3authz.client.arborist.errors import ArboristError
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary import config, logging
+from gen3userdatalibrary import logging
 from gen3userdatalibrary.auth import (
-    get_user_data_library_endpoint,
     get_user_id,
 )
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
@@ -30,7 +27,7 @@ from gen3userdatalibrary.routes.injection_dependencies import (
     validate_lists,
     parse_and_auth_request,
 )
-from gen3userdatalibrary.utils.metrics import MetricModel, update_user_list_metric
+from gen3userdatalibrary.utils.metrics import update_user_list_metric, MetricModel
 
 lists_router = APIRouter()
 
@@ -157,42 +154,16 @@ async def upsert_user_lists(
     """
     user_id = await get_user_id(request=request)
 
-    if not config.DEBUG_SKIP_AUTH:
-        # todo: should this be in dependencies?
-        # make sure the user exists in Arborist
-        # IMPORTANT: This is using the user's unique subject ID
-        try:
-            arb_client: ArboristClient = request.app.state.arborist_client
-            create_outcome = await arb_client.create_user_if_not_exist(user_id)
-        except ArboristError as ae:
-            logging.error(f"Error creating user in arborist: {(ae.code, ae.message)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal error interfacing with arborist",
-            )
-
-        resource = get_user_data_library_endpoint(user_id)
-
-        try:
-            logging.debug("attempting to update arborist resource: {}".format(resource))
-            await request.app.state.arborist_client.update_resource(
-                "/", resource, merge=True
-            )
-        except ArboristError as e:
-            logging.error(e)
-            # keep going; maybe just some conflicts from things existing already
-
     raw_lists = requested_lists.lists
     if not raw_lists:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="No lists provided!"
         )
-
     updated_user_lists, metrics_info = await sort_persist_and_get_changed_lists(
         data_access_layer, raw_lists, user_id
     )
-    json_conformed_data = jsonable_encoder(updated_user_lists)
 
+    json_conformed_data = jsonable_encoder(updated_user_lists)
     response_data = {"lists": json_conformed_data}
     response = JSONResponse(status_code=status.HTTP_201_CREATED, content=response_data)
 

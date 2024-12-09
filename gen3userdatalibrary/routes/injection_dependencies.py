@@ -9,9 +9,9 @@ from starlette import status
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import (
-    get_user_data_library_endpoint,
     get_user_id,
     authorize_request,
+    get_user_data_library_endpoint,
 )
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.models.helpers import (
@@ -158,15 +158,12 @@ async def ensure_user_exists(request: Request) -> Union[bool, None]:
         )
 
 
-async def parse_and_auth_request(
-    request: Request, created_user=Depends(ensure_user_exists)
-):
+async def parse_and_auth_request(request: Request):
     """
     Authorize the request with arborist to ensure the request can be made
 
     Args:
         request (Request): fastapi request entity
-        created_user (Union[bool, None]): not used, just ensures user exists first before continuing
 
     Raises:
         HTTPException based on authorize_request outcome

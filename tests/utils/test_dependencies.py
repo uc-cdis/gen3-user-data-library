@@ -10,7 +10,6 @@ from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.routes.basic import PUBLIC_ROUTES
 from gen3userdatalibrary.routes.injection_dependencies import (
     validate_items,
-    ensure_list_exists_and_items_less_than_max,
     validate_user_list_item,
     parse_and_auth_request,
 )

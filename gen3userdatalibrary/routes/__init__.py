@@ -9,7 +9,7 @@ route_aggregator = APIRouter()
 route_definitions = [
     (basic_router, "", ["Basic"]),
     (lists_router, "/lists", ["Lists"]),
-    (lists_by_id_router, "/lists", ["ByID"]),
+    (lists_by_id_router, "/lists", ["User List By ID"]),
 ]
 
 for router, prefix, tags in route_definitions:

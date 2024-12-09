@@ -56,6 +56,9 @@ async def get_version(request: Request) -> dict:
         status.HTTP_200_OK: {
             "description": "No content",
         },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "No content",
+        },
     },
 )
 @basic_router.get("/_status", include_in_schema=False, dependencies=[])

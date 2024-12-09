@@ -118,6 +118,7 @@ class TestUserListsRouter(BaseTestRouter):
         assert updated_list["id"] == next(iter(create_outcome.json()["lists"].keys()))
         assert put_response.status_code == 200
         assert updated_list is not None
+        assert updated_list["id"] == ul_id
         assert updated_list["name"] == "My Saved List 1"
         assert updated_list["items"].get("CF_2", None) is not None
         assert (
