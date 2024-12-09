@@ -5,7 +5,6 @@ from fastapi import Request, Depends, HTTPException
 from fastapi.routing import APIRoute
 
 from gen3userdatalibrary import config
-from gen3userdatalibrary.auth import parse_and_auth_request
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.routes.basic import PUBLIC_ROUTES
@@ -13,6 +12,7 @@ from gen3userdatalibrary.routes.injection_dependencies import (
     validate_items,
     ensure_list_exists_and_items_less_than_max,
     validate_user_list_item,
+    parse_and_auth_request,
 )
 from tests.data.example_lists import (
     VALID_LIST_A,
@@ -374,7 +374,7 @@ class TestConfigRouter(BaseTestRouter):
         )
         l_id = get_id_from_response(response)
         mocker.patch(
-            "gen3userdatalibrary.routes.dependencies.DataAccessLayer.get_existing_list_or_throw",
+            "gen3userdatalibrary.routes.injection_dependencies.DataAccessLayer.get_existing_list_or_throw",
             side_effect=ValueError("mock exception"),
         )
         response = await client.patch(
@@ -412,7 +412,7 @@ class TestConfigRouter(BaseTestRouter):
         with pytest.raises(Exception):
             outcome = await ensure_list_exists_and_items_less_than_max(1, 2, 3)
         mocker.patch(
-            "gen3userdatalibrary.routes.dependencies.DataAccessLayer.get_existing_list_or_throw",
+            "gen3userdatalibrary.routes.injection_dependencies.DataAccessLayer.get_existing_list_or_throw",
             side_effect=ValueError,
         )
         with pytest.raises(HTTPException):

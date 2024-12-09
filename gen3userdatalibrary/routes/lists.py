@@ -12,7 +12,6 @@ from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import (
     get_user_data_library_endpoint,
     get_user_id,
-    parse_and_auth_request,
 )
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.helpers import (
@@ -29,6 +28,7 @@ from gen3userdatalibrary.routes.injection_dependencies import (
     sort_lists_into_create_or_update,
     validate_items,
     validate_lists,
+    parse_and_auth_request,
 )
 from gen3userdatalibrary.utils.metrics import MetricModel, update_user_list_metric
 

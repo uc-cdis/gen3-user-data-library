@@ -1,3 +1,4 @@
+import logging
 import time
 from importlib.metadata import version
 
@@ -75,7 +76,13 @@ async def get_status(
     return_status = status.HTTP_201_CREATED
     status_text = "OK"
 
-    await data_access_layer.test_connection()
+    try:
+        await data_access_layer.test_connection()
+    except Exception as e:
+        logging.error(e)
+        return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+        status_text = "UNHEALTHY"
+
     response = {"status": status_text, "timestamp": time.time()}
 
     return JSONResponse(status_code=return_status, content=response)

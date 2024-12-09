@@ -7,13 +7,13 @@ from gen3authz.client.arborist.errors import ArboristError
 from starlette.datastructures import Headers
 
 from gen3userdatalibrary import config
-from gen3userdatalibrary.auth import parse_and_auth_request
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.routes.basic import PUBLIC_ROUTES
 from gen3userdatalibrary.routes.injection_dependencies import (
     validate_items,
     ensure_user_exists,
+    parse_and_auth_request,
 )
 from tests.data.example_lists import PATCH_BODY, VALID_LIST_A, VALID_LIST_B
 from tests.routes.conftest import BaseTestRouter
@@ -196,7 +196,7 @@ class TestConfigRouter(BaseTestRouter):
         del app.dependency_overrides[parse_and_auth_request]
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.routes.dependencies.get_user_id")
+    @patch("gen3userdatalibrary.routes.injection_dependencies.get_user_id")
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_ensure_user_exists(
         self, arborist, get_token_claims, get_user_id, monkeypatch

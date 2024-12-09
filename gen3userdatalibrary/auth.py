@@ -1,18 +1,13 @@
 from typing import Any, Optional, Union
 
 from authutils.token.fastapi import access_token
-from fastapi import HTTPException, Request, Depends
+from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from gen3authz.client.arborist.async_client import ArboristClient
 from starlette.status import HTTP_401_UNAUTHORIZED as HTTP_401_UNAUTHENTICATED
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 
 from gen3userdatalibrary import config, logging
-from gen3userdatalibrary.routes.context_configurations import (
-    ENDPOINT_TO_CONTEXT,
-    get_resource_from_endpoint_context,
-)
-from gen3userdatalibrary.routes.injection_dependencies import ensure_user_exists
 
 get_bearer_token = HTTPBearer(auto_error=False)
 arborist = ArboristClient()
@@ -22,38 +17,6 @@ get_lists_endpoint = lambda user_id: f"/users/{user_id}/user-data-library/lists"
 get_list_by_id_endpoint = (
     lambda user_id, list_id: f"/users/{user_id}/user-data-library/lists/{list_id}"
 )
-
-
-async def parse_and_auth_request(
-    request: Request, created_user=Depends(ensure_user_exists)
-):
-    """
-    Authorize the request with arborist to ensure the request can be made
-
-    Args:
-        request (Request): fastapi request entity
-        created_user (Union[bool, None]): not used, just ensures user exists first before continuing
-
-    Raises:
-        HTTPException based on authorize_request outcome
-    """
-    user_id = await get_user_id(request=request)
-    path_params = request.scope["path_params"]
-    route_function = request.scope["route"].name
-
-    if route_function not in ENDPOINT_TO_CONTEXT:
-        raise Exception(f"Undefined route '{route_function}', unable to auth")
-
-    endpoint_context = ENDPOINT_TO_CONTEXT[route_function]
-    resource = get_resource_from_endpoint_context(
-        endpoint_context, user_id, path_params
-    )
-    logging.debug(f"Authorizing user: {user_id}")
-    await authorize_request(
-        request=request,
-        authz_access_method=endpoint_context["method"],
-        authz_resources=[resource],
-    )
 
 
 async def authorize_request(

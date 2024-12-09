@@ -6,11 +6,14 @@ from fastapi.encoders import jsonable_encoder
 from starlette import status
 from starlette.responses import JSONResponse, Response
 
-from gen3userdatalibrary.auth import get_user_id, parse_and_auth_request
+from gen3userdatalibrary.auth import get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.helpers import create_user_list_instance
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
-from gen3userdatalibrary.routes.injection_dependencies import validate_items
+from gen3userdatalibrary.routes.injection_dependencies import (
+    validate_items,
+    parse_and_auth_request,
+)
 from gen3userdatalibrary.utils.metrics import update_user_list_metric
 
 only_auth_deps = [Depends(parse_and_auth_request)]
