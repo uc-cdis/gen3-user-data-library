@@ -5,6 +5,8 @@ async def number_generator():
 
 
 async def async_iter(values):
-    # Helper function to return an async iterator
+    """
+    Helper function to return an async iterator
+    """
     for value in values:
         yield value

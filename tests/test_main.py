@@ -43,7 +43,7 @@ class TestConfigRouter(BaseTestRouter):
             side_effect=iter([False]),
             return_value=iter([False]),
         )
-        # todo: suppress errors
+
         with pytest.raises(Exception):
             async with lifespan(app) as _:
                 assert True
@@ -123,7 +123,10 @@ class TestConfigRouter(BaseTestRouter):
         await check_db_connection()
         mock_dal.test_connection.assert_called_once()
 
-    @patch("gen3userdatalibrary.main.get_data_access_layer")
-    async def test_check_arborist_is_healthy(self, mock_get_dal):
+    @pytest.mark.skip(reason="Additional testing if needed")
+    async def test_check_arborist_is_healthy(self):
+        """
+        Add test if needed
+        """
         # check_arborist_is_healthy
         pass

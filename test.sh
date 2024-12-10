@@ -16,5 +16,4 @@ if [ ! -f ".coveragerc" ]; then
 fi
 
 echo "running tests w/ 'pytest'..."
-# tests/routes/test_lists.py::TestUserListsRouter::test_deleting_lists_failures
 poetry run pytest -vv --cov-config=.coveragerc --cov=gen3userdatalibrary --cov-context=test --cov-report=html

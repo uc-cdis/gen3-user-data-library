@@ -1,8 +1,11 @@
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
 from fastapi import Request, Depends, HTTPException
 from fastapi.routing import APIRoute
+from gen3authz.client.arborist.errors import ArboristError
+from httpx import Headers
+from starlette import status
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
@@ -13,6 +16,7 @@ from gen3userdatalibrary.routes.injection_dependencies import (
     validate_user_list_item,
     parse_and_auth_request,
     ensure_list_exists_and_items_less_than_max,
+    ensure_user_exists,
 )
 from tests.data.example_lists import (
     VALID_LIST_A,
@@ -46,11 +50,20 @@ def mock_items(r: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
     raise DependencyException("hit dep")
 
 
+def test_validate_user_list_item():
+    with pytest.raises(HTTPException):
+        outcome = validate_user_list_item({"type": "foo"})
+
+
 @pytest.mark.asyncio
 class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
 
     async def test_all_endpoints_have_auth_dep(self, app_client_pair):
+        """
+        This test ensures that any new endpoints created are forced to have parse_and_auth_request
+        as a dependency unless we deliberately set it otherwise (add it to whitelist)
+        """
         app, client = app_client_pair
         api_routes = list(filter(lambda r: isinstance(r, APIRoute), app.routes))
 
@@ -216,9 +229,11 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_max_items_dependency_failure(
-        self, get_token_claims, arborist, client, endpoint
+        self, get_token_claims, arborist, client, endpoint, monkeypatch
     ):
-        config.MAX_LIST_ITEMS = 1
+
+        previous_max_lists_config = config.MAX_LISTS
+        monkeypatch.setattr(config, "MAX_LISTS", 1)
         get_token_claims.return_value = {"sub": "1"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
@@ -242,7 +257,7 @@ class TestConfigRouter(BaseTestRouter):
             resp1.status_code == 409
             and resp1.text == '{"detail":"Too many items in list"}'
         )
-        config.MAX_LIST_ITEMS = 24
+        monkeypatch.setattr(config, "MAX_LISTS", previous_max_lists_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
@@ -257,6 +272,9 @@ class TestConfigRouter(BaseTestRouter):
         endpoint,
         monkeypatch,
     ):
+        """
+        Tests max lists config by adding lists for different users.
+        """
         previous_max_lists_config = config.MAX_LISTS
         monkeypatch.setattr(config, "MAX_LISTS", 1)
         previous_skip_auth_config = config.DEBUG_SKIP_AUTH
@@ -267,8 +285,9 @@ class TestConfigRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
         arborist.create_user_if_not_exist.return_value = True
-        get_token_claims.return_value = {"sub": "1"}
 
+        # Add lists under user 1
+        get_token_claims.return_value = {"sub": "1"}
         resp2 = await test_client.put(
             "/lists", headers=headers, json={"lists": [VALID_LIST_C]}
         )
@@ -277,6 +296,8 @@ class TestConfigRouter(BaseTestRouter):
         resp1 = await create_basic_list(
             arborist, get_token_claims, test_client, user_list, headers, "2"
         )
+
+        # Add list under user 2
         get_token_claims.return_value = {"sub": "2"}
         test_list = {"name": user_list["name"], "items": VALID_LIST_C["items"]}
         resp3 = await test_client.put(
@@ -301,12 +322,13 @@ class TestConfigRouter(BaseTestRouter):
     ):
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
-
         previous_skip_auth_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
-        headers = {"Authorization": "Bearer ofa.valid.token"}
         previous_max_lists_config = config.MAX_LISTS
         monkeypatch.setattr(config, "MAX_LISTS", 1)
+
+        # Test max lists for user 1
+        headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1"}
         resp1 = await create_basic_list(
@@ -317,6 +339,8 @@ class TestConfigRouter(BaseTestRouter):
         )
         assert resp1.status_code == 201 and resp2.status_code == 422
         assert resp2.json()["detail"] == "Max number of lists reached!"
+
+        # Test max lists for user 2
         get_token_claims.return_value = {"sub": "2"}
         resp3 = await test_client.put(
             "lists", headers=headers, json={"lists": [user_list]}
@@ -333,6 +357,9 @@ class TestConfigRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_validate_id(self, get_token_claims, arborist, user_list, client):
+        """
+        Test that validation recognizes uuid but not other string types
+        """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1"}
@@ -363,7 +390,7 @@ class TestConfigRouter(BaseTestRouter):
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_append_items_to_list_deps_no_list_exists(
+    async def test_appending_to_non_existent_list_fails(
         self, get_token_claims, arborist, client, mocker
     ):
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -391,7 +418,6 @@ class TestConfigRouter(BaseTestRouter):
     ):
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
-
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1"}
@@ -404,18 +430,197 @@ class TestConfigRouter(BaseTestRouter):
         )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
-    async def test_validate_user_list_item(self):
-        with pytest.raises(HTTPException):
-            outcome = validate_user_list_item({"type": "foo"})
-
-    async def test_ensure_list_exists_and_items_less_than_max(self, mocker):
-        with pytest.raises(Exception):
-            outcome = await ensure_list_exists_and_items_less_than_max(1, 2, 3)
+    async def test_ensure_list_exists_and_items_less_than_max(
+        self, alt_session, mocker
+    ):
+        dal = DataAccessLayer(alt_session)
+        with pytest.raises(HTTPException) as e:
+            outcome = await ensure_list_exists_and_items_less_than_max(
+                {}, dal, "550e8400-e29b-41d4-a716-446655440000"
+            )
+        assert e.value.status_code == status.HTTP_404_NOT_FOUND
         mocker.patch(
             "gen3userdatalibrary.routes.injection_dependencies.DataAccessLayer.get_existing_list_or_throw",
-            side_effect=ValueError,
+            side_effect=ArboristError(message="mock error", code=0),
         )
-        with pytest.raises(HTTPException):
+        with pytest.raises(HTTPException) as e2:
             outcome = await ensure_list_exists_and_items_less_than_max(
-                1, DataAccessLayer("abc"), 3
+                {}, DataAccessLayer("abc"), "550e8400-e29b-41d4-a716-446655440000"
             )
+        assert e2.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/lists",
+            "/lists/",
+            "/lists/123e4567-e89b-12d3-a456-426614174000",
+            "/lists/123e4567-e89b-12d3-a456-426614174000/",
+        ],
+    )
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_auth_dep_get_validates_correctly(
+        self,
+        get_token_claims,
+        user_list,
+        app_client_pair,
+        endpoint,
+    ):
+        """
+        Test the auth dependency hits the correct auth function
+
+        """
+        # bonus: test auth request gets correct data instead of just getting hit
+        app, client_instance = app_client_pair
+        get_token_claims.return_value = {"sub": "foo"}
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.get(endpoint)
+        del app.dependency_overrides[parse_and_auth_request]
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/lists/123e4567-e89b-12d3-a456-426614174000",
+            "/lists/123e4567-e89b-12d3-a456-426614174000/",
+        ],
+    )
+    async def test_middleware_patch_hit(self, user_list, app_client_pair, endpoint):
+        app, client_instance = app_client_pair
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.patch(
+                endpoint, headers=headers, json=PATCH_BODY
+            )
+        del app.dependency_overrides[parse_and_auth_request]
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/lists",
+            "/lists/",
+            "/lists/123e4567-e89b-12d3-a456-426614174000",
+            "/lists/123e4567-e89b-12d3-a456-426614174000/",
+        ],
+    )
+    async def test_middleware_lists_put_hit(self, user_list, app_client_pair, endpoint):
+        app, client_instance = app_client_pair
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.put(
+                endpoint, headers=headers, json=PATCH_BODY
+            )
+        del app.dependency_overrides[parse_and_auth_request]
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/lists",
+            "/lists/",
+            "/lists/123e4567-e89b-12d3-a456-426614174000",
+            "/lists/123e4567-e89b-12d3-a456-426614174000/",
+        ],
+    )
+    async def test_middleware_delete_hit(self, user_list, app_client_pair, endpoint):
+        app, client_instance = app_client_pair
+        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.delete(endpoint)
+        del app.dependency_overrides[parse_and_auth_request]
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/lists",
+            "/lists/",
+            "/lists/123e4567-e89b-12d3-a456-426614174000/",
+            "/lists/123e4567-e89b-12d3-a456-426614174000",
+        ],
+    )
+    async def test_max_items_put_dependency_success(
+        self, user_list, app_client_pair, endpoint
+    ):
+        app, client_instance = app_client_pair
+
+        app.dependency_overrides[parse_and_auth_request] = lambda r: Request({})
+        app.dependency_overrides[validate_items] = mock_items
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.put(endpoint, headers=headers)
+        del app.dependency_overrides[parse_and_auth_request]
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/lists/123e4567-e89b-12d3-a456-426614174000/",
+            "/lists/123e4567-e89b-12d3-a456-426614174000",
+        ],
+    )
+    async def test_max_items_patch_dependency_success(
+        self, user_list, app_client_pair, endpoint
+    ):
+        app, client_instance = app_client_pair
+        app.dependency_overrides[parse_and_auth_request] = lambda r: Request({})
+        app.dependency_overrides[validate_items] = mock_items
+        with pytest.raises(DependencyException) as e:
+            response = await client_instance.patch(endpoint)
+        del app.dependency_overrides[parse_and_auth_request]
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.routes.injection_dependencies.get_user_id")
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_ensure_user_exists(
+        self, arborist, get_token_claims, get_user_id, monkeypatch
+    ):
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0", "app": "foo"}
+        get_user_id.return_value = "0"
+        example_app = MagicMock()
+        example_app.state.arborist_client.policies_not_exist.side_effect = Exception
+        example_request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/example",
+                "headers": Headers({"host": "127.0.0.1:8000"}).raw,
+                "query_string": b"name=example",
+                "client": ("127.0.0.1", 8000),
+                "app": example_app,
+            }
+        )
+
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        try:
+            outcome = await ensure_user_exists(example_request)
+        except HTTPException as e:
+            assert e.status_code == 500 and e.detail == "Failed checking policy!"
+        finally:
+            example_app.state.arborist_client.policies_not_exist.side_effect = None
+            monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
+
+        example_app.state.arborist_client.policies_not_exist.return_value = False
+        example_app.state.arborist_client.create_policy.side_effect = ArboristError(
+            message="fake error", code=0
+        )
+
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+
+        try:
+            outcome = await ensure_user_exists(example_request)
+        except HTTPException as e:
+            assert (
+                e.status_code == 500
+                and e.detail == "Internal error creating a policy in arborist"
+            )
+        finally:
+            monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)

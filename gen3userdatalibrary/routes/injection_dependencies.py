@@ -1,6 +1,7 @@
 import json
 from _testcapi import raise_exception
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union, Any
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request
 from gen3authz.client.arborist.errors import ArboristError
@@ -36,15 +37,6 @@ async def validate_upsert_items(lists_to_upsert, dal, user_id):
         user_id (str): creator id
     Raises:
         any exceptions from sorting the lists or checking the items
-    """
-    """
-    Check that the items in lists to upsert add up to less than max config
-
-    Args:
-        lists_to_upsert (Dict["lists": List[ItemToUpdateModel]): basic info about lists that are being changed
-        dal (DataAccessLayer): the data access layer entity
-        user_id (str): creator id for lists
-
     """
     raw_lists = lists_to_upsert["lists"]
     new_user_lists = [
@@ -322,7 +314,7 @@ async def validate_items(
             status_code=400,
             detail=f"Problem trying to validate body. Is your body formatted correctly?",
         )
-    validation_handle_mapping = build_switch_case(
+    route_function_to_validation_handler = build_switch_case(
         {
             "upsert_user_lists": lambda: validate_upsert_items(
                 conformed_body, dal, user_id
@@ -338,8 +330,8 @@ async def validate_items(
             Exception("Invalid route function identified! ")
         ),
     )
-    item_validator_for_endpoint = validation_handle_mapping(route_function)
-    await item_validator_for_endpoint()
+    run_validation_handler = route_function_to_validation_handler(route_function)
+    await run_validation_handler()
 
 
 def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
@@ -383,16 +375,19 @@ def ensure_items_exist_and_less_than_max(lists_to_create, user_id):
         ensure_items_less_than_max(len(item_to_create.items))
 
 
-async def validate_items_to_append(item_list, dal, list_id):
+async def validate_items_to_append(
+    item_list: Dict[str, Any], dal: DataAccessLayer, list_id: UUID
+):
     """
     Validates items to append
 
     Args:
-        item_list ():
+        item_list (Dict[str, Any]): Items to append
         dal (DataAccessLayer): data access interface
         list_id (UUID): id of list
     Raises:
-        abcd
+        ValueError if list not found
+        HTTP Exception if error checking item length
     """
     try:
         list_to_append = await dal.get_existing_list_or_throw(list_id)

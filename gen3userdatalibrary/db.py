@@ -227,8 +227,11 @@ class DataAccessLayer:
         Returns:
             the number of lists associated with that creator
         """
-        query = select(func.count()).select_from(UserList)
-        query = query.where(UserList.creator == creator_id)
+        query = (
+            select(func.count())
+            .select_from(UserList)
+            .where(UserList.creator == creator_id)
+        )
         result = await self.db_session.execute(query)
         count = result.scalar()
         count = count or 0

@@ -1,3 +1,4 @@
+import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import UUID
 
@@ -133,8 +134,10 @@ class TestUserListsRouter(BaseTestRouter):
             json={"name": "My Saved List 1", "items": {}},
         )
         assert empty_put_response.status_code == 200
+        assert empty_put_response.json().get("id", None) == ul_id
         get_empty_list_resp = await test_client.get(endpoint(ul_id), headers=headers)
         assert get_empty_list_resp.status_code == 200
+        assert get_empty_list_resp.json().get("id", None) == ul_id
 
     @pytest.mark.parametrize(
         "endpoint", [lambda l_id: f"/lists/{l_id}", lambda l_id: f"/lists/{l_id}/"]
@@ -430,9 +433,9 @@ class TestUserListsRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         dal = DataAccessLayer(alt_session)
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
-        l_id = r1.id
-        outcome = await get_list_by_id(l_id, EXAMPLE_REQUEST, dal)
+        outcome = await get_list_by_id(r1.id, EXAMPLE_REQUEST, dal)
         assert outcome.status_code == 200
+        assert json.loads(outcome.body).get("id", None) == r1.id
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
@@ -455,6 +458,7 @@ class TestUserListsRouter(BaseTestRouter):
             EXAMPLE_ENDPOINT_REQUEST, l_id, info_to_update_with[0], dal
         )
         assert update_outcome.status_code == 200
+        assert json.loads(update_outcome.body).get("items", {}) == {"bug": "bear"}
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
@@ -470,6 +474,10 @@ class TestUserListsRouter(BaseTestRouter):
             EXAMPLE_ENDPOINT_REQUEST, l_id, {"bug": "bear"}, dal
         )
         assert append_outcome.status_code == 200
+        assert json.loads(append_outcome.body).get("items", {}) == {
+            "fizz": "buzz",
+            "bug": "bear",
+        }
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
@@ -483,6 +491,8 @@ class TestUserListsRouter(BaseTestRouter):
         l_id = r1.id
         delete_outcome = await delete_list_by_id(l_id, EXAMPLE_ENDPOINT_REQUEST, dal)
         assert delete_outcome.status_code == 204
+        get_by_id_outcome = await get_list_by_id(l_id, EXAMPLE_ENDPOINT_REQUEST, dal)
+        assert get_by_id_outcome.status_code == 404
 
 
 EXAMPLE_ENDPOINT_REQUEST = Request(

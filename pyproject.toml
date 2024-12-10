@@ -49,6 +49,7 @@ pylint = ">=3.0.1"
 #          the addopts out below and then run the pytest command with all these options
 #          manually if you want to see coverage
 #
+# Fixes PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
 asyncio_default_fixture_loop_scope = "function"
 # see .coveragerc for what the coverage omits
 addopts = """

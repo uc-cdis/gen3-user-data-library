@@ -521,6 +521,10 @@ class TestUserListsRouter(BaseTestRouter):
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
         read_all_outcome = await read_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)
         assert read_all_outcome.status_code == 200
+        assert (
+            json.loads(read_all_outcome.body).get("lists", {}).get(str(r1.id), None)
+            is not None
+        )
 
     # endregion
 
@@ -677,12 +681,15 @@ class TestUserListsRouter(BaseTestRouter):
         dal = DataAccessLayer(alt_session)
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
         example_update_items_model = UpdateItemsModel(
-            lists=[ItemToUpdateModel(name="bim bam", items={"bug": {"type": "meh"}})]
+            lists=[ItemToUpdateModel(name="fizzbuzz", items={"bug": {"type": "meh"}})]
         )
         read_all_outcome = await upsert_user_lists(
             EXAMPLE_ENDPOINT_REQUEST, example_update_items_model, dal
         )
         assert read_all_outcome.status_code == 201
+        assert json.loads(read_all_outcome.body).get("lists", {}).get(
+            str(r1.id), {}
+        ).get("items", None) == {"bug": {"type": "meh"}}
 
     # endregion
 
@@ -750,8 +757,10 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": "0"}
         dal = DataAccessLayer(alt_session)
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
-        read_all_outcome = await delete_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)
-        assert read_all_outcome.status_code == 204
+        delete_all_lists_outcome = await delete_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)
+        read_all_lists_outcome = await read_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)
+        assert read_all_lists_outcome.status_code == 200
+        assert json.loads(read_all_lists_outcome.body).get("lists", False) == {}
 
     # endregion
 

@@ -309,7 +309,12 @@ async def persist_lists_to_update(
     """
     identifier = (list_to_update.creator, list_to_update.name)
     new_version_of_list = unique_list_identifiers.get(identifier, None)
-    assert new_version_of_list is not None
+    if new_version_of_list is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"List to update has no corresponding new list instace to derive updates from. "
+            f"List info: {identifier}",
+        )
     changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
     updated_list = await data_access_layer.update_and_persist_list(
         list_to_update.id, changes_to_make

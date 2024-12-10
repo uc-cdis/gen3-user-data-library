@@ -30,6 +30,16 @@ def log_user_data_library_api_call(logging: Logger, debug_log: str = None, **kwa
 
 
 def build_switch_case(cases: dict[Hashable, Any], default):
+    """
+    A primitive polyfill of pattern matching in python 3.10
+
+    Args:
+        cases (Dict[Hashable, Any]): any sort of k => v mapping
+        default (Any): outcome if option not found
+
+    Returns:
+        f(k) => Union[v, default]
+    """
     return lambda instance: cases.get(instance, default)
 
 

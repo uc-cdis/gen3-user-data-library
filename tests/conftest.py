@@ -95,6 +95,14 @@ async def db_session_factory(engine):
 
 @pytest_asyncio.fixture(scope="function")
 async def alt_session(db_session_factory):
+    """
+    Creates a setup to allow for a basic, direct interface with DAL functions (when passed in to an instance)
+    Args:
+        db_session_factory: scoped session fixture from above
+
+    Returns:
+        yields a session instance
+    """
     session_ = db_session_factory()
     yield session_
 

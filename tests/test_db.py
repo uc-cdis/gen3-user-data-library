@@ -86,7 +86,8 @@ class TestConfigRouter(BaseTestRouter):
         )
         outcome2 = await dal.persist_user_list("1", example)
         outcome3 = await dal.update_and_persist_list(outcome2.id, {"name": "abcd"})
-        assert outcome3.name == "abcd"
+        outcome4 = await dal.get_user_list_by_list_id(outcome3.id)
+        assert outcome4.name == "abcd"
 
     async def test_delete_all_lists(self, alt_session):
         dal = DataAccessLayer(alt_session)
@@ -146,7 +147,6 @@ class TestConfigRouter(BaseTestRouter):
         old_list = UserList(
             version=0,
             creator=str("1"),
-            # temporarily set authz without the list list_id since we haven't created the list in the db yet
             authz={"version": 0, "authz": [get_lists_endpoint("1")]},
             name="aaa",
             created_time=datetime.now(),
@@ -157,7 +157,6 @@ class TestConfigRouter(BaseTestRouter):
         new_list = UserList(
             version=0,
             creator=str("1"),
-            # temporarily set authz without the list list_id since we haven't created the list in the db yet
             authz={"version": 0, "authz": [get_lists_endpoint("1")]},
             name="bbb",
             created_time=datetime.now(),
