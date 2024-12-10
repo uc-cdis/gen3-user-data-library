@@ -12,7 +12,7 @@ omit =
     gen3userdatalibrary/topic_chains/logging.py
 
 [report]
-; Regexes for lines to exclude from consideration
+; show lines missing coverage
 show_missing = True
 ; Equivalent to --cov-report term-missing:skip-covered
 skip_covered = True

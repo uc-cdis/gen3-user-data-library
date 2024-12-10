@@ -143,10 +143,6 @@ class DataAccessLayer:
         user_list = result.scalar_one_or_none()
         return user_list
 
-    async def get_list_by_id(self, identifier: UUID):
-        query = select(UserList).where(UserList.id == identifier)
-        return await self.get_list_or_none(query)
-
     async def get_list_by_name_and_creator(self, identifier: Tuple[str, str]):
         query = select(UserList).filter(
             tuple_(UserList.creator, UserList.name).in_([identifier])
@@ -190,7 +186,7 @@ class DataAccessLayer:
         Args:
             list_id: UUID of the list
         """
-        existing_record = await self.get_list_by_id(list_id)
+        existing_record = await self.get_user_list_by_list_id(list_id)
         if existing_record is None:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record

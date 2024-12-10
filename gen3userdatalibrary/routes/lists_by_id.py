@@ -63,7 +63,7 @@ async def get_list_by_id(
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    result = await data_access_layer.get_list_by_id(list_id)
+    result = await data_access_layer.get_user_list_by_list_id(list_id)
     if result is None:
         response = JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND, content="list_id not found!"
@@ -122,7 +122,7 @@ async def update_list_by_id(
     Returns:
          JSONResponse: json response with info about the request outcome
     """
-    existing_list = await data_access_layer.get_list_by_id(list_id)
+    existing_list = await data_access_layer.get_user_list_by_list_id(list_id)
     if existing_list is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -196,7 +196,7 @@ async def append_items_to_list(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Nothing to append!"
         )
-    user_list = await data_access_layer.get_list_by_id(list_id)
+    user_list = await data_access_layer.get_user_list_by_list_id(list_id)
     list_exists = user_list is not None
     if not list_exists:
         raise HTTPException(
@@ -259,7 +259,7 @@ async def delete_list_by_id(
     """
     user_id = await get_user_id(request=request)
 
-    get_result = await data_access_layer.get_list_by_id(list_id)
+    get_result = await data_access_layer.get_user_list_by_list_id(list_id)
     if get_result is None:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
 

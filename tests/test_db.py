@@ -91,7 +91,9 @@ class TestConfigRouter(BaseTestRouter):
     async def test_delete_all_lists(self, alt_session):
         dal = DataAccessLayer(alt_session)
         create_outcome = await dal.persist_user_list("1", EXAMPLE_USER_LIST())
-        get_before_delete_outcome = await dal.get_list_by_id(create_outcome.id)
+        get_before_delete_outcome = await dal.get_user_list_by_list_id(
+            create_outcome.id
+        )
         assert get_before_delete_outcome.id is not None
         delete_outcome = await dal.delete_all_lists("1")
         get_after_delete_outcome = await dal.get_all_lists("1")
@@ -100,10 +102,12 @@ class TestConfigRouter(BaseTestRouter):
     async def test_delete_list(self, alt_session):
         dal = DataAccessLayer(alt_session)
         create_outcome = await dal.persist_user_list("1", EXAMPLE_USER_LIST())
-        get_before_delete_outcome = await dal.get_list_by_id(create_outcome.id)
+        get_before_delete_outcome = await dal.get_user_list_by_list_id(
+            create_outcome.id
+        )
         assert get_before_delete_outcome.id is not None
         outcome = await dal.delete_list(create_outcome.id)
-        get_after_delete_outcome = await dal.get_list_by_id(create_outcome.id)
+        get_after_delete_outcome = await dal.get_user_list_by_list_id(create_outcome.id)
         assert get_after_delete_outcome is None
 
     async def test_add_items_to_list(self, alt_session):
@@ -115,7 +119,7 @@ class TestConfigRouter(BaseTestRouter):
         add_success_outcome = await dal.add_items_to_list(
             create_outcome.id, {"foo": "bar"}
         )
-        get_outcome = await dal.get_list_by_id(create_outcome.id)
+        get_outcome = await dal.get_user_list_by_list_id(create_outcome.id)
         assert get_outcome.items.get("foo", None) is not None
 
     async def test_grab_all_lists_that_exist(self, alt_session):
@@ -161,7 +165,7 @@ class TestConfigRouter(BaseTestRouter):
             items={"fizz": "buzz"},
         )
         replace_outcome = await dal.change_list_contents(new_list, old_list)
-        get_outcome = await dal.get_list_by_id(replace_outcome[0].id)
+        get_outcome = await dal.get_user_list_by_list_id(replace_outcome[0].id)
         assert get_outcome is not None
 
 
