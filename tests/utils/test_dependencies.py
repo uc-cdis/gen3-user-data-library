@@ -12,6 +12,7 @@ from gen3userdatalibrary.routes.injection_dependencies import (
     validate_items,
     validate_user_list_item,
     parse_and_auth_request,
+    ensure_list_exists_and_items_less_than_max,
 )
 from tests.data.example_lists import (
     VALID_LIST_A,

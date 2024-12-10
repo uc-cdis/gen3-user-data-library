@@ -131,7 +131,7 @@ class TestAuthRouter(BaseTestRouter):
             pass
 
         arborist.auth_request.side_effect = MockExceptionTwo("mock throw")
-        with pytest.raises(HTTPException):
+        with pytest.raises(MockExceptionTwo):
             outcome = await auth.authorize_request(
                 "access",
                 ["/users/1/user-data-library/lists"],
