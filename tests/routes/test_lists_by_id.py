@@ -435,7 +435,7 @@ class TestUserListsRouter(BaseTestRouter):
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
         outcome = await get_list_by_id(r1.id, EXAMPLE_REQUEST, dal)
         assert outcome.status_code == 200
-        assert json.loads(outcome.body).get("id", None) == r1.id
+        assert json.loads(outcome.body).get("id", None) == str(r1.id)
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")

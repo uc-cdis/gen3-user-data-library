@@ -231,9 +231,11 @@ class TestConfigRouter(BaseTestRouter):
     async def test_max_items_dependency_failure(
         self, get_token_claims, arborist, client, endpoint, monkeypatch
     ):
-
-        previous_max_lists_config = config.MAX_LISTS
-        monkeypatch.setattr(config, "MAX_LISTS", 1)
+        """
+        Test that request fails citing too many items
+        """
+        previous_max_lists_config = config.MAX_LIST_ITEMS
+        monkeypatch.setattr(config, "MAX_LIST_ITEMS", 1)
         get_token_claims.return_value = {"sub": "1"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
@@ -257,7 +259,7 @@ class TestConfigRouter(BaseTestRouter):
             resp1.status_code == 409
             and resp1.text == '{"detail":"Too many items in list"}'
         )
-        monkeypatch.setattr(config, "MAX_LISTS", previous_max_lists_config)
+        monkeypatch.setattr(config, "MAX_LIST_ITEMS", previous_max_lists_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A])
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
