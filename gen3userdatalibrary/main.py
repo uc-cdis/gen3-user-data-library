@@ -46,6 +46,9 @@ async def lifespan(app: FastAPI):
 
 
 async def check_db_connection():
+    """
+    Simple check to ensure we can talk to the db
+    """
     try:
         logging.debug(
             "Startup database connection test initiating. Attempting a simple query..."
@@ -63,6 +66,12 @@ async def check_db_connection():
 
 
 async def check_arborist_is_healthy(app_with_setup):
+    """
+    Checks that we can talk to arborist
+    Args:
+        app_with_setup (FastAPI): the fastapi app with arborist client
+
+    """
     logging.debug("Startup policy engine (Arborist) connection test initiating...")
     arborist_client = app_with_setup.state.arborist_client
     if not arborist_client.healthy():
@@ -74,6 +83,11 @@ async def check_arborist_is_healthy(app_with_setup):
 
 
 async def add_metrics_and_arborist_client(app):
+    """
+    Helper function to add metrics and arborist client
+    Args:
+        app (FastAPI):  the initial instance of the fast api app
+    """
     app.state.metrics = Metrics(
         enabled=config.ENABLE_PROMETHEUS_METRICS,
         prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,

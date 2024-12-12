@@ -37,6 +37,15 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
 
 
 def conform_to_item_update(items_to_update_as_dict) -> ItemToUpdateModel:
+    """
+    Given a dict of items to add to a list, makes an ItemToUpdateModel out of them
+
+    Args:
+        items_to_update_as_dict (Dict[str, Any]):
+
+    Returns:
+        ItemToUpdateModel
+    """
     try:
         validated_data = ItemToUpdateModel(**items_to_update_as_dict)
         return validated_data
