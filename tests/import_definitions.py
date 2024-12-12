@@ -1,6 +1,6 @@
 import importlib
 import inspect
-from pathlib import Path, PosixPath
+from pathlib import Path
 from types import ModuleType
 from typing import Dict
 
@@ -9,7 +9,7 @@ def get_modules_in_directory(directory: Path) -> Dict[str, ModuleType]:
     """
     Creates a module name => module instance mapping
     Args:
-        directory (PosixPath): directory with source file modules
+        directory (Path): directory with source file modules
 
     Returns:
         module name => module instance mapping
@@ -43,11 +43,11 @@ def get_modules_in_directory(directory: Path) -> Dict[str, ModuleType]:
 
 def get_functions_from_module(module_name: str, service_module: ModuleType):
     """
-    Create function name => function mapping, N, for importlib
+    Create function name => function mapping, N, using importlib per module
 
     Args:
         module_name (str): full module name
-        service_module (ModuleType): name for module to import functions for
+        service_module (ModuleType): module instance to derive functions for
 
     Returns:
         (module_name, N)
