@@ -8,9 +8,9 @@ from httpx import Headers
 from starlette import status
 
 from gen3userdatalibrary import config
+from gen3userdatalibrary.config import PUBLIC_ROUTES
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.routes import route_aggregator
-from gen3userdatalibrary.routes.basic import PUBLIC_ROUTES
 from gen3userdatalibrary.routes.injection_dependencies import (
     validate_items,
     validate_user_list_item,
@@ -100,6 +100,9 @@ class TestConfigRouter(BaseTestRouter):
         app_client_pair,
         endpoint,
     ):
+        """
+        Test the auth dependency validates correctly
+        """
         # bonus: test auth request gets correct data instead of just getting hit
         app, client_instance = app_client_pair
         get_token_claims.return_value = {"sub": "foo"}
@@ -428,7 +431,8 @@ class TestConfigRouter(BaseTestRouter):
         )
         assert (
             response.status_code == 400
-            and response.text == '{"detail":"No items provided for list for user: 1"}'
+            and response.json()["detail"]
+            == "Problem trying to validate body. Is your body formatted correctly?"
         )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 

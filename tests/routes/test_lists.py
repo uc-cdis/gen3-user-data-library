@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from black.trans import defaultdict
-from fastapi import HTTPException
 from gen3authz.client.arborist.async_client import ArboristClient
 
 from gen3userdatalibrary import config
@@ -41,12 +40,11 @@ class TestUserListsRouter(BaseTestRouter):
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         valid_single_list_body = {"lists": [user_list]}
-        with pytest.raises(HTTPException) as e:
-            response = await client.put(endpoint, json=valid_single_list_body)
-        response = e.value
+        response = await client.put(endpoint, json=valid_single_list_body)
+        resp_content = json.loads(response.content)
         assert response
         assert response.status_code == 401
-        assert response.detail == "Unauthorized"
+        assert resp_content["detail"] == "Unauthorized"
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
@@ -66,15 +64,14 @@ class TestUserListsRouter(BaseTestRouter):
         # not a valid token
         headers = {"Authorization": "Bearer ofbadnews"}
 
-        with pytest.raises(HTTPException) as e:
-            response = await client.put(
-                endpoint, headers=headers, json={"lists": [user_list]}
-            )
-        response = e.value
+        response = await client.put(
+            endpoint, headers=headers, json={"lists": [user_list]}
+        )
+        resp_content = json.loads(response.content)
         assert response.status_code == 401
         assert (
-            "Could not verify, parse, and/or validate scope from provided access token."
-            in response.detail
+            resp_content["detail"]
+            == "Could not verify, parse, and/or validate scope from provided access token."
         )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
@@ -194,7 +191,7 @@ class TestUserListsRouter(BaseTestRouter):
             headers=headers,
             json={"lists": [{"name": "My Saved List 4", "items": {}}]},
         )
-        assert empty_create.status_code == 400
+        assert empty_create.status_code == 201
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("endpoint", ["/lists", "/lists/"])
@@ -511,12 +508,15 @@ class TestUserListsRouter(BaseTestRouter):
         response_2 = await test_client.get("/lists", headers=headers)
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.auth._get_token_claims")
+    @patch("gen3userdatalibrary.auth._get_token_claims", new_callable=AsyncMock)
     async def test_read_all_lists_directly(
-        self, arborist, get_token_claims, alt_session
+        self,
+        get_token_claims,
+        arborist,
+        alt_session,
     ):
+        get_token_claims.return_value = {"sub": "0"}
         arborist.auth_request.return_value = True
-        get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
         dal = DataAccessLayer(alt_session)
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
         read_all_outcome = await read_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)

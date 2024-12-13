@@ -88,4 +88,5 @@ if ITEM_SCHEMAS is None:
 if "None" in ITEM_SCHEMAS:
     ITEM_SCHEMAS[None] = ITEM_SCHEMAS["None"]
 
-ENDPOINTS_WITHOUT_METRICS = ["/metrics", "/metrics/"]
+PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
+ENDPOINTS_WITHOUT_METRICS = {"/metrics", "/metrics/"} | PUBLIC_ROUTES

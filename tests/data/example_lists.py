@@ -199,7 +199,7 @@ VALID_MULTI_LIST_BODY = {"lists": [VALID_LIST_A, VALID_LIST_B]}
 
 INVALID_LIST_B = {
     "name": "My Saved List AP1",
-    "items": {},
+    "items": "aaa",
 }
 
 

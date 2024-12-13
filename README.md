@@ -62,7 +62,8 @@ For alembic, our system uses a generic single-database configuration with an asy
 The api should nearly work out of the box. You will
 need to install poetry dependencies, as well as set
 up a `.env` file at the top level. The configuration
-for this is described directly below. Once you have
+for this is described directly below. To generate the tables
+you can run `poetry run alembic upgrade head`. Once you have
 a `.env` set up, running `run.sh` should boot up
 an api you can access in your browser by going to
 `localhost:8000` assuming you use the default ports.

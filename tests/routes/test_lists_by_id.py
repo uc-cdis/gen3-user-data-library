@@ -73,9 +73,9 @@ class TestUserListsRouter(BaseTestRouter):
         """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
+        get_token_claims.return_value = {"sub": "0"}
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         headers = {"Authorization": "Bearer ofa.valid.token"}
-
         no_data_resp = await test_client.get(endpoint(l_id), headers=headers)
         assert no_data_resp.status_code == 404
         create_outcome = await create_basic_list(
@@ -391,6 +391,7 @@ class TestUserListsRouter(BaseTestRouter):
     ):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         l_id = "550e8400-e29b-41d4-a716-446655440000"
+        get_token_claims.return_value = {"sub": "0"}
         outcome = await client.get(f"/lists/{l_id}", headers=headers)
         assert outcome.status_code == 404
 
@@ -402,6 +403,7 @@ class TestUserListsRouter(BaseTestRouter):
     ):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         l_id = "550e8400-e29b-41d4-a716-446655440000"
+        get_token_claims.return_value = {"sub": "0"}
         outcome = await client.put(
             f"/lists/{l_id}", headers=headers, json={"name": "fizz", "items": {}}
         )
@@ -440,10 +442,10 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_update_list_by_id_directly(
-        self, arborist, get_token_claims, alt_session
+        self, get_token_claims, arborist, alt_session
     ):
         arborist.auth_request.return_value = True
-        get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
+        get_token_claims.return_value = {"sub": "0"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         dal = DataAccessLayer(alt_session)
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
@@ -463,7 +465,7 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_append_items_to_list_directly(
-        self, arborist, get_token_claims, alt_session
+        self, get_token_claims, arborist, alt_session
     ):
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
@@ -482,10 +484,10 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_delete_list_by_id_directly(
-        self, arborist, get_token_claims, alt_session
+        self, get_token_claims, arborist, alt_session
     ):
         arborist.auth_request.return_value = True
-        get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
+        get_token_claims.return_value = {"sub": "0"}
         dal = DataAccessLayer(alt_session)
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
         l_id = r1.id

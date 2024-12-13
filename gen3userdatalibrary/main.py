@@ -5,7 +5,7 @@ from typing import AsyncIterable
 
 import fastapi
 from cdislogging import get_logger
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 from starlette.requests import Request
@@ -141,36 +141,42 @@ def get_app() -> fastapi.FastAPI:
 
         path = request.url.path
         method = request.method
-        user_id = await get_user_id(request=request)
-        response_body = getattr(response, "body", None)
-
+        if path in config.ENDPOINTS_WITHOUT_METRICS:
+            return response
         # don't add logs or metrics for the actual metrics gathering endpoint
-        if path not in config.ENDPOINTS_WITHOUT_METRICS:
-            log_user_data_library_api_call(
-                logging=logging,
-                debug_log=(
-                    f"Response body: {getattr(response, 'body', None)}"
-                    if response_body
-                    else None
-                ),
-                method=method,
-                path=path,
-                status_code=response.status_code,
-                response_time_seconds=response_time_seconds,
-                user_id=user_id,
+        try:
+            user_id = await get_user_id(request=request)
+        except HTTPException as e:
+            logging.debug(
+                f"Could not retrieve user_id. Error: {e}. For logging and metrics, "
+                f"setting user_id to 'Unknown'"
             )
+            user_id = "Unknown"
+        response_body = getattr(response, "body", None)
+        log_user_data_library_api_call(
+            logging=logging,
+            debug_log=(
+                f"Response body: {getattr(response, 'body', None)}"
+                if response_body
+                else None
+            ),
+            method=method,
+            path=path,
+            status_code=response.status_code,
+            response_time_seconds=response_time_seconds,
+            user_id=user_id,
+        )
 
-            if not getattr(fastapi_app.state, "metrics", None):
-                return
-            metrics = fastapi_app.state.metrics
-            # todo: test
-            metrics.add_user_list_api_interaction(
-                method=method,
-                path=path,
-                user_id=user_id,
-                response_time_seconds=response_time_seconds,
-                status_code=response.status_code,
-            )
+        if not getattr(fastapi_app.state, "metrics", None):
+            return
+        metrics = fastapi_app.state.metrics
+        metrics.add_user_list_api_interaction(
+            method=method,
+            path=path,
+            user_id=user_id,
+            response_time_seconds=response_time_seconds,
+            status_code=response.status_code,
+        )
 
         return response
 

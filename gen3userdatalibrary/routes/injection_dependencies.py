@@ -238,7 +238,10 @@ async def validate_lists(
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
         dal, unique_list_identifiers, new_user_lists
     )
-    ensure_items_exist_and_less_than_max(lists_to_create, user_id)
+
+    for item_to_create in lists_to_create:
+        ensure_items_less_than_max(len(item_to_create.items))
+
     await dal.ensure_user_has_not_reached_max_lists(user_id, len(lists_to_create))
 
 
@@ -312,7 +315,8 @@ async def validate_items(
         logging.error(e)
         raise HTTPException(
             status_code=400,
-            detail=f"Problem trying to validate body. Is your body formatted correctly?",
+            detail="Problem trying to validate body. Is your body formatted "
+            "correctly?",
         )
     route_function_to_validation_handler = build_switch_case(
         {
@@ -354,25 +358,6 @@ def ensure_items_less_than_max(number_of_new_items, existing_item_count=0):
             status_code=status.HTTP_409_CONFLICT,
             detail="Too many items in list",
         )
-
-
-def ensure_items_exist_and_less_than_max(lists_to_create, user_id):
-    """
-    Takes items from list to create and that they're less than max config.
-
-    Args:
-        lists_to_create (List[UserList]): list of user lists to create
-        user_id (str): creator id
-    Raises:
-          exception if items less than max
-    """
-    for item_to_create in lists_to_create:
-        if len(item_to_create.items) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"No items provided for list for user: {user_id}",
-            )
-        ensure_items_less_than_max(len(item_to_create.items))
 
 
 async def validate_items_to_append(

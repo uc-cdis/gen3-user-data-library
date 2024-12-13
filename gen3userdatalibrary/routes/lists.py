@@ -155,6 +155,7 @@ async def upsert_user_lists(
     user_id = await get_user_id(request=request)
 
     raw_lists = requested_lists.lists
+
     updated_user_lists, metrics_info = await sort_persist_and_get_changed_lists(
         data_access_layer, raw_lists, user_id
     )
@@ -277,6 +278,7 @@ async def sort_persist_and_get_changed_lists(
         items_updated=sum(len(user_list.items) for user_list in lists_to_update),
         items_deleted=0,
     )
+
     updated_lists = [
         await persist_lists_to_update(
             data_access_layer, list_to_update, unique_list_identifiers
