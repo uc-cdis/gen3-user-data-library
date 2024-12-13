@@ -1,4 +1,3 @@
-import time
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -22,11 +21,11 @@ from gen3userdatalibrary.routes.dependencies import (
     validate_items,
     validate_lists,
 )
-from gen3userdatalibrary.utils.metrics import add_user_list_metric
 from gen3userdatalibrary.utils.modeling import (
-    try_conforming_list,
     derive_changes_to_make,
 )
+from gen3userdatalibrary.utils.metrics import MetricModel, update_user_list_metric
+from gen3userdatalibrary.utils.modeling import try_conforming_list
 
 lists_router = APIRouter()
 
@@ -34,11 +33,15 @@ lists_router = APIRouter()
 @lists_router.get(
     "/",
     include_in_schema=False,
-    dependencies=[Depends(parse_and_auth_request)],
+    dependencies=[
+        Depends(parse_and_auth_request),
+    ],
 )
 @lists_router.get(
     "",
-    dependencies=[Depends(parse_and_auth_request)],
+    dependencies=[
+        Depends(parse_and_auth_request),
+    ],
     response_model=UserListResponseModel,
     status_code=status.HTTP_200_OK,
     description="Returns all lists that user can read",
@@ -70,7 +73,6 @@ async def read_all_lists(
         request (Request): FastAPI request (so we can check authorization)
         data_access_layer (DataAccessLayer): how we interface with db
     """
-    start_time = time.time()
     user_id = await get_user_id(request=request)
     # dynamically create user policy
 
@@ -83,17 +85,12 @@ async def read_all_lists(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="There was a problem trying to get list for the user. Try again later!",
         )
+
     id_to_list_dict = _map_list_id_to_list_dict(user_lists)
     json_conformed_data = jsonable_encoder(id_to_list_dict)
-    response = {"lists": json_conformed_data}
-    end_time = time.time()
-    response_time_seconds = end_time - start_time
-    logging.info(
-        f"Gen3 User Data Library Response. Action: READ. "
-        f"response={response}, response_time_seconds={response_time_seconds} user_id={user_id}"
-    )
-    logging.debug(response)
-    return JSONResponse(status_code=status.HTTP_200_OK, content=response)
+    response_data = {"lists": json_conformed_data}
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=response_data)
 
 
 @lists_router.put(
@@ -153,34 +150,24 @@ async def upsert_user_lists(
     Returns:
 
     """
-    start_time = time.time()
-
-    creator_id = await get_user_id(request=request)
+    user_id = await get_user_id(request=request)
 
     raw_lists = requested_lists.lists
 
-    updated_user_lists = await sort_persist_and_get_changed_lists(
-        data_access_layer, raw_lists, creator_id
+    updated_user_lists, metrics_info = await sort_persist_and_get_changed_lists(
+        data_access_layer, raw_lists, user_id
     )
     json_conformed_data = jsonable_encoder(updated_user_lists)
-    end_time = time.time()
-    response_time_seconds = end_time - start_time
-    response = {"lists": json_conformed_data}
-    action = "CREATE"
-    logging.info(
-        f"Gen3 User Data Library Response. Action: {action}. "
-        f"lists={requested_lists}, response={response}, "
-        f"response_time_seconds={response_time_seconds} user_id={creator_id}"
-    )
-    add_user_list_metric(
+
+    response_data = {"lists": json_conformed_data}
+    response = JSONResponse(status_code=status.HTTP_201_CREATED, content=response_data)
+
+    update_user_list_metric(
         fastapi_app=request.app,
-        action=action,
-        user_lists=requested_lists.lists,
-        response_time_seconds=response_time_seconds,
-        user_id=creator_id,
+        user_id=user_id,
+        **metrics_info.model_dump(),
     )
-    logging.debug(response)
-    return JSONResponse(status_code=status.HTTP_201_CREATED, content=response)
+    return response
 
 
 @lists_router.delete(
@@ -216,10 +203,9 @@ async def delete_all_lists(
         request (Request): FastAPI request (so we can check authorization)
         data_access_layer (DataAccessLayer): how we interface with db
     """
-    start_time = time.time()
     user_id = await get_user_id(request=request)
     try:
-        number_of_lists_deleted = await data_access_layer.delete_all_lists(user_id)
+        metrics_info = await data_access_layer.delete_all_lists(user_id)
     except Exception as exc:
         logging.exception(
             f"Unknown exception {type(exc)} when trying to delete lists for user {user_id}."
@@ -229,18 +215,15 @@ async def delete_all_lists(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid list information provided",
         )
-    end_time = time.time()
-    response_time_seconds = end_time - start_time
 
-    action = "DELETE"
-    response = {"lists_deleted": number_of_lists_deleted}
-    logging.info(
-        f"Gen3 User Data Library Response. Action: {action}. "
-        f"count={number_of_lists_deleted}, response={response}, "
-        f"response_time_seconds={response_time_seconds} user_id={user_id}"
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    update_user_list_metric(
+        fastapi_app=request.app,
+        user_id=user_id,
+        **metrics_info.model_dump(),
     )
-    logging.debug(response)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return response
 
 
 # region Helpers
@@ -264,13 +247,13 @@ def _map_list_id_to_list_dict(new_user_lists: List[UserList]):
 
 async def sort_persist_and_get_changed_lists(
     data_access_layer: DataAccessLayer, raw_lists: List[ItemToUpdateModel], user_id: str
-) -> dict[str, dict]:
+) -> (dict[str, dict], MetricModel):
     """
     Conforms and sorts lists into sets to be updated or created, persists them in db, handles any
     exceptions in trying to do so.
 
     Returns:
-        id => list (as dict) relationship
+        id => list (as dict) relationship and a MetricModel
 
     Raises:
         409 HTTP exception if there is nothing to update
@@ -284,6 +267,16 @@ async def sort_persist_and_get_changed_lists(
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
         data_access_layer, unique_list_identifiers, new_lists_as_orm
     )
+
+    metrics_info = MetricModel(
+        lists_added=len(lists_to_create),
+        lists_updated=len(lists_to_update),
+        lists_deleted=0,
+        items_added=sum(len(user_list.items) for user_list in lists_to_create),
+        items_updated=sum(len(user_list.items) for user_list in lists_to_update),
+        items_deleted=0,
+    )
+
     updated_lists = []
     for list_to_update in lists_to_update:
         identifier = (list_to_update.creator, list_to_update.name)
@@ -300,7 +293,7 @@ async def sort_persist_and_get_changed_lists(
     for user_list in lists_to_create + updated_lists:
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
-    return response_user_lists
+    return response_user_lists, metrics_info
 
 
 # endregion

@@ -87,6 +87,3 @@ async def get_status(
     response = {"status": status_text, "timestamp": time.time()}
 
     return JSONResponse(status_code=return_status, content=response)
-
-
-PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}

@@ -32,9 +32,10 @@ class TestUserListsRouter(BaseTestRouter):
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         valid_single_list_body = {"lists": [user_list]}
         response = await client.put(endpoint, json=valid_single_list_body)
+        resp_content = json.loads(response.content)
         assert response
         assert response.status_code == 401
-        assert response.json().get("detail")
+        assert resp_content["detail"] == "Unauthorized"
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
@@ -54,14 +55,14 @@ class TestUserListsRouter(BaseTestRouter):
         # not a valid token
         headers = {"Authorization": "Bearer ofbadnews"}
 
-        # with pytest.raises(HTTPException) as e:
         response = await client.put(
             endpoint, headers=headers, json={"lists": [user_list]}
         )
+        resp_content = json.loads(response.content)
         assert response.status_code == 401
         assert (
-            "Could not verify, parse, and/or validate scope from provided access token."
-            in response.text
+            resp_content["detail"]
+            == "Could not verify, parse, and/or validate scope from provided access token."
         )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
@@ -78,7 +79,7 @@ class TestUserListsRouter(BaseTestRouter):
         user_list,
         endpoint,
         client,
-        monkeypatch
+        monkeypatch,
     ):
         """
         Test accessing the endpoint when unauthorized
@@ -90,11 +91,7 @@ class TestUserListsRouter(BaseTestRouter):
         arborist.auth_request.return_value = False
         get_token_claims.return_value = {
             "sub": "foo",
-            "context": {
-                "user": {
-                    "name": "bar"
-                }
-            }
+            "context": {"user": {"name": "bar"}},
         }
 
         headers = {"Authorization": "Bearer ofa.valid.token"}

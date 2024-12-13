@@ -5,7 +5,6 @@ from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from gen3authz.client.arborist.async_client import ArboristClient
 from gen3authz.client.arborist.errors import ArboristError
-from starlette import status
 from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED as HTTP_401_UNAUTHENTICATED
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
@@ -78,9 +77,7 @@ async def authorize_request(
             username = await get_username(token, request)
             logging.debug(f"Attempting to create policy for user {user_id}...")
             await create_user_policy(
-                user_id=user_id,
-                username=username,
-                arborist_client=arborist
+                user_id=user_id, username=username, arborist_client=arborist
             )
 
             logging.debug("Retrying authz request...")
@@ -100,6 +97,7 @@ async def authorize_request(
         except ArboristError as exc:
             logging.error(f"arborist request failed, exc: {exc}")
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
+
 
 async def get_user_id(
     token: HTTPAuthorizationCredentials = None, request: Request = None
@@ -132,6 +130,7 @@ async def get_user_id(
         raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
 
     return token_claims["sub"]
+
 
 async def get_username(
     token: HTTPAuthorizationCredentials = None, request: Request = None
@@ -239,7 +238,9 @@ async def _get_token(
     return token
 
 
-async def create_user_policy(user_id: str, username: str, arborist_client: ArboristClient):
+async def create_user_policy(
+    user_id: str, username: str, arborist_client: ArboristClient
+):
     """
     Creates the user policy necessary for a user to maintain lists in their data library.
     Args:
@@ -251,11 +252,15 @@ async def create_user_policy(user_id: str, username: str, arborist_client: Arbor
     is_resource_assigned_to_user = False
     try:
         resources = await arborist_client.list_resources_for_user(username)
-        logging.info(f"Found user's data-library assigned to user in arborist, skipping policy generation")
+        logging.info(
+            f"Found user's data-library assigned to user in arborist, skipping policy generation"
+        )
         is_resource_assigned_to_user = resource in set(resources)
     except ArboristError as e:
         if e.code == 404:
-            logging.info(f"Unable to find {username} in arborist, creating and setting up data-library policy")
+            logging.info(
+                f"Unable to find {username} in arborist, creating and setting up data-library policy"
+            )
         else:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from e
 
@@ -268,13 +273,13 @@ async def create_user_policy(user_id: str, username: str, arborist_client: Arbor
 
     logging.info("Attempting to create arborist resource: {}".format(resource))
     await arborist_client.update_resource(
-        path='/',
+        path="/",
         resource_json={
             "name": resource,
             "description": f"Library for user_id {user_id}",
         },
         merge=True,
-        create_parents=True
+        create_parents=True,
     )
 
     policy_json = {
@@ -287,11 +292,11 @@ async def create_user_policy(user_id: str, username: str, arborist_client: Arbor
     logging.info(f"Policy {user_id} does not exist, attempting to create....")
 
     await arborist_client.update_policy(
-        policy_id=user_id,
-        policy_json=policy_json,
-        create_if_not_exist=True
+        policy_id=user_id, policy_json=policy_json, create_if_not_exist=True
     )
 
-    logging.info(f"Granting resource {resource} to {username} with policy_id {user_id}....")
+    logging.info(
+        f"Granting resource {resource} to {username} with policy_id {user_id}...."
+    )
 
     await arborist_client.grant_user_policy(username=username, policy_id=user_id)

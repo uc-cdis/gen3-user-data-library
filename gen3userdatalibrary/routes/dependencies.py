@@ -48,13 +48,15 @@ def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
     return resource
 
 
-async def parse_and_auth_request(
-    request: Request
-):
+async def parse_and_auth_request(request: Request):
     user_id = await get_user_id(request=request)
     path_params = request.scope["path_params"]
     route_function = request.scope["route"].name
-    endpoint_context = ENDPOINT_TO_CONTEXT.get(route_function, {})
+
+    if route_function not in ENDPOINT_TO_CONTEXT:
+        raise Exception(f"Undefined route '{route_function}', unable to auth")
+
+    endpoint_context = ENDPOINT_TO_CONTEXT[route_function]
     resource = get_resource_from_endpoint_context(
         endpoint_context, user_id, path_params
     )
