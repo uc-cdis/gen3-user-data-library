@@ -35,7 +35,7 @@ class TestUserListsRouter(BaseTestRouter):
         resp_content = json.loads(response.content)
         assert response
         assert response.status_code == 401
-        assert resp_content == "Unauthorized"
+        assert resp_content["detail"] == "Unauthorized"
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
@@ -61,7 +61,7 @@ class TestUserListsRouter(BaseTestRouter):
         resp_content = json.loads(response.content)
         assert response.status_code == 401
         assert (
-            resp_content
+            resp_content["detail"]
             == "Could not verify, parse, and/or validate scope from provided access token."
         )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)

@@ -8,7 +8,6 @@ from fastapi import FastAPI, HTTPException
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from gen3userdatalibrary import config, logging
 from gen3userdatalibrary.auth import get_user_id
@@ -126,7 +125,8 @@ def get_app() -> fastapi.FastAPI:
         try:
             user_id = await get_user_id(request=request)
         except HTTPException as e:
-            return JSONResponse(status_code=e.status_code, content=e.detail)
+            logging.info(f"Exception occurred in middleware: {e}")
+            return response
         response_body = getattr(response, "body", None)
         log_user_data_library_api_call(
             logging=logging,
