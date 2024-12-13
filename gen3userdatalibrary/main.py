@@ -125,7 +125,10 @@ def get_app() -> fastapi.FastAPI:
         try:
             user_id = await get_user_id(request=request)
         except HTTPException as e:
-            logging.info(f"Exception occurred in middleware: {e}")
+            logging.debug(
+                f"Could not retrieve user_id. Error: {e}. For logging and metrics, "
+                f"setting user_id to 'Unknown'"
+            )
             user_id = "Unknown"
         response_body = getattr(response, "body", None)
         log_user_data_library_api_call(
