@@ -127,7 +127,7 @@ async def get_user_id(
 
     token_claims = await _get_token_claims(token, request)
     if "sub" not in token_claims:
-        return "Unknown"
+        raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
 
     return token_claims["sub"]
 
@@ -189,7 +189,7 @@ async def _get_token_claims(
     token = await _get_token(token, request)
     # either this was provided or we've tried to get it from the Bearer header
     if not token:
-        return {"context": {"name": "Unknown"}, "sub": "Unknown"}
+        raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
 
     # This is what the Gen3 AuthN/Z service adds as the audience to represent Gen3 services
     if request:
