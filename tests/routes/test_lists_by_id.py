@@ -389,6 +389,14 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_get_by_id_list_not_exist(
         self, get_token_claims, arborist, user_list, client
     ):
+        """
+        Test getting an id that does not exist returns 404
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            user_list: lists to test
+            client: endpoint interface
+        """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         get_token_claims.return_value = {"sub": "0"}
@@ -401,6 +409,14 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_update_by_id_list_not_exist(
         self, get_token_claims, arborist, user_list, client
     ):
+        """
+        Test update body to put fails if list not exist
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            user_list: lists to test
+            client: endpoint interface
+        """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         get_token_claims.return_value = {"sub": "0"}
@@ -412,8 +428,15 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_get_list_by_id_directly(
-        self, arborist, get_token_claims, alt_session, client
+        self, arborist, get_token_claims, alt_session
     ):
+        """
+        Test getting by id directly against the endpoint works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
         l_id = UUID("550e8400-e29b-41d4-a716-446655440000")
         EXAMPLE_REQUEST = Request(
             {
@@ -444,6 +467,13 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_update_list_by_id_directly(
         self, get_token_claims, arborist, alt_session
     ):
+        """
+        Test update by id directly works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "0"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -467,6 +497,13 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_append_items_to_list_directly(
         self, get_token_claims, arborist, alt_session
     ):
+        """
+        Test appending directly works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
         dal = DataAccessLayer(alt_session)
@@ -486,6 +523,13 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_delete_list_by_id_directly(
         self, get_token_claims, arborist, alt_session
     ):
+        """
+        Test direct delete works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "0"}
         dal = DataAccessLayer(alt_session)
