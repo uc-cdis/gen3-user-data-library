@@ -5,17 +5,31 @@ from typing import AsyncIterable
 
 import fastapi
 from cdislogging import get_logger
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 from starlette.requests import Request
 
-from gen3userdatalibrary import config, logging
+from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_user_id
+from gen3userdatalibrary.config import logging
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.metrics import Metrics
-from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.routes.basic import basic_router
+from gen3userdatalibrary.routes.lists import lists_router
+from gen3userdatalibrary.routes.lists_by_id import lists_by_id_router
 from gen3userdatalibrary.utils.core import log_user_data_library_api_call
+
+route_aggregator = APIRouter()
+
+route_definitions = [
+    (basic_router, "", ["Basic"]),
+    (lists_router, "/lists", ["Lists"]),
+    (lists_by_id_router, "/lists", ["ByID"]),
+]
+
+for router, prefix, tags in route_definitions:
+    route_aggregator.include_router(router, prefix=prefix, tags=tags)
 
 
 @asynccontextmanager

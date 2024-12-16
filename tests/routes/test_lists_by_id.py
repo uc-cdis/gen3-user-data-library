@@ -7,8 +7,8 @@ from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from gen3userdatalibrary.db import DataAccessLayer
+from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
-from gen3userdatalibrary.routes import route_aggregator
 from gen3userdatalibrary.routes.lists_by_id import (
     get_list_by_id,
     update_list_by_id,

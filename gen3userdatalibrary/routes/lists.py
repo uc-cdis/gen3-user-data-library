@@ -6,10 +6,10 @@ from fastapi.responses import Response
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary import logging
 from gen3userdatalibrary.auth import (
     get_user_id,
 )
+from gen3userdatalibrary.config import logging
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.models.helpers import (
     try_conforming_list,

@@ -90,3 +90,6 @@ if "None" in ITEM_SCHEMAS:
 
 PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
 ENDPOINTS_WITHOUT_METRICS = {"/metrics", "/metrics/"} | PUBLIC_ROUTES
+
+
+logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")

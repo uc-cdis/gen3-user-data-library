@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.main import route_aggregator
 from tests.data.example_lists import (
     VALID_LIST_A,
     VALID_LIST_B,

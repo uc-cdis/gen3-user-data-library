@@ -9,7 +9,8 @@ from starlette.requests import Request
 from starlette.status import HTTP_401_UNAUTHORIZED as HTTP_401_UNAUTHENTICATED
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 
-from gen3userdatalibrary import config, logging
+from gen3userdatalibrary import config
+from gen3userdatalibrary.config import logging
 
 get_bearer_token = HTTPBearer(auto_error=False)
 arborist = ArboristClient()

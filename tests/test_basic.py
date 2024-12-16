@@ -3,7 +3,7 @@ from unittest.mock import patch, AsyncMock
 import pytest
 
 from gen3userdatalibrary.db import DataAccessLayer
-from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.main import route_aggregator
 from tests.routes.conftest import BaseTestRouter
 
 

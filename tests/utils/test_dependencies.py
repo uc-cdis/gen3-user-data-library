@@ -10,7 +10,7 @@ from starlette import status
 from gen3userdatalibrary import config
 from gen3userdatalibrary.config import PUBLIC_ROUTES
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
-from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.routes.injection_dependencies import (
     validate_items,
     validate_user_list_item,

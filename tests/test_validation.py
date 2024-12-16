@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from pydantic import ValidationError
 
-from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.main import route_aggregator
 from tests.data.example_lists import INVALID_LIST_A
 from tests.routes.conftest import BaseTestRouter
 

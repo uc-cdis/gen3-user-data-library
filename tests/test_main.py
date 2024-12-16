@@ -11,7 +11,7 @@ from gen3userdatalibrary.main import (
     get_app,
     check_db_connection,
 )
-from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.main import route_aggregator
 from tests.routes.conftest import BaseTestRouter
 
 

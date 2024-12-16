@@ -48,18 +48,20 @@ pylint = ">=3.0.1"
 #          on breakpoints. If you run into this issue, you can comment
 #          the addopts out below and then run the pytest command with all these options
 #          manually if you want to see coverage
-#
+
 # Fixes PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
 asyncio_default_fixture_loop_scope = "function"
 # see .coveragerc for what the coverage omits
-addopts = """
--vv --cov-config=.coveragerc
---cov=gen3userdatalibrary
---cov-report term-missing:skip-covered
---cov-fail-under 90
---cov-report html:_coverage
---cov-branch
-"""
+addopts = [
+    "--import-mode=importlib",
+    "-vv",
+    "--cov-config=.coveragerc",
+    "--cov=gen3userdatalibrary",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-fail-under=90",
+    "--cov-report=html:_coverage"
+]
+
 
 [tool.isort]
 known_first_party = ["gen3userdatalibrary"]

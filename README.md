@@ -47,7 +47,7 @@ configurations can be found under the docs folder in the
 example `env` file. We use `alembic` to handle our database
 setup as well as migrations.
 
-Endpoints paths can be in the `routes/__init__.py` file in
+Endpoints paths can be in the `routes/__initroute_configurations_.py` file in
 combination with the paths listed above each function
 under the `routes` directory.
 

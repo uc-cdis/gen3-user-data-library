@@ -8,9 +8,9 @@ from sqlalchemy import select
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_lists_endpoint
 from gen3userdatalibrary.db import DataAccessLayer
+from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.helpers import create_user_list_instance
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel, UserList
-from gen3userdatalibrary.routes import route_aggregator
 from tests.routes.conftest import BaseTestRouter
 
 

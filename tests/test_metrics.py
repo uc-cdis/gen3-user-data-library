@@ -1,7 +1,7 @@
 import pytest
 
+from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.metrics import Metrics
-from gen3userdatalibrary.routes import route_aggregator
 from tests.routes.conftest import BaseTestRouter
 
 

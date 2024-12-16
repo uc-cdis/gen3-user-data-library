@@ -1,3 +1,7 @@
+from typing import Optional, Callable
+
+from gen3userdatalibrary.auth import get_list_by_id_endpoint, get_lists_endpoint
+
 """
 Endpoint to context is a static definition of information specific to endpoints used in
 dependencies. For example, all endpoints need to authorize the user request, but the
@@ -12,10 +16,6 @@ Current recognized properties:
         - ID: by id, takes (user_id, list_id)
     items: defines how to extract the 'items' component from a request body
 """
-
-from typing import Optional, Callable
-
-from gen3userdatalibrary.auth import get_list_by_id_endpoint, get_lists_endpoint
 
 
 def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):

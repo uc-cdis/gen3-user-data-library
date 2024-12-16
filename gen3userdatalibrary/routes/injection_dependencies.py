@@ -8,19 +8,20 @@ from gen3authz.client.arborist.errors import ArboristError
 from jsonschema.validators import validate
 from starlette import status
 
-from gen3userdatalibrary import config, logging
+from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import (
     get_user_id,
     authorize_request,
     get_user_data_library_endpoint,
 )
+from gen3userdatalibrary.config import logging
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.models.helpers import (
     try_conforming_list,
     conform_to_item_update,
 )
 from gen3userdatalibrary.models.user_list import UserList
-from gen3userdatalibrary.routes.context_configurations import (
+from gen3userdatalibrary.routes.route_configurations import (
     ENDPOINT_TO_CONTEXT,
     get_resource_from_endpoint_context,
 )
