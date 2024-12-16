@@ -75,6 +75,12 @@ class TestConfigRouter(BaseTestRouter):
         assert response.status_code == 200
 
     async def test_config(self, mocker):
+        """
+        Test various configs behave as expected
+
+        Args:
+            mocker: mock config cases
+        """
         old_env = os.environ.get("ENV", "test")
         os.environ["ENV"] = "foo"
         importlib.reload(config)

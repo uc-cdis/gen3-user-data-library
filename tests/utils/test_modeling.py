@@ -22,7 +22,11 @@ class TestConfigRouter(BaseTestRouter):
         side_effect=raise_exce,
     )
     async def test_try_conforming_list(self, modeling):
-
+        """
+        Test conforming list fails as expected
+        Args:
+            modeling: mock create instance
+        """
         example_list = ItemToUpdateModel(
             name="1", items={"key1": "value1", "key2": 123}
         )

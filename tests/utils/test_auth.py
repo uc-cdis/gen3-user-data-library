@@ -90,6 +90,13 @@ class TestAuthRouter(BaseTestRouter):
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     async def test_id(self, arborist, mocker, monkeypatch):
+        """
+        Test that get user id fails in various contexts
+        Args:
+            arborist: mock arborist
+            mocker: mock objs
+            monkeypatch: save attrs
+        """
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         arborist.auth_request.return_value = True

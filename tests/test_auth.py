@@ -305,7 +305,8 @@ async def test_create_user_policy_resource_user_not_found(monkeypatch):
 @pytest.mark.asyncio
 async def test_create_user_policy_create_resource_success(monkeypatch):
     """
-    Test that the function successfully creates a resource, policy, and grants it when the user doesn't have the resource.
+    Test that the function successfully creates a resource, policy, and grants it when the user doesn't have the
+    resource.
     """
     mock_arborist_client = AsyncMock()
     user_id = "test_user"

@@ -26,6 +26,14 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_full_successful_walkthrough(
         self, get_token_claims, arborist, client, endpoint
     ):
+        """
+        General tests off all the endpoints together
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            client: endpoint interface
+            endpoint: endpoints to hit
+        """
         get_token_claims.return_value = {"sub": "1"}
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}

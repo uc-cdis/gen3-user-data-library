@@ -27,6 +27,14 @@ class TestConfigRouter(BaseTestRouter):
         arborist,
         client,
     ):
+        """
+        Test that getting the status fails with a 500
+        Args:
+            test_connection: mocker to generate error
+            get_token_claims: get mock token
+            arborist: bypass auth
+            client: endpoint access
+        """
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
         get_token_claims.return_value = {"sub": "1"}

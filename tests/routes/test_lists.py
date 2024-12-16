@@ -10,7 +10,7 @@ from gen3authz.client.arborist.async_client import ArboristClient
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_list_by_id_endpoint
 from gen3userdatalibrary.db import DataAccessLayer
-from gen3userdatalibrary.main import route_aggregator, get_app
+from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.user_list import UpdateItemsModel, ItemToUpdateModel
 from gen3userdatalibrary.routes.lists import (
     read_all_lists,
@@ -200,6 +200,15 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_create_multiple_valid_lists(
         self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
+        """
+        Test one put outcome with multiple lists creates data correctly
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            endpoint: endpoints to test
+            app_client_pair: app, endpoint interface bundle
+            monkeypatch: save attr
+        """
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         app, test_client = app_client_pair
@@ -473,6 +482,15 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_read_all_lists_unknown_error(
         self, get_token_claims, arborist, app_client_pair, monkeypatch, mocker
     ):
+        """
+        Test read all fails with an expected 500
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            app_client_pair: app and endpoint interface bundle
+            monkeypatch: save attr
+            mocker: mock obj and functions
+        """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
@@ -492,6 +510,13 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_reading_for_non_existent_user_fails(
         self, get_token_claims, arborist, app_client_pair
     ):
+        """
+        Test getting data for a user that does not exist/hasn't made a list fails
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            app_client_pair: app and endpoint interface
+        """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
@@ -505,7 +530,9 @@ class TestUserListsRouter(BaseTestRouter):
         )
         response_1 = await test_client.get("/lists", headers=headers)
         get_token_claims.return_value = {"sub": "bar"}
+        assert len(list(json.loads(response_1.text)["lists"].items())) > 0
         response_2 = await test_client.get("/lists", headers=headers)
+        assert len(list(json.loads(response_2.text)["lists"].items())) == 0
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims", new_callable=AsyncMock)
@@ -515,6 +542,13 @@ class TestUserListsRouter(BaseTestRouter):
         arborist,
         alt_session,
     ):
+        """
+        Basic test that hitting the read all endpoint directly works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct session access for db
+        """
         get_token_claims.return_value = {"sub": "0"}
         arborist.auth_request.return_value = True
         dal = DataAccessLayer(alt_session)
@@ -536,6 +570,15 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_creating_and_updating_lists(
         self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
+        """
+        Test creating and updating a lists yields expected outputs
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            endpoint: endpoint strings to test
+            app_client_pair: app and endpoint interface bundle
+            monkeypatch: save attr
+        """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
@@ -600,16 +643,24 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("endpoint", ["/lists"])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_updating_two_lists_twice(
+    async def test_updating_two_lists(
         self, get_token_claims, arborist, endpoint, app_client_pair, monkeypatch
     ):
+        """
+        Test updating two lists at once works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            endpoint: strings to test
+            app_client_pair: app and endpoint interface bundle
+            monkeypatch: save attr
+        """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
-        # update one list, update two lists
-        # update twice
         headers = {"Authorization": "Bearer ofa.valid.token"}
+        # user id = 1
         await create_basic_list(
             arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
@@ -618,7 +669,7 @@ class TestUserListsRouter(BaseTestRouter):
         )
         arborist.auth_request.return_value = True
         user_id = "qqqqqq"
-        get_token_claims.return_value = {"sub": user_id, "otherstuff": "foobar"}
+        get_token_claims.return_value = {"sub": user_id}
         updated_list_a = VALID_LIST_A
         updated_list_a["items"] = VALID_LIST_C["items"]
         updated_list_b = VALID_LIST_B
@@ -637,6 +688,14 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_bad_lists_contents(
         self, get_token_claims, arborist, endpoint, app_client_pair
     ):
+        """
+        Test malformed body fails against put
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            endpoint: endpoints to test
+            app_client_pair: app and endpoint interface bundle
+        """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         headers = {"Authorization": "Bearer ofa.valid.token"}
@@ -662,6 +721,14 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_update_contents_wrong_type_fails(
         self, get_token_claims, arborist, endpoint, client
     ):
+        """
+        Test put raises a type error with malformed boy structure
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            endpoint: endpoints to test
+            client: endpoint interface
+        """
         headers = {"Authorization": "Bearer ofa.valid.token"}
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
@@ -676,6 +743,13 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_upsert_user_lists_directly(
         self, get_token_claims, arborist, alt_session
     ):
+        """
+        Test the upsert function directly, ensure basic behavior works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
         dal = DataAccessLayer(alt_session)
@@ -700,6 +774,13 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_deleting_lists_success(
         self, get_token_claims, arborist, app_client_pair
     ):
+        """
+        Test deleting works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            app_client_pair: app and endpoint interface bundle
+        """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
@@ -719,16 +800,24 @@ class TestUserListsRouter(BaseTestRouter):
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_deleting_lists_failures(
+    async def test_deleting_does_not_affect_other_user(
         self, get_token_claims, arborist, app_client_pair, monkeypatch
     ):
+        """
+        Tests creating and deleting for separate users works as expected.
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            app_client_pair: app and endpoint interface bundle
+            monkeypatch: save attr
+        """
+        get_lists_count = lambda r: len(json.loads(r.text)["lists"])
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        # todo: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
         outcome = await create_basic_list(
             arborist, get_token_claims, test_client, VALID_LIST_A, headers
         )
@@ -740,12 +829,19 @@ class TestUserListsRouter(BaseTestRouter):
         )
 
         response_1 = await test_client.get("/lists", headers=headers)
-        get_token_claims.return_value = {"sub": "89", "otherstuff": "foobar"}
+        assert get_lists_count(response_1) == 1
+        get_token_claims.return_value = {"sub": "89"}
         response_2 = await test_client.get("/lists", headers=headers)
+        assert get_lists_count(response_2) == 0
+        await create_basic_list(
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers, "89"
+        )
+        assert get_lists_count(await test_client.get("/lists", headers=headers)) == 1
         response_3 = await test_client.delete("/lists", headers=headers)
         response_4 = await test_client.get("/lists", headers=headers)
         assert response_3.status_code == 204
         assert response_4.status_code == 200
+        assert get_lists_count(response_4) == 0
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
@@ -753,6 +849,13 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_delete_all_lists_directly(
         self, get_token_claims, arborist, alt_session
     ):
+        """
+        Test delete all endpoint directly works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "0"}
         dal = DataAccessLayer(alt_session)
@@ -770,6 +873,14 @@ class TestUserListsRouter(BaseTestRouter):
     async def test_last_updated_changes_automatically(
         self, get_token_claims, arborist, endpoint, app_client_pair
     ):
+        """
+        Test the timing on create and update correctly reflect when changes are made in db
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            endpoint: endpoints to test
+            app_client_pair: app and endpoint interface bundle
+        """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
@@ -813,6 +924,14 @@ class TestUserListsRouter(BaseTestRouter):
 
 
 def map_creator_to_list_ids(lists: dict):
+    """
+    Builds mapping of creator id to list ids from lists as dict
+    Args:
+        lists: id => list content
+
+    Returns:
+    Returns a mapping of creator id to ids of lists under that creator
+    """
     add_id_to_creator = lambda mapping, id_list_pair: add_to_dict_set(
         mapping, id_list_pair[1]["creator"], id_list_pair[0]
     )
@@ -820,13 +939,3 @@ def map_creator_to_list_ids(lists: dict):
 
 
 # endregion
-
-
-@pytest.fixture
-def app_with_mocked_arborist():
-
-    app = get_app()
-    # Mock the create_user_if_not_exist function
-    mock_create_user_if_not_exist = AsyncMock(return_value={"outcome": "success"})
-    app.state.arborist_client.create_user_if_not_exist = mock_create_user_if_not_exist
-    return app, mock_create_user_if_not_exist

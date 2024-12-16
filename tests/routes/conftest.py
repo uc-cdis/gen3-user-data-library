@@ -17,6 +17,14 @@ class BaseTestRouter:
 
     @pytest_asyncio.fixture(scope="function")
     async def client(self, session):
+        """
+        This fixture generates an endpoint interface to test the api
+        Args:
+            session: db session to interface with db
+
+        Returns:
+
+        """
         app = get_app()
         app.include_router(self.router)
         app.dependency_overrides[get_data_access_layer] = lambda: DataAccessLayer(
@@ -33,6 +41,11 @@ class BaseTestRouter:
 
     @pytest_asyncio.fixture(scope="function")
     async def app_client_pair(self, session):
+        """
+        Bundles the app and endpoint client together
+        Args:
+            session: db interface
+        """
         app = get_app()
         app.include_router(self.router)
         app.dependency_overrides[get_data_access_layer] = lambda: DataAccessLayer(

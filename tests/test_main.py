@@ -21,6 +21,13 @@ class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
 
     async def test_lifespan(self, mocker, monkeypatch, app_client_pair):
+        """
+        Test running lifespan fails or succeeds in appropriate contexts
+        Args:
+            mocker: mock objects
+            monkeypatch: attr holder
+            app_client_pair: app instance and client instance
+        """
         previous_config = config.DEBUG_SKIP_AUTH
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
 
@@ -61,30 +68,13 @@ class TestConfigRouter(BaseTestRouter):
             assert True
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
-    async def test_get_app(self, mocker):
-        mock_schema = mocker.patch(
-            "gen3userdatalibrary.config.ENABLE_PROMETHEUS_METRICS", True
-        )
-        assert config.ENABLE_PROMETHEUS_METRICS is True
-        original_prometheus_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-        original_dir = os.getcwd()
-
-        os.environ["PROMETHEUS_MULTIPROC_DIR"] = "bash"
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        current_dir_without_slash = current_dir.rstrip("/")
-        parent_dir = os.path.dirname(current_dir_without_slash)
-        os.chdir(parent_dir)
-        try:
-            outcome = get_app()
-        finally:
-            if original_prometheus_dir is not None:
-                os.environ["PROMETHEUS_MULTIPROC_DIR"] = original_prometheus_dir
-            else:
-                del os.environ["PROMETHEUS_MULTIPROC_DIR"]
-            os.chdir(original_dir)
-        assert isinstance(outcome, FastAPI)
-
     async def test_get_app_with_prometheus(self, mocker, monkeypatch):
+        """
+        Test app mounts prometheus as expected
+        Args:
+            mocker: mock objects
+            monkeypatch: save attrs
+        """
         previous_config = config.ENABLE_PROMETHEUS_METRICS
         monkeypatch.setattr(config, "ENABLE_PROMETHEUS_METRICS", False)
 
