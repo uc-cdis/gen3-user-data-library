@@ -436,9 +436,15 @@ class TestConfigRouter(BaseTestRouter):
         )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
-    async def test_ensure_list_exists_and_items_less_than_max(
+    async def test_validating_lists_and_items_fails_correctly(
         self, alt_session, mocker
     ):
+        """
+        Test that when validating lists and items, returns correct error codes
+        Args:
+            alt_session: basic session for dal access
+            mocker: direct mocker handler
+        """
         dal = DataAccessLayer(alt_session)
         with pytest.raises(HTTPException) as e:
             outcome = await ensure_list_exists_and_items_less_than_max(
