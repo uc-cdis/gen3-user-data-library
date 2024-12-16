@@ -291,7 +291,11 @@ class DataAccessLayer:
             item_data: dict of items to add to item component of list
         """
         prev_list = await self.get_user_list_by_list_id(list_id)
-        prev_item_count = 0 if prev_list is None else len(prev_list.items)
+        prev_item_count = (
+            0
+            if (prev_list is None or prev_list.items is None)
+            else len(prev_list.items)
+        )
         new_items_count = len(item_data.keys())
         amount_of_new_items = new_items_count - prev_item_count
 
@@ -341,7 +345,11 @@ class DataAccessLayer:
         Change the contents of a list directly, including replaces the contents of `items`
         """
         prev_list = await self.get_user_list_by_list_id(existing_user_list.id)
-        prev_item_count = 0 if prev_list is None else len(prev_list.items)
+        prev_item_count = (
+            0
+            if (prev_list is None or prev_list.items is None)
+            else len(prev_list.items)
+        )
         new_items_count = len(new_user_list.items.keys())
         amount_of_new_items = new_items_count - prev_item_count
 
