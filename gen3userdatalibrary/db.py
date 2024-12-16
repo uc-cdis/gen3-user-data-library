@@ -51,6 +51,14 @@ async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
 
 def get_items_added_and_deleted(amount_of_new_items: int):
+    """
+    Calcs items added and items deleted
+    Args:
+        amount_of_new_items: new items to be added to list
+
+    Returns:
+
+    """
     items_added = 0
     items_deleted = 0
     if amount_of_new_items > 0:
@@ -119,6 +127,14 @@ class DataAccessLayer:
         return list(result.scalars().all())
 
     async def get_list_or_none(self, query) -> Optional[UserList]:
+        """
+        Given a query, executes it and returns the item or none
+        Args:
+            query: any valid query obj
+
+        Returns:
+            user list if it exists
+        """
         result = await self.db_session.execute(query)
         user_list = result.scalar_one_or_none()
         return user_list
@@ -144,6 +160,14 @@ class DataAccessLayer:
         return user_list
 
     async def get_list_by_name_and_creator(self, identifier: Tuple[str, str]):
+        """
+        Get list by (creator, name) bundle
+        Args:
+            identifier: (creator id, name of list)
+
+        Returns:
+            list if it exists
+        """
         query = select(UserList).filter(
             tuple_(UserList.creator, UserList.name).in_([identifier])
         )

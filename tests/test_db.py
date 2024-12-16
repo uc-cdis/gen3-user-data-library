@@ -19,6 +19,12 @@ class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
 
     async def test_ensure_user_has_not_reached_max_lists(self, session, monkeypatch):
+        """
+        Test max list raises an exception at the appropriate time
+        Args:
+            session: db access
+            monkeypatch: save attr
+        """
         previous_config = config.MAX_LISTS
         monkeypatch.setattr(config, "MAX_LISTS", 1)
         dal = DataAccessLayer(session)
@@ -29,11 +35,21 @@ class TestConfigRouter(BaseTestRouter):
         monkeypatch.setattr(config, "MAX_LISTS", previous_config)
 
     async def test_persist_user_list(self, alt_session):
+        """
+        Test persisting a list generates an id
+        Args:
+            alt_session: direct db access
+        """
         dal = DataAccessLayer(alt_session)
         outcome = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
         assert outcome.id is not None
 
     async def test_get_list_or_none(self, alt_session):
+        """
+        Test getting a list from dal yields list or none in appropriate cases
+        Args:
+            alt_session: direct db access
+        """
         dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         get_before_create_outcome = await dal.get_list_or_none(
@@ -49,6 +65,11 @@ class TestConfigRouter(BaseTestRouter):
         assert get_after_create_outcome is not None
 
     async def test_get_list_by_name_and_creator(self, alt_session):
+        """
+        Test getting by name and creator in dal works as expected
+        Args:
+            alt_session: direct session access
+        """
         dal = DataAccessLayer(alt_session)
         get_before_create_outcome = await dal.get_list_by_name_and_creator(
             ("foo", "bar")
@@ -62,6 +83,11 @@ class TestConfigRouter(BaseTestRouter):
         assert get_after_create_outcome is not None
 
     async def test_get_existing_list_or_throw(self, alt_session):
+        """
+        Test getting a list throws or does not throw as expected
+        Args:
+            alt_session: direct db access
+        """
         dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         with pytest.raises(ValueError):
@@ -70,6 +96,11 @@ class TestConfigRouter(BaseTestRouter):
         success_outcome = await dal.get_existing_list_or_throw(create_outcome.id)
 
     async def test_update_and_persist_list(self, alt_session):
+        """
+        Test updating a list saves it correctly
+        Args:
+            alt_session: direct db access
+        """
         dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         with pytest.raises(ValueError):
@@ -90,6 +121,11 @@ class TestConfigRouter(BaseTestRouter):
         assert outcome4.name == "abcd"
 
     async def test_delete_all_lists(self, alt_session):
+        """
+        Test deleting all lists works as expected
+        Args:
+            alt_session: direct db access
+        """
         dal = DataAccessLayer(alt_session)
         create_outcome = await dal.persist_user_list("1", EXAMPLE_USER_LIST())
         get_before_delete_outcome = await dal.get_user_list_by_list_id(
@@ -101,6 +137,11 @@ class TestConfigRouter(BaseTestRouter):
         assert get_after_delete_outcome == []
 
     async def test_delete_list(self, alt_session):
+        """
+        Test deleting a list in dal works
+        Args:
+            alt_session: direct db access
+        """
         dal = DataAccessLayer(alt_session)
         create_outcome = await dal.persist_user_list("1", EXAMPLE_USER_LIST())
         get_before_delete_outcome = await dal.get_user_list_by_list_id(
@@ -112,6 +153,11 @@ class TestConfigRouter(BaseTestRouter):
         assert get_after_delete_outcome is None
 
     async def test_add_items_to_list(self, alt_session):
+        """
+        Test adding item to list works as expected
+        Args:
+            alt_session: direct db access
+        """
         dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         with pytest.raises(ValueError):
@@ -124,6 +170,11 @@ class TestConfigRouter(BaseTestRouter):
         assert get_outcome.items.get("foo", None) is not None
 
     async def test_grab_all_lists_that_exist(self, alt_session):
+        """
+        Test getting all lists for a user gets the correct lists
+        Args:
+            alt_session: direct db access
+        """
         dal = DataAccessLayer(alt_session)
         l_id = "550e8400-e29b-41d4-a716-446655440000"
         grab_before_create_outcome = await dal.grab_all_lists_that_exist(
@@ -143,6 +194,11 @@ class TestConfigRouter(BaseTestRouter):
         assert list_ids == {create_outcome_1.id, create_outcome_2.id}
 
     async def test_replace_list(self, alt_session):
+        """
+        Test dal change list works as expected
+        Args:
+            alt_session: session to access db directly
+        """
         dal = DataAccessLayer(alt_session)
         old_list = UserList(
             version=0,
