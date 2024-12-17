@@ -1,8 +1,20 @@
-from unittest.mock import AsyncMock, patch
+import json
+from unittest.mock import AsyncMock, patch, MagicMock
+from uuid import UUID
 
 import pytest
+from starlette.datastructures import Headers
+from starlette.requests import Request
 
-from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.db import DataAccessLayer
+from gen3userdatalibrary.main import route_aggregator
+from gen3userdatalibrary.models.user_list import ItemToUpdateModel
+from gen3userdatalibrary.routes.lists_by_id import (
+    get_list_by_id,
+    update_list_by_id,
+    append_items_to_list,
+    delete_list_by_id,
+)
 from tests.data.example_lists import (
     VALID_LIST_A,
     VALID_LIST_B,
@@ -12,11 +24,52 @@ from tests.data.example_lists import (
 )
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
+from tests.test_db import EXAMPLE_USER_LIST
 
 
 @pytest.mark.asyncio
 class TestUserListsRouter(BaseTestRouter):
     router = route_aggregator
+
+    @pytest.mark.parametrize(
+        "endpoint", [lambda l_id: f"/lists/{l_id}", lambda l_id: f"/lists/{l_id}/"]
+    )
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_basic_append(
+        self, get_token_claims, arborist, user_list, endpoint, client
+    ):
+        """
+        Test that creating, updating, and then appending to a list works as expected.
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            user_list: test example list
+            client:  endpoint interface
+            endpoint: id endpoint callable strings
+
+        """
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        resp1 = await create_basic_list(
+            arborist, get_token_claims, client, user_list, headers
+        )
+        patch_body = {
+            "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239123": {
+                "dataset_guid": "phs000001.v1.p1.c1.PATCHED_ITEM",
+                "type": "GA4GH_DRS",
+            },
+        }
+        ul_id = get_id_from_response(resp1)
+        resp2 = await client.put(
+            endpoint(ul_id), headers=headers, json=VALID_REPLACEMENT_LIST
+        )
+        resp3 = await client.patch(endpoint(ul_id), headers=headers, json=patch_body)
+        response = await client.get(endpoint(ul_id), headers=headers)
+        assert response.status_code == 200
+        assert len(json.loads(response.text)["items"].items()) == 3
 
     @pytest.mark.parametrize(
         "endpoint", [lambda l_id: f"/lists/{l_id}", lambda l_id: f"/lists/{l_id}/"]
@@ -34,7 +87,6 @@ class TestUserListsRouter(BaseTestRouter):
             get_token_claims: a general handler for authenticating a user's token
             arborist: async instance of our access control policy engine
             user_list: example user lists
-            client: route handler
         """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
@@ -61,8 +113,11 @@ class TestUserListsRouter(BaseTestRouter):
         """
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
-
+        get_token_claims.return_value = {"sub": "0"}
+        l_id = "550e8400-e29b-41d4-a716-446655440000"
         headers = {"Authorization": "Bearer ofa.valid.token"}
+        no_data_resp = await test_client.get(endpoint(l_id), headers=headers)
+        assert no_data_resp.status_code == 404
         create_outcome = await create_basic_list(
             arborist, get_token_claims, test_client, user_list, headers
         )
@@ -113,6 +168,16 @@ class TestUserListsRouter(BaseTestRouter):
             )
             is not None
         )
+        empty_put_response = await test_client.put(
+            endpoint(ul_id),
+            headers=headers,
+            json={"name": "My Saved List 1", "items": {}},
+        )
+        assert empty_put_response.status_code == 200
+        assert empty_put_response.json().get("id", None) == ul_id
+        get_empty_list_resp = await test_client.get(endpoint(ul_id), headers=headers)
+        assert get_empty_list_resp.status_code == 200
+        assert get_empty_list_resp.json().get("id", None) == ul_id
 
     @pytest.mark.parametrize(
         "endpoint", [lambda l_id: f"/lists/{l_id}", lambda l_id: f"/lists/{l_id}/"]
@@ -244,6 +309,9 @@ class TestUserListsRouter(BaseTestRouter):
         create_outcome = await create_basic_list(
             arborist, get_token_claims, test_client, user_list, headers
         )
+        ul_id = get_id_from_response(create_outcome)
+        response = await test_client.patch(f"/lists/{ul_id}", headers=headers, json={})
+        assert response.status_code == 409
         body = {
             "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a65": {
                 "dataset_guid": "phs000001.v1.p1.c1",
@@ -354,3 +422,173 @@ class TestUserListsRouter(BaseTestRouter):
             endpoint(ul_id_2), headers=headers
         )
         assert second_delete_attempt_1.status_code == 204
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_get_by_id_list_not_exist(
+        self, get_token_claims, arborist, user_list, client
+    ):
+        """
+        Test getting an id that does not exist returns 404
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            user_list: lists to test
+            client: endpoint interface
+        """
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        l_id = "550e8400-e29b-41d4-a716-446655440000"
+        get_token_claims.return_value = {"sub": "0"}
+        outcome = await client.get(f"/lists/{l_id}", headers=headers)
+        assert outcome.status_code == 404
+
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_update_by_id_list_not_exist(
+        self, get_token_claims, arborist, user_list, client
+    ):
+        """
+        Test update body to put fails if list not exist
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            user_list: lists to test
+            client: endpoint interface
+        """
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        l_id = "550e8400-e29b-41d4-a716-446655440000"
+        get_token_claims.return_value = {"sub": "0"}
+        outcome = await client.put(
+            f"/lists/{l_id}", headers=headers, json={"name": "fizz", "items": {}}
+        )
+        assert outcome.status_code == 404
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_get_list_by_id_directly(
+        self, arborist, get_token_claims, alt_session
+    ):
+        """
+        Test getting by id directly against the endpoint works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
+        l_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+        EXAMPLE_REQUEST = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/example",
+                "headers": Headers({"host": "127.0.0.1:8000"}).raw,
+                "query_string": b"name=example",
+                "client": ("127.0.0.1", 8000),
+            }
+        )
+        outcome = await get_list_by_id(
+            l_id, EXAMPLE_REQUEST, DataAccessLayer(alt_session)
+        )
+        assert outcome.status_code == 404
+
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        dal = DataAccessLayer(alt_session)
+        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        outcome = await get_list_by_id(r1.id, EXAMPLE_REQUEST, dal)
+        assert outcome.status_code == 200
+        assert json.loads(outcome.body).get("id", None) == str(r1.id)
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_update_list_by_id_directly(
+        self, get_token_claims, arborist, alt_session
+    ):
+        """
+        Test update by id directly works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        dal = DataAccessLayer(alt_session)
+        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        l_id = r1.id
+        info_to_update_with = (
+            ItemToUpdateModel(
+                name="bim bam",
+                items={"bug": "bear"},
+            ),
+        )
+        update_outcome = await update_list_by_id(
+            EXAMPLE_ENDPOINT_REQUEST, l_id, info_to_update_with[0], dal
+        )
+        assert update_outcome.status_code == 200
+        assert json.loads(update_outcome.body).get("items", {}) == {"bug": "bear"}
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_append_items_to_list_directly(
+        self, get_token_claims, arborist, alt_session
+    ):
+        """
+        Test appending directly works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
+        dal = DataAccessLayer(alt_session)
+        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        l_id = r1.id
+        append_outcome = await append_items_to_list(
+            EXAMPLE_ENDPOINT_REQUEST, l_id, {"bug": "bear"}, dal
+        )
+        assert append_outcome.status_code == 200
+        assert json.loads(append_outcome.body).get("items", {}) == {
+            "fizz": "buzz",
+            "bug": "bear",
+        }
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_delete_list_by_id_directly(
+        self, get_token_claims, arborist, alt_session
+    ):
+        """
+        Test direct delete works as expected
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            alt_session: direct db access
+        """
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0"}
+        dal = DataAccessLayer(alt_session)
+        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        l_id = r1.id
+        delete_outcome = await delete_list_by_id(l_id, EXAMPLE_ENDPOINT_REQUEST, dal)
+        assert delete_outcome.status_code == 204
+        get_by_id_outcome = await get_list_by_id(l_id, EXAMPLE_ENDPOINT_REQUEST, dal)
+        assert get_by_id_outcome.status_code == 404
+
+
+EXAMPLE_ENDPOINT_REQUEST = Request(
+    {
+        "type": "http",
+        "method": "PUT",
+        "path": "/example",
+        "headers": Headers({"host": "127.0.0.1:8000"}).raw,
+        "query_string": b"name=example",
+        "client": ("127.0.0.1", 8000),
+        "app": MagicMock(),
+    }
+)

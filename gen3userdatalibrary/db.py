@@ -28,6 +28,7 @@ What do we do in this file?
     - This is what gets injected into endpoint code using FastAPI's dep injections
 """
 
+from collections.abc import AsyncIterable
 from typing import List, Optional, Tuple, Union, Any, Dict
 from uuid import UUID
 
@@ -39,9 +40,9 @@ from starlette import status
 
 from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_list_by_id_endpoint
+from gen3userdatalibrary.models.helpers import derive_changes_to_make
 from gen3userdatalibrary.models.user_list import UserList
 from gen3userdatalibrary.utils.metrics import MetricModel
-from gen3userdatalibrary.utils.modeling import derive_changes_to_make
 
 engine = create_async_engine(str(config.DB_CONNECTION_STRING), echo=True)
 
@@ -50,6 +51,14 @@ async_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
 
 def get_items_added_and_deleted(amount_of_new_items: int):
+    """
+    Calcs items added and items deleted
+    Args:
+        amount_of_new_items: new items to be added to list
+
+    Returns:
+
+    """
     items_added = 0
     items_deleted = 0
     if amount_of_new_items > 0:
@@ -117,6 +126,19 @@ class DataAccessLayer:
         result = await self.db_session.execute(query)
         return list(result.scalars().all())
 
+    async def get_list_or_none(self, query) -> Optional[UserList]:
+        """
+        Given a query, executes it and returns the item or none
+        Args:
+            query: any valid query obj
+
+        Returns:
+            user list if it exists
+        """
+        result = await self.db_session.execute(query)
+        user_list = result.scalar_one_or_none()
+        return user_list
+
     async def get_list(
         self, identifier: Union[UUID, Tuple[str, str]], by: str = "id"
     ) -> Optional[UserList]:
@@ -136,6 +158,20 @@ class DataAccessLayer:
         result = await self.db_session.execute(query)
         user_list = result.scalar_one_or_none()
         return user_list
+
+    async def get_list_by_name_and_creator(self, identifier: Tuple[str, str]):
+        """
+        Get list by (creator, name) bundle
+        Args:
+            identifier: (creator id, name of list)
+
+        Returns:
+            list if it exists
+        """
+        query = select(UserList).filter(
+            tuple_(UserList.creator, UserList.name).in_([identifier])
+        )
+        return await self.get_list_or_none(query)
 
     async def get_user_list_by_list_id(self, list_id: UUID) -> Optional[UserList]:
         """
@@ -174,7 +210,7 @@ class DataAccessLayer:
         Args:
             list_id: UUID of the list
         """
-        existing_record = await self.get_list(list_id)
+        existing_record = await self.get_user_list_by_list_id(list_id)
         if existing_record is None:
             raise ValueError(f"No UserList found with id {list_id}")
         return existing_record
@@ -215,8 +251,11 @@ class DataAccessLayer:
         Returns:
             the number of lists associated with that creator
         """
-        query = select(func.count()).select_from(UserList)
-        query = query.where(UserList.creator == creator_id)
+        query = (
+            select(func.count())
+            .select_from(UserList)
+            .where(UserList.creator == creator_id)
+        )
         result = await self.db_session.execute(query)
         count = result.scalar()
         count = count or 0
@@ -276,7 +315,11 @@ class DataAccessLayer:
             item_data: dict of items to add to item component of list
         """
         prev_list = await self.get_user_list_by_list_id(list_id)
-        prev_item_count = 0 if prev_list is None else len(prev_list.items)
+        prev_item_count = (
+            0
+            if (prev_list is None or prev_list.items is None)
+            else len(prev_list.items)
+        )
         new_items_count = len(item_data.keys())
         amount_of_new_items = new_items_count - prev_item_count
 
@@ -290,9 +333,9 @@ class DataAccessLayer:
 
     async def grab_all_lists_that_exist(
         self,
-        by,
+        by: str,
         identifier_list: Union[
-            List[int],
+            List[UUID],
             List[
                 Tuple[
                     str,
@@ -320,28 +363,32 @@ class DataAccessLayer:
         return from_sequence_to_list
 
     async def change_list_contents(
-        self, new_list_as_orm: UserList, existing_obj: UserList
+        self, new_user_list: UserList, existing_user_list: UserList
     ):
         """
         Change the contents of a list directly, including replaces the contents of `items`
         """
-        prev_list = await self.get_user_list_by_list_id(existing_obj.id)
-        prev_item_count = 0 if prev_list is None else len(prev_list.items)
-        new_items_count = len(new_list_as_orm.items.keys())
+        prev_list = await self.get_user_list_by_list_id(existing_user_list.id)
+        prev_item_count = (
+            0
+            if (prev_list is None or prev_list.items is None)
+            else len(prev_list.items)
+        )
+        new_items_count = len(new_user_list.items.keys())
         amount_of_new_items = new_items_count - prev_item_count
 
         items_added, items_deleted = get_items_added_and_deleted(amount_of_new_items)
 
-        changes_to_make = derive_changes_to_make(existing_obj, new_list_as_orm)
+        changes_to_make = derive_changes_to_make(existing_user_list, new_user_list)
         updated_list = await self.update_and_persist_list(
-            existing_obj.id, changes_to_make
+            existing_user_list.id, changes_to_make
         )
         return updated_list, MetricModel(
             items_added=items_added, items_deleted=items_deleted
         )
 
 
-async def get_data_access_layer() -> DataAccessLayer:
+async def get_data_access_layer() -> AsyncIterable[DataAccessLayer]:
     """
     Create an AsyncSession and yield an instance of the Data Access Layer,
     which acts as an abstract interface to manipulate the database.

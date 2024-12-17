@@ -1,20 +1,35 @@
 import time
 from contextlib import asynccontextmanager
 from importlib.metadata import version
+from typing import AsyncIterable
 
 import fastapi
 from cdislogging import get_logger
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from gen3authz.client.arborist.client import ArboristClient
 from prometheus_client import CollectorRegistry, make_asgi_app, multiprocess
 from starlette.requests import Request
 
-from gen3userdatalibrary import config, logging
+from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import get_user_id
-from gen3userdatalibrary.db import get_data_access_layer
+from gen3userdatalibrary.config import logging
+from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
 from gen3userdatalibrary.metrics import Metrics
-from gen3userdatalibrary.routes import route_aggregator
+from gen3userdatalibrary.routes.basic import basic_router
+from gen3userdatalibrary.routes.lists import lists_router
+from gen3userdatalibrary.routes.lists_by_id import lists_by_id_router
 from gen3userdatalibrary.utils.core import log_user_data_library_api_call
+
+route_aggregator = APIRouter()
+
+route_definitions = [
+    (basic_router, "", ["Basic"]),
+    (lists_router, "/lists", ["Lists"]),
+    (lists_by_id_router, "/lists", ["ByID"]),
+]
+
+for router, prefix, tags in route_definitions:
+    route_aggregator.include_router(router, prefix=prefix, tags=tags)
 
 
 @asynccontextmanager
@@ -31,24 +46,30 @@ async def lifespan(app: FastAPI):
         app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    app.state.metrics = Metrics(
-        enabled=config.ENABLE_PROMETHEUS_METRICS,
-        prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
-    )
+    app_with_setup = await add_metrics_and_arborist_client(app)
+    await check_db_connection()
+    if not config.DEBUG_SKIP_AUTH:
+        await check_arborist_is_healthy(app_with_setup)
 
-    app.state.arborist_client = ArboristClient(
-        arborist_base_url=config.ARBORIST_URL,
-        logger=get_logger("user_syncer.arborist_client"),
-        authz_provider="user-sync",
-    )
+    yield
 
+    # teardown
+
+    # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker  #
+    # "child_exit" is defined in the gunicorn.conf.py
+
+
+async def check_db_connection():
+    """
+    Simple check to ensure we can talk to the db
+    """
     try:
         logging.debug(
             "Startup database connection test initiating. Attempting a simple query..."
         )
-        dals = get_data_access_layer()
+        dals: AsyncIterable[DataAccessLayer] = get_data_access_layer()
         async for data_access_layer in dals:
-            await data_access_layer.test_connection()
+            outcome = await data_access_layer.test_connection()
             logging.debug("Startup database connection test PASSED.")
     except Exception as exc:
         logging.exception(
@@ -57,27 +78,40 @@ async def lifespan(app: FastAPI):
         logging.debug(exc)
         raise
 
-    if not config.DEBUG_SKIP_AUTH:
-        try:
-            logging.debug(
-                "Startup policy engine (Arborist) connection test initiating..."
-            )
-            if not app.state.arborist_client.healthy():
-                print("not healthy!")
-                # raise Exception("Arborist unhealthy,aborting...")
-        except Exception as exc:
-            logging.exception(
-                "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
-            )
-            logging.debug(exc)
-            raise
 
-    yield
+async def check_arborist_is_healthy(app_with_setup):
+    """
+    Checks that we can talk to arborist
+    Args:
+        app_with_setup (FastAPI): the fastapi app with arborist client
 
-    # teardown
+    """
+    logging.debug("Startup policy engine (Arborist) connection test initiating...")
+    arborist_client = app_with_setup.state.arborist_client
+    if not arborist_client.healthy():
+        logging.exception(
+            "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
+        )
+        logging.debug("Arborist is unhealthy")
+        raise Exception("Arborist unhealthy, aborting...")
 
-    # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker  #
-    # "child_exit" is defined in the gunicorn.conf.py
+
+async def add_metrics_and_arborist_client(app):
+    """
+    Helper function to add metrics and arborist client
+    Args:
+        app (FastAPI):  the initial instance of the fast api app
+    """
+    app.state.metrics = Metrics(
+        enabled=config.ENABLE_PROMETHEUS_METRICS,
+        prometheus_dir=config.PROMETHEUS_MULTIPROC_DIR,
+    )
+    app.state.arborist_client = ArboristClient(
+        arborist_base_url=config.ARBORIST_URL,
+        logger=get_logger("user_syncer.arborist_client"),
+        authz_provider="user-sync",
+    )
+    return app
 
 
 def get_app() -> fastapi.FastAPI:
@@ -103,7 +137,9 @@ def get_app() -> fastapi.FastAPI:
         fastapi_app.mount("/metrics", metrics_app)
 
     @fastapi_app.middleware("http")
-    async def middleware_log_response_and_api_metric(request: Request, call_next):
+    async def middleware_log_response_and_api_metric(
+        request: Request, call_next
+    ) -> None:
         """
         This FastAPI middleware effectively allows pre and post logic to a request.
 
@@ -171,4 +207,4 @@ def make_metrics_app(prometheus_multiproc_dir):
     return make_asgi_app(registry=registry)
 
 
-app = get_app()
+app_instance = get_app()

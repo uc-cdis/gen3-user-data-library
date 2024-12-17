@@ -26,6 +26,24 @@ VALID_LIST_A = {
     },
 }
 
+REPLACE_LIST_A = {
+    "name": "My Saved List 1",
+    "items": {
+        "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a64": {
+            "dataset_guid": "phs000001.v1.p1.c1",
+            "type": "GA4GH_DRS",
+        },
+        "drs://dg.TEST:3418077e-0779-4715-8195-7b60565172f5": {
+            "dataset_guid": "phs000002.v2.p2.c2",
+            "type": "GA4GH_DRS",
+        },
+        "drs://dg.4503:edbb0398-fcff-4c92-b908-9e650e0a6eb5": {
+            "dataset_guid": "phs000002.v2.p2.c1",
+            "type": "GA4GH_DRS",
+        },
+    },
+}
+
 VALID_LIST_B = {
     "name": "õ(*&!@#)(*$%)() 2",
     "items": {
@@ -110,6 +128,17 @@ VALID_LIST_E = {
     },
 }
 
+INVALID_LIST_A = {
+    "name": "My Saved List AP1",
+    "foo": "bar",
+    "items": {
+        "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a05": {
+            "dataset_guid": "phs000001.v1.p1.c1",
+            "type": "GA4GH_DRS",
+        }
+    },
+}
+
 
 VALID_REPLACEMENT_LIST = {
     "name": "My Saved List 1",
@@ -140,7 +169,39 @@ VALID_REPLACEMENT_LIST = {
     },
 }
 
+VALID_PATCH_BODY = {
+    "drs://dg.1234:943200c3-271d-4a04-a2b6-040272239a00": {
+        "dataset_guid": "phs000001.v1.p1.c1",
+        "type": "GA4GH_DRS",
+    },
+    "CF_2": {
+        "name": "Cohort Filter 1",
+        "type": "Gen3GraphQL",
+        "schema_version": "c246d0f",
+        "data": {
+            "query": """query ($filter: JSON) { _aggregation { subject (filter: $filter) { file_count {
+                histogram { sum } } } } }""",
+            "variables": {
+                "filter": {
+                    "AND": [
+                        {"IN": {"annotated_sex": ["male"]}},
+                        {"IN": {"data_type": ["Aligned Reads"]}},
+                        {"IN": {"data_format": ["CRAM"]}},
+                        {"IN": {"race": ['["hispanic"]']}},
+                    ]
+                }
+            },
+        },
+    },
+}
+
 VALID_MULTI_LIST_BODY = {"lists": [VALID_LIST_A, VALID_LIST_B]}
+
+INVALID_LIST_B = {
+    "name": "My Saved List AP1",
+    "items": "aaa",
+}
+
 
 PATCH_BODY = {
     "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239a99": {

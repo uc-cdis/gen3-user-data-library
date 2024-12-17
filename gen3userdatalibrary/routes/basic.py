@@ -1,3 +1,4 @@
+import logging
 import time
 from importlib.metadata import version
 
@@ -39,9 +40,6 @@ async def get_version(request: Request) -> dict:
     """
     Return the version of the running service
 
-    Args:
-        request (Request): FastAPI request (so we can check authorization)
-
     Returns:
         dict: {"version": "1.0.0"} the version
     """
@@ -56,6 +54,9 @@ async def get_version(request: Request) -> dict:
     summary="Get service status",
     responses={
         status.HTTP_200_OK: {
+            "description": "No content",
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
             "description": "No content",
         },
     },
@@ -81,6 +82,7 @@ async def get_status(
     try:
         await data_access_layer.test_connection()
     except Exception as e:
+        logging.error(e)
         return_status = status.HTTP_500_INTERNAL_SERVER_ERROR
         status_text = "UNHEALTHY"
 

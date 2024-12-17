@@ -1,5 +1,6 @@
+from typing import Optional, Callable
+
 from gen3userdatalibrary.auth import get_list_by_id_endpoint, get_lists_endpoint
-from gen3userdatalibrary.utils.core import identity
 
 """
 Endpoint to context is a static definition of information specific to endpoints used in
@@ -15,6 +16,35 @@ Current recognized properties:
         - ID: by id, takes (user_id, list_id)
     items: defines how to extract the 'items' component from a request body
 """
+
+
+def get_resource_from_endpoint_context(endpoint_context, user_id, path_params):
+    """
+    Before any endpoint is hit, we should verify that the requester has access to the endpoint.
+    This middleware function handles that.
+
+    Args:
+        endpoint_context (Dict[str, Any]): information about an endpoint from the ENDPOINT_TO_CONTEXT data structure
+        user_id (str): creator id
+        path_params (dict): any params from the request scope
+
+    Returns:
+        The resource from endpoint_to_context based on the kind of endpoint
+    """
+    endpoint_type: Optional[str, None] = endpoint_context.get("type", None)
+    get_resource: Optional[Callable, None] = endpoint_context.get("resource", None)
+    if endpoint_type == "all":
+        resource = get_resource(user_id)
+    elif endpoint_type == "id":
+        list_id = path_params["list_id"]
+        resource = get_resource(user_id, list_id)
+    else:  # None
+        resource = get_resource
+    return resource
+
+
+identity = lambda P: P
+
 ENDPOINT_TO_CONTEXT = {
     "redirect_to_docs": {
         "resource": "/gen3_user_data_library/service_info/redoc",

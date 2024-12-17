@@ -21,9 +21,9 @@ def main():
     """
     host = "0.0.0.0"
     port = 8000
-    print(f"gen3userdatalibrary.main:app running at {host}:{port}")
+    print(f"gen3userdatalibrary.main:app_instance running at {host}:{port}")
     uvicorn.run(
-        "gen3userdatalibrary.main:app",
+        "gen3userdatalibrary.main:app_instance",
         host=host,
         port=port,
         reload=True,

@@ -1,42 +1,27 @@
+import importlib
+import os
+import warnings
+from json import JSONDecodeError
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from jsonschema.exceptions import ValidationError
+
+from gen3userdatalibrary import config
+from gen3userdatalibrary.main import route_aggregator
+from gen3userdatalibrary.routes.injection_dependencies import validate_user_list_item
+from gen3userdatalibrary.utils.metrics import get_from_cfg_metadata
 from tests.data.example_lists import VALID_LIST_A
 from tests.routes.conftest import BaseTestRouter
-
-from gen3userdatalibrary.main import route_aggregator
-from gen3userdatalibrary.utils.metrics import get_from_cfg_metadata
 
 
 @pytest.mark.asyncio
 class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
 
-    @pytest.mark.parametrize("user_list", [VALID_LIST_A])
-    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
-    @patch("gen3userdatalibrary.auth._get_token_claims")
-    async def test_max_limits(self, get_token_claims, arborist, user_list, client):
-        assert NotImplemented
-        headers = {"Authorization": "Bearer ofa.valid.token"}
-        # config.MAX_LISTS = 1
-        # config.MAX_LIST_ITEMS = 1
-        # arborist.auth_request.return_value = True
-        # get_token_claims.return_value = {"sub": "1", "otherstuff": "foobar"}
-        # resp1 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
-        # assert resp1.status_code == 400 and resp1.text == '{"detail":"Too many items for list: My Saved List 1"}'
-        # config.MAX_LIST_ITEMS = 2
-        # resp2 = await create_basic_list(arborist, get_token_claims, client, user_list, headers)
-        # resp3 = await client.put("/lists", headers=headers, json={"lists": [VALID_LIST_B]})
-        # assert resp2.status_code == 201 and resp3.status_code == 400
-        # config.MAX_LISTS = 2
-        # resp4 = await client.put("/lists", headers=headers, json={"lists": [user_list]})
-        # assert resp4.status_code == 507
-        # config.MAX_LISTS = 6
-        # config.MAX_LIST_ITEMS = 12
-
     async def test_item_schema_validation(self):
-        pass
-        # todo
+        with pytest.raises(ValidationError):
+            outcome = validate_user_list_item(VALID_LIST_A)
 
     async def test_metadata_cfg_util(self):
         """
@@ -88,3 +73,42 @@ class TestConfigRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         response = await client.get(endpoint, headers=headers)
         assert response.status_code == 200
+
+    async def test_config(self, mocker):
+        """
+        Test various configs behave as expected
+
+        Args:
+            mocker: mock config cases
+        """
+        old_env = os.environ.get("ENV", "test")
+        os.environ["ENV"] = "foo"
+        importlib.reload(config)
+        test_dir = os.path.dirname(os.path.realpath(__file__))
+        test_path = os.path.abspath(f"{test_dir}/../.env")
+        assert config.PATH == test_path
+        os.environ["ENV"] = old_env
+        # ---
+
+        mock_schema = mocker.patch(
+            "gen3userdatalibrary.config.ITEM_SCHEMAS", return_value={"None": "bah"}
+        )
+        importlib.reload(config)
+        item_schema = config.ITEM_SCHEMAS
+        assert None in item_schema
+        mock_file = mocker.patch("os.path.isfile", return_value=False)
+        with pytest.raises(OSError):
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    category=UserWarning,
+                    message="Config file '.*' not found.",
+                )
+                importlib.reload(config)
+        assert config.ITEM_SCHEMAS is None
+
+        mock_file = mocker.patch("os.path.isfile", return_value=True)
+        mock_load = mocker.patch("json.load")
+        mock_load.side_effect = JSONDecodeError("msg", "doc", 0)
+        with pytest.raises(OSError):
+            importlib.reload(config)

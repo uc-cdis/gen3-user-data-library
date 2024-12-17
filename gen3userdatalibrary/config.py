@@ -8,10 +8,10 @@ from starlette.datastructures import Secret
 ENV = os.getenv("ENV", "production")
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 if ENV == "test":
-    path = os.path.abspath(f"{CURRENT_DIR}/../tests/.env")
+    PATH = os.path.abspath(f"{CURRENT_DIR}/../tests/.env")
 else:
-    path = os.path.abspath(f"{CURRENT_DIR}/../.env")
-config = Config(path)
+    PATH = os.path.abspath(f"{CURRENT_DIR}/../.env")
+config = Config(PATH)
 DEBUG = config("DEBUG", cast=bool, default=False)
 VERBOSE_LLM_LOGS = config("VERBOSE_LLM_LOGS", cast=bool, default=False)
 
@@ -84,8 +84,12 @@ ITEM_SCHEMAS = read_json_if_exists(SCHEMAS_LOCATION)
 if ITEM_SCHEMAS is None:
     logging.error(f"No item schema! Schema location: {SCHEMAS_LOCATION}")
     raise OSError("No item schema json file found!")
-elif "None" in ITEM_SCHEMAS:
+
+if "None" in ITEM_SCHEMAS:
     ITEM_SCHEMAS[None] = ITEM_SCHEMAS["None"]
 
 PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
 ENDPOINTS_WITHOUT_METRICS = {"/metrics", "/metrics/"} | PUBLIC_ROUTES
+
+
+logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")

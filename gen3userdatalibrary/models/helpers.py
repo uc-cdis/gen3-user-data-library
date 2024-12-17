@@ -2,7 +2,6 @@ import datetime
 
 from fastapi import HTTPException
 from jsonschema.exceptions import ValidationError
-from sqlalchemy.exc import IntegrityError
 from starlette import status
 
 from gen3userdatalibrary import config
@@ -37,6 +36,26 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
     return property_to_change_to_make
 
 
+def conform_to_item_update(items_to_update_as_dict) -> ItemToUpdateModel:
+    """
+    Given a dict of items to add to a list, makes an ItemToUpdateModel out of them
+
+    Args:
+        items_to_update_as_dict (Dict[str, Any]):
+
+    Returns:
+        ItemToUpdateModel
+    """
+    try:
+        validated_data = ItemToUpdateModel(**items_to_update_as_dict)
+        return validated_data
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bad data structure, cannot process",
+        )
+
+
 async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList:
     """
     Handler for modeling endpoint data into a user list orm
@@ -44,18 +63,14 @@ async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList
     user_list: dict representation of the user's list
     """
     try:
-        list_as_orm = await create_user_list_instance(user_id, user_list)
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="must provide a unique name"
-        )
-    except ValidationError:
-        config.logging.debug(
-            f"Invalid user-provided data when trying to create lists for user {user_id}."
-        )
+        list_as_orm = create_user_list_instance(user_id, user_list)
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided",
+            detail={
+                "info": f"Invalid user id: {user_id}",
+                "error": exc.__class__.__name__,
+            },
         )
     except Exception as exc:
         config.logging.exception(
@@ -63,13 +78,16 @@ async def try_conforming_list(user_id, user_list: ItemToUpdateModel) -> UserList
         )
         config.logging.debug(f"Details: {exc}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid list information provided",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "info": "Invalid list information provided",
+                "error": exc.__class__.__name__,
+            },
         )
     return list_as_orm
 
 
-async def create_user_list_instance(user_id, user_list: ItemToUpdateModel):
+def create_user_list_instance(user_id, user_list: ItemToUpdateModel) -> UserList:
     """
     Creates a user list orm given the user's id and a dictionary representation.
     Tests the type

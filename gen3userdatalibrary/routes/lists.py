@@ -6,26 +6,28 @@ from fastapi.responses import Response
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3userdatalibrary import logging
-from gen3userdatalibrary.auth import get_user_id
+from gen3userdatalibrary.auth import (
+    get_user_id,
+)
+from gen3userdatalibrary.config import logging
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.models.helpers import (
+    try_conforming_list,
+    derive_changes_to_make,
+)
 from gen3userdatalibrary.models.user_list import (
     ItemToUpdateModel,
     UpdateItemsModel,
     UserList,
     UserListResponseModel,
 )
-from gen3userdatalibrary.routes.dependencies import (
-    parse_and_auth_request,
+from gen3userdatalibrary.routes.injection_dependencies import (
     sort_lists_into_create_or_update,
     validate_items,
     validate_lists,
+    parse_and_auth_request,
 )
-from gen3userdatalibrary.utils.modeling import (
-    derive_changes_to_make,
-)
-from gen3userdatalibrary.utils.metrics import MetricModel, update_user_list_metric
-from gen3userdatalibrary.utils.modeling import try_conforming_list
+from gen3userdatalibrary.utils.metrics import update_user_list_metric, MetricModel
 
 lists_router = APIRouter()
 
@@ -157,8 +159,8 @@ async def upsert_user_lists(
     updated_user_lists, metrics_info = await sort_persist_and_get_changed_lists(
         data_access_layer, raw_lists, user_id
     )
-    json_conformed_data = jsonable_encoder(updated_user_lists)
 
+    json_conformed_data = jsonable_encoder(updated_user_lists)
     response_data = {"lists": json_conformed_data}
     response = JSONResponse(status_code=status.HTTP_201_CREATED, content=response_data)
 
@@ -258,14 +260,14 @@ async def sort_persist_and_get_changed_lists(
     Raises:
         409 HTTP exception if there is nothing to update
     """
-    new_lists_as_orm = [
+    new_user_lists = [
         await try_conforming_list(user_id, user_list) for user_list in raw_lists
     ]
     unique_list_identifiers = {
-        (user_list.creator, user_list.name): user_list for user_list in new_lists_as_orm
+        (user_list.creator, user_list.name): user_list for user_list in new_user_lists
     }
     lists_to_create, lists_to_update = await sort_lists_into_create_or_update(
-        data_access_layer, unique_list_identifiers, new_lists_as_orm
+        data_access_layer, unique_list_identifiers, new_user_lists
     )
 
     metrics_info = MetricModel(
@@ -277,16 +279,12 @@ async def sort_persist_and_get_changed_lists(
         items_deleted=0,
     )
 
-    updated_lists = []
-    for list_to_update in lists_to_update:
-        identifier = (list_to_update.creator, list_to_update.name)
-        new_version_of_list = unique_list_identifiers.get(identifier, None)
-        assert new_version_of_list is not None
-        changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
-        updated_list = await data_access_layer.update_and_persist_list(
-            list_to_update.id, changes_to_make
+    updated_lists = [
+        await persist_lists_to_update(
+            data_access_layer, list_to_update, unique_list_identifiers
         )
-        updated_lists.append(updated_list)
+        for list_to_update in lists_to_update
+    ]
     for list_to_create in lists_to_create:
         await data_access_layer.persist_user_list(user_id, list_to_create)
     response_user_lists = {}
@@ -294,6 +292,36 @@ async def sort_persist_and_get_changed_lists(
         response_user_lists[user_list.id] = user_list.to_dict()
         del response_user_lists[user_list.id]["id"]
     return response_user_lists, metrics_info
+
+
+async def persist_lists_to_update(
+    data_access_layer, list_to_update, unique_list_identifiers
+):
+    """
+    Handler for deriving changes to make to a list and persisting the update
+
+    Args:
+        data_access_layer (DataAccessLayer): data access interface
+        list_to_update (UserList): list that you want to update the contents of
+        unique_list_identifiers (Dict[Tuple[str, str], UserList]): (creator, name) => UserList with updates
+    Raises:
+        HTTPException if problem deriving changes
+        any errors raised by sqlalchemy during persisting
+
+    """
+    identifier = (list_to_update.creator, list_to_update.name)
+    new_version_of_list = unique_list_identifiers.get(identifier, None)
+    if new_version_of_list is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"List to update has no corresponding new list instace to derive updates from. "
+            f"List info: {identifier}",
+        )
+    changes_to_make = derive_changes_to_make(list_to_update, new_version_of_list)
+    updated_list = await data_access_layer.update_and_persist_list(
+        list_to_update.id, changes_to_make
+    )
+    return updated_list
 
 
 # endregion

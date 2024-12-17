@@ -12,7 +12,7 @@ source "${CURRENT_DIR}/.env"
 source "${CURRENT_DIR}/bin/_common_setup.sh"
 
 poetry run gunicorn \
-  gen3userdatalibrary.main:app \
+  gen3userdatalibrary.main:app_instance \
   -k uvicorn.workers.UvicornWorker \
   -c gunicorn.conf.py \
   --reload \

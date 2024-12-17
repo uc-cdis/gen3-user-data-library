@@ -8,20 +8,23 @@ from starlette.responses import JSONResponse, Response
 
 from gen3userdatalibrary.auth import get_user_id
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
+from gen3userdatalibrary.models.helpers import create_user_list_instance
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
-from gen3userdatalibrary.routes.dependencies import (
-    parse_and_auth_request,
+from gen3userdatalibrary.routes.injection_dependencies import (
     validate_items,
+    parse_and_auth_request,
 )
 from gen3userdatalibrary.utils.metrics import update_user_list_metric
-from gen3userdatalibrary.utils.modeling import create_user_list_instance
+
+only_auth_deps = [Depends(parse_and_auth_request)]
+auth_and_items_deps = [Depends(parse_and_auth_request), Depends(validate_items)]
 
 lists_by_id_router = APIRouter()
 
 
 @lists_by_id_router.get(
     "/{list_id}",
-    dependencies=[Depends(parse_and_auth_request)],
+    dependencies=only_auth_deps,
     status_code=status.HTTP_200_OK,
     description="Retrieves the list identified by the id for the user",
     summary="Get user's list by id",
@@ -42,7 +45,7 @@ lists_by_id_router = APIRouter()
 @lists_by_id_router.get(
     "/{list_id}/",
     include_in_schema=False,
-    dependencies=[Depends(parse_and_auth_request)],
+    dependencies=only_auth_deps,
 )
 async def get_list_by_id(
     list_id: UUID,
@@ -60,7 +63,7 @@ async def get_list_by_id(
     Returns:
         JSONResponse: simple status and timestamp in format: `{"status": "OK", "timestamp": time.time()}`
     """
-    result = await data_access_layer.get_list(list_id)
+    result = await data_access_layer.get_user_list_by_list_id(list_id)
     if result is None:
         response = JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND, content="list_id not found!"
@@ -74,7 +77,7 @@ async def get_list_by_id(
 
 @lists_by_id_router.put(
     "/{list_id}",
-    dependencies=[Depends(parse_and_auth_request), Depends(validate_items)],
+    dependencies=auth_and_items_deps,
     status_code=status.HTTP_200_OK,
     description="Retrieves the list identified by the id for the user",
     summary="Get user's list by id",
@@ -98,7 +101,7 @@ async def get_list_by_id(
 @lists_by_id_router.put(
     "/{list_id}/",
     include_in_schema=False,
-    dependencies=[Depends(parse_and_auth_request), Depends(validate_items)],
+    dependencies=auth_and_items_deps,
 )
 async def update_list_by_id(
     request: Request,
@@ -119,22 +122,17 @@ async def update_list_by_id(
     Returns:
          JSONResponse: json response with info about the request outcome
     """
-    user_id = await get_user_id(request=request)
-
-    user_list = await data_access_layer.get_list(list_id)
-    if user_list is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
-        )
-    new_list_as_orm = await create_user_list_instance(user_id, info_to_update_with)
-    existing_list = await data_access_layer.get_list(list_id)
+    existing_list = await data_access_layer.get_user_list_by_list_id(list_id)
     if existing_list is None:
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            content=f"No UserList found with id {list_id}",
+            detail=f"No UserList found with id {list_id}",
         )
+    user_id = await get_user_id(request=request)
+    new_user_list = create_user_list_instance(user_id, info_to_update_with)
+
     replace_result, metrics_info = await data_access_layer.change_list_contents(
-        new_list_as_orm, existing_list
+        new_user_list, existing_list
     )
     data = jsonable_encoder(replace_result)
     response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
@@ -149,7 +147,7 @@ async def update_list_by_id(
 
 @lists_by_id_router.patch(
     "/{list_id}",
-    dependencies=[Depends(parse_and_auth_request), Depends(validate_items)],
+    dependencies=auth_and_items_deps,
     status_code=status.HTTP_200_OK,
     description="Appends to the existing list",
     summary="Add to list",
@@ -174,7 +172,7 @@ async def update_list_by_id(
 @lists_by_id_router.patch(
     "/{list_id}/",
     include_in_schema=False,
-    dependencies=[Depends(parse_and_auth_request), Depends(validate_items)],
+    dependencies=auth_and_items_deps,
 )
 async def append_items_to_list(
     request: Request,
@@ -198,7 +196,7 @@ async def append_items_to_list(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Nothing to append!"
         )
-    user_list = await data_access_layer.get_list(list_id)
+    user_list = await data_access_layer.get_user_list_by_list_id(list_id)
     list_exists = user_list is not None
     if not list_exists:
         raise HTTPException(
@@ -221,7 +219,7 @@ async def append_items_to_list(
 
 @lists_by_id_router.delete(
     "/{list_id}",
-    dependencies=[Depends(parse_and_auth_request)],
+    dependencies=only_auth_deps,
     status_code=status.HTTP_204_NO_CONTENT,
     description="Deletes the specified list",
     summary="Delete a list",
@@ -241,7 +239,7 @@ async def append_items_to_list(
 @lists_by_id_router.delete(
     "/{list_id}/",
     include_in_schema=False,
-    dependencies=[Depends(parse_and_auth_request)],
+    dependencies=only_auth_deps,
 )
 async def delete_list_by_id(
     list_id: UUID,
@@ -261,7 +259,7 @@ async def delete_list_by_id(
     """
     user_id = await get_user_id(request=request)
 
-    get_result = await data_access_layer.get_list(list_id)
+    get_result = await data_access_layer.get_user_list_by_list_id(list_id)
     if get_result is None:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
 

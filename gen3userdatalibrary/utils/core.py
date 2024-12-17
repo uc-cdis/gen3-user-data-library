@@ -2,11 +2,9 @@
 
 from functools import reduce
 from logging import Logger
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Hashable, Any
 
 from sqlalchemy import inspect
-
-identity = lambda P: P
 
 
 def log_user_data_library_api_call(logging: Logger, debug_log: str = None, **kwargs):
@@ -29,6 +27,20 @@ def log_user_data_library_api_call(logging: Logger, debug_log: str = None, **kwa
 
     if debug_log:
         logging.debug(f"{debug_log}")
+
+
+def build_switch_case(cases: dict[Hashable, Any], default):
+    """
+    A primitive polyfill of pattern matching in python 3.10
+
+    Args:
+        cases (Dict[Hashable, Any]): any sort of k => v mapping
+        default (Any): outcome if option not found
+
+    Returns:
+        f(k) => Union[v, default]
+    """
+    return lambda instance: cases.get(instance, default)
 
 
 def mutate_keys(mutator, updated_user_lists: dict):
@@ -101,8 +113,3 @@ def find_differences(
 def remove_keys(d: dict, keys: set):
     """Given a dictionary d and set of keys k, remove all k in d"""
     return {k: v for k, v in d.items() if k not in keys}
-
-
-def update(k, updater, dict_to_update):
-    dict_to_update[k] = updater(dict_to_update[k])
-    return dict_to_update
