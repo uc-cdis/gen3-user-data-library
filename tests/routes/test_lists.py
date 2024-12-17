@@ -508,7 +508,7 @@ class TestUserListsRouter(BaseTestRouter):
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_reading_for_non_existent_user_fails(
-        self, get_token_claims, arborist, app_client_pair
+        self, get_token_claims, arborist, app_client_pair, monkeypatch
     ):
         """
         Test getting data for a user that does not exist/hasn't made a list fails
@@ -517,22 +517,27 @@ class TestUserListsRouter(BaseTestRouter):
             arborist: bypass auth
             app_client_pair: app and endpoint interface
         """
+        previous_config = config.DEBUG_SKIP_AUTH
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+
         app, test_client = app_client_pair
         app.state.arborist_client = AsyncMock()
         arborist.auth_request.return_value = True
-        get_token_claims.return_value = {"sub": "foo"}
         headers = {"Authorization": "Bearer ofa.valid.token"}
         await create_basic_list(
-            arborist, get_token_claims, test_client, VALID_LIST_A, headers
+            arborist, get_token_claims, test_client, VALID_LIST_A, headers, "foo"
         )
         await create_basic_list(
-            arborist, get_token_claims, test_client, VALID_LIST_B, headers
+            arborist, get_token_claims, test_client, VALID_LIST_B, headers, "foo"
         )
+        get_token_claims.return_value = {"sub": "foo"}
         response_1 = await test_client.get("/lists", headers=headers)
-        get_token_claims.return_value = {"sub": "bar"}
         assert len(list(json.loads(response_1.text)["lists"].items())) > 0
+        get_token_claims.return_value = {"sub": "bar"}
         response_2 = await test_client.get("/lists", headers=headers)
         assert len(list(json.loads(response_2.text)["lists"].items())) == 0
+
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims", new_callable=AsyncMock)

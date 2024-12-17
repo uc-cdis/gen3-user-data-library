@@ -37,6 +37,46 @@ class TestUserListsRouter(BaseTestRouter):
     @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_basic_append(
+        self, get_token_claims, arborist, user_list, endpoint, client
+    ):
+        """
+        Test that creating, updating, and then appending to a list works as expected.
+        Args:
+            get_token_claims: mock token
+            arborist: bypass auth
+            user_list: test example list
+            client:  endpoint interface
+            endpoint: id endpoint callable strings
+
+        """
+        arborist.auth_request.return_value = True
+        get_token_claims.return_value = {"sub": "0"}
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        resp1 = await create_basic_list(
+            arborist, get_token_claims, client, user_list, headers
+        )
+        patch_body = {
+            "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239123": {
+                "dataset_guid": "phs000001.v1.p1.c1.PATCHED_ITEM",
+                "type": "GA4GH_DRS",
+            },
+        }
+        ul_id = get_id_from_response(resp1)
+        resp2 = await client.put(
+            endpoint(ul_id), headers=headers, json=VALID_REPLACEMENT_LIST
+        )
+        resp3 = await client.patch(endpoint(ul_id), headers=headers, json=patch_body)
+        response = await client.get(endpoint(ul_id), headers=headers)
+        assert response.status_code == 200
+        assert len(json.loads(response.text)["items"].items()) == 3
+
+    @pytest.mark.parametrize(
+        "endpoint", [lambda l_id: f"/lists/{l_id}", lambda l_id: f"/lists/{l_id}/"]
+    )
+    @pytest.mark.parametrize("user_list", [VALID_LIST_A, VALID_LIST_B])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
     async def test_getting_id_success(
         self, get_token_claims, arborist, user_list, endpoint, app_client_pair
     ):
