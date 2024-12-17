@@ -1,5 +1,4 @@
 import json
-from _testcapi import raise_exception
 from typing import List, Dict, Tuple, Union, Any
 from uuid import UUID
 
@@ -291,6 +290,10 @@ def ensure_any_items_match_schema(endpoint_context, basic_user_lists):
             validate_user_list_item(item_contents)
 
 
+def raise_exception(e):
+    raise e
+
+
 async def validate_items(
     request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
 ):
@@ -331,9 +334,7 @@ async def validate_items(
                 conformed_body, dal, list_id
             ),
         },
-        lambda _1, _2, _3: raise_exception(
-            Exception("Invalid route function identified! ")
-        ),
+        lambda: raise_exception(Exception("Invalid route function identified! ")),
     )
     run_validation_handler = route_function_to_validation_handler(route_function)
     await run_validation_handler()
