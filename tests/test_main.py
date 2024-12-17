@@ -1,5 +1,4 @@
 import os
-from unittest.mock import patch, AsyncMock
 
 import pytest
 from fastapi import FastAPI
@@ -9,7 +8,6 @@ from gen3userdatalibrary.db import DataAccessLayer
 from gen3userdatalibrary.main import (
     lifespan,
     get_app,
-    check_db_connection,
 )
 from gen3userdatalibrary.main import route_aggregator
 from tests.routes.conftest import BaseTestRouter
@@ -100,18 +98,6 @@ class TestConfigRouter(BaseTestRouter):
             os.chdir(original_dir)
         assert isinstance(outcome, FastAPI)
         monkeypatch.setattr(config, "ENABLE_PROMETHEUS_METRICS", previous_config)
-
-    @patch("gen3userdatalibrary.main.get_data_access_layer")
-    async def test_check_db_connection(self, mock_get_dal):
-        mock_dal = AsyncMock()
-        mock_dal.test_connection.return_value = True
-
-        async def mock_dal_context():
-            yield mock_dal
-
-        mock_get_dal.return_value = mock_dal_context()
-        await check_db_connection()
-        mock_dal.test_connection.assert_called_once()
 
     @pytest.mark.skip(reason="Additional testing if needed")
     async def test_check_arborist_is_healthy(self):
