@@ -79,8 +79,8 @@ async def get_list_by_id(
     "/{list_id}",
     dependencies=auth_and_items_deps,
     status_code=status.HTTP_200_OK,
-    description="Retrieves the list identified by the id for the user",
-    summary="Get user's list by id",
+    description="Updates contents of user list by id, name or items",
+    summary="Update list by id",
     responses={
         status.HTTP_200_OK: {"description": "Successfully got id"},
         status.HTTP_400_BAD_REQUEST: {
