@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import UUID, Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -115,7 +116,7 @@ class UserList(Base):
         nullable=False,
     )
 
-    items = Column(JSONB)
+    items = Column(MutableDict.as_mutable(JSONB))
 
     __table_args__ = (UniqueConstraint("name", "creator", name="_name_creator_uc"),)
 
