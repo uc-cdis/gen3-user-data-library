@@ -11,7 +11,7 @@ packages = [{ include = "gen3userdatalibrary" }]
 python = ">=3.9,<3.10.dev0"
 
 requests = ">=2.31.0"
-fastapi = ">=0.97.0"
+fastapi = ">=0.115.8"
 cdislogging = ">=1.1.1"
 gunicorn = ">=20.1.0"
 gen3authz = ">=2.1.0"
@@ -28,8 +28,6 @@ httpx = ">=0.23.3"
 pytest-asyncio = ">=0.23.8"
 jsonschema = ">=3.2.0"
 pytest-mock = "^3.14.0"
-# fastapi dependency, feature is unused in data-library.
-jinja2 = ">=3.1.5"
 
 [tool.poetry.group.dev.dependencies]
 # <8.0.0 is temporary, try removing. It was causing issues because the
