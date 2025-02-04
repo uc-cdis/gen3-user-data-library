@@ -28,7 +28,8 @@ httpx = ">=0.23.3"
 pytest-asyncio = ">=0.23.8"
 jsonschema = ">=3.2.0"
 pytest-mock = "^3.14.0"
-
+# fastapi dependency, feature is unused in data-library.
+jinja2 = ">=3.1.5"
 
 [tool.poetry.group.dev.dependencies]
 # <8.0.0 is temporary, try removing. It was causing issues because the
