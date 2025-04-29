@@ -1,23 +1,10 @@
 # Gen3 User Data Library
 
-A CRUD storage mechanism for UserLists.
-
-**Table of Contents**
-
-- [Overview](#Overview)
-- [Details](#Details)
-- [Quickstart](#Quickstart)
-- [Authz](#Authz)
-- [Local Development](#local-dev)
-
 ## Overview
 
-The Gen3 User Data Library service allows management of many user selections of data. It creates a "library" containing
-all of a user's data selections.
+The Gen3 User Data Library service allows management of many user selections of data. It creates a "library" containing all of a user's data selections.
 
-Data selections are internally referred to as `lists`. A user can have 0 to many lists forming their library. A list has
-unique items
-that represent data in different forms. Lists can be stored, retrieved, modified, and deleted per user.
+Data selections are internally referred to as `lists`. A user can have 0 to many lists forming their library. A list has unique items that represent data in different forms. Lists can be stored, retrieved, modified, and deleted per user.
 
 At the moment the lists support the following items:
 
@@ -47,25 +34,21 @@ configurations can be found under the docs folder in the
 example `env` file. We use `alembic` to handle our database
 setup as well as migrations.
 
-Endpoints paths can be in the `routes/__initroute_configurations_.py` file in
-combination with the paths listed above each function
-under the `routes` directory.
-
 ### Migrations
 
-For alembic, our system uses a generic single-database configuration with an async dbapi.
+For alembic, our system uses a generic single-database configuration with an async db API.
 
 ## Quickstart
 
 ### Setup
 
-The api should nearly work out of the box. You will
+The API should nearly work out of the box. You will
 need to install poetry dependencies, as well as set
 up a `.env` file at the top level. The configuration
 for this is described directly below. To generate the tables
 you can run `poetry run alembic upgrade head`. Once you have
 a `.env` set up, running `run.sh` should boot up
-an api you can access in your browser by going to
+an API you can access in your browser by going to
 `localhost:8000` assuming you use the default ports.
 
 #### Configuration
@@ -91,9 +74,9 @@ DEBUG=False
 # DEBUG_SKIP_AUTH will COMPLETELY SKIP AUTHORIZATION for debugging purposes
 DEBUG_SKIP_AUTH=False
 
-MAX_LISTS = config("MAX_LISTS", cast=int, default=100)
+MAX_LISTS = 100
 
-MAX_LIST_ITEMS = config("MAX_LIST_ITEMS", cast=int, default=1000)
+MAX_LIST_ITEMS = 1000
 
 ```
 
@@ -130,7 +113,7 @@ The following script will migrate, setup env, and run the service locally:
 
 ```json
 {
-  "name": "blep3",
+  "name": "My Saved List 1",
   "items": {
     "drs://dg.4503:943201c3-271d-4a04-a2b6-040272239a64": {
       "dataset_guid": "phs000001.v1.p1.c1",
@@ -140,7 +123,7 @@ The following script will migrate, setup env, and run the service locally:
 }
 ```
 
-#### Curl Request
+#### `curl` Request
 
 ```bash
 curl --request GET \
@@ -176,7 +159,7 @@ they're requesting to view.
 ## Dev Considerations
 
 If you add a new endpoint, please refer
-to [the context configuration](gen3userdatalibrary/routes/context_configurations.py)
+to [the context configuration](gen3userdatalibrary/routes/route_configurations.py)
 for information regarding expectations on what to add for an
 endpoint, such as authz parameters.
 
