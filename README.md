@@ -156,6 +156,30 @@ Third, with the prior two steps established, we authorize incoming requests
 to ensure that a user who is defined in our system has access to the list
 they're requesting to view.
 
+The `library_owner` role should be created in arborist:
+```yaml
+roles:
+  - id: 'library_owner'
+    description: ''
+    permissions:
+    - id: 'library_reader'
+      action:
+        method: read
+        service: 'gen3-user-data-library'
+    - id: 'library_creator'
+      action:
+        method: create
+        service: 'gen3-user-data-library'
+    - id: 'library_updater'
+      action:
+        method: update
+        service: 'gen3-user-data-library'
+    - id: 'library_deleter'
+      action:
+        method: delete
+        service: 'gen3-user-data-library'
+```
+
 ## Dev Considerations
 
 If you add a new endpoint, please refer

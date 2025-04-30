@@ -97,7 +97,7 @@ async def test_authorize_request_successful(
 
     mock_arborist.auth_request.assert_called_once_with(
         "mock-token",
-        service="gen3_user_data_library",
+        service="gen3-user-data-library",
         methods="access",
         resources=["/example"],
     )
@@ -297,7 +297,7 @@ async def test_create_user_policy_resource_user_not_found(monkeypatch):
         policy_json={
             "id": user_id,
             "description": "policy created by gen3-user-data-library",
-            "role_ids": ["create", "read", "update", "delete"],
+            "role_ids": ["library_owner"],
             "resource_paths": [resource],
         },
         create_if_not_exist=True,
@@ -337,7 +337,7 @@ async def test_create_user_policy_create_resource_success(monkeypatch):
         policy_json={
             "id": user_id,
             "description": "policy created by gen3-user-data-library",
-            "role_ids": ["create", "read", "update", "delete"],
+            "role_ids": ["library_owner"],
             "resource_paths": [resource],
         },
         create_if_not_exist=True,
@@ -399,7 +399,7 @@ async def test_create_user_policy_policy_creation_failure(monkeypatch):
         policy_json={
             "id": user_id,
             "description": "policy created by gen3-user-data-library",
-            "role_ids": ["create", "read", "update", "delete"],
+            "role_ids": ["library_owner"],
             "resource_paths": [resource],
         },
         create_if_not_exist=True,
@@ -439,7 +439,7 @@ async def test_create_user_policy_grant_failure(monkeypatch):
         policy_json={
             "id": user_id,
             "description": "policy created by gen3-user-data-library",
-            "role_ids": ["create", "read", "update", "delete"],
+            "role_ids": ["library_owner"],
             "resource_paths": [resource],
         },
         create_if_not_exist=True,
