@@ -67,7 +67,7 @@ async def authorize_request(
         user_id = "Unknown"
     is_authorized = await arborist.auth_request(
         token.credentials,
-        service="gen3_user_data_library",
+        service="gen3-user-data-library",
         methods=authz_access_method,
         resources=authz_resources,
     )
@@ -270,7 +270,7 @@ async def create_user_policy(
 
     await arborist_client.create_user_if_not_exist(username)
     logging.info(f"Policy does not exist for user_id {user_id}")
-    role_ids = ["create", "read", "update", "delete"]
+    role_ids = ["library_owner"]
 
     logging.info("Attempting to create arborist resource: {}".format(resource))
     await arborist_client.update_resource(
