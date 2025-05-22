@@ -74,10 +74,8 @@ jobs:
 
   ImageBuildAndPush:
     name: Build Image and Push
-    uses: uc-cdis/.github/.github/workflows/image_build_push.yaml@master
+    uses: uc-cdis/.github/.github/workflows/image_build_push_native.yaml@master
     needs: [ Security ] #TODO Add UnitTest RequiredLint
-    with:
-      BUILD_PLATFORMS: "linux/amd64"
     secrets:
       ECR_AWS_ACCESS_KEY_ID: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
       ECR_AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
