@@ -1,5 +1,4 @@
 import logging
-import multiprocessing
 
 import cdislogging
 import gunicorn.glogging
@@ -53,8 +52,7 @@ logger_class = CustomLogger
 wsgi_app = "gen3userdatalibrary.main:app_instance"
 bind = "0.0.0.0:8000"
 
-# NOTE: This is always more than 2
-workers = multiprocessing.cpu_count() * 2 + 1
+workers = gen3userdatalibrary.config.GUNICORN_WORKERS
 
 # default was `30` for the 2 below
 timeout = 90
