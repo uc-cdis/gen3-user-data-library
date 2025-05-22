@@ -13,7 +13,6 @@ else:
     PATH = os.path.abspath(f"{CURRENT_DIR}/../.env")
 config = Config(PATH)
 DEBUG = config("DEBUG", cast=bool, default=False)
-VERBOSE_LLM_LOGS = config("VERBOSE_LLM_LOGS", cast=bool, default=False)
 
 logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")
 
@@ -23,19 +22,24 @@ DEBUG_SKIP_AUTH = config("DEBUG_SKIP_AUTH", cast=bool, default=False)
 
 if DEBUG:
     logging.info(f"DEBUG is {DEBUG}")
-if VERBOSE_LLM_LOGS:
-    logging.info(f"VERBOSE_LLM_LOGS is {VERBOSE_LLM_LOGS}")
 if DEBUG_SKIP_AUTH:
     logging.warning(
         f"DEBUG_SKIP_AUTH is {DEBUG_SKIP_AUTH}. Authorization will be SKIPPED if no token is provided. "
         "FOR NON-PRODUCTION USE ONLY!! USE WITH CAUTION!!"
     )
 
+DB_DRIVER = config("DB_DRIVER", default="postgresql+asyncpg")
+DB_USER = config("DB_USER", default="postgres")
+DB_PASSWORD = config("DB_PASSWORD", cast=Secret, default=None)
+DB_HOST = config("DB_HOST", default="localhost")
+DB_PORT = config("DB_PORT", cast=int, default="5432")
+DB_DATABASE = config("DB_DATABASE", default="testgen3datalibrary")
+
 # postgresql://username:password@hostname:port/database_name
 DB_CONNECTION_STRING = config(
     "DB_CONNECTION_STRING",
     cast=Secret,
-    default="postgresql+asyncpg://postgres:postgres@localhost:5432/testgen3datalibrary",
+    default=f"{DB_DRIVER}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_DATABASE}",
 )
 
 URL_PREFIX = config("URL_PREFIX", default=None)
