@@ -57,7 +57,7 @@ PROMETHEUS_MULTIPROC_DIR = config(
 )
 
 # gunicorn setting for the number of workers to spawn, see https://docs.gunicorn.org/en/stable/settings.html#workers
-GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=3)
+GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=1)
 
 # Location of the policy engine service, Arborist
 # Defaults to the default service name in k8s magic DNS setup
