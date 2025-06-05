@@ -1,51 +1,35 @@
-FROM quay.io/cdis/amazonlinux:python3.9-master AS build-deps
-
-USER root
-
-ENV appname=gen3userdatalibrary
-
-RUN pip3 install --no-cache-dir --upgrade poetry
-
-RUN yum update -y && yum install -y --setopt install_weak_deps=0 \
-    kernel-devel libffi-devel libxml2-devel libxslt-devel postgresql-devel python3-devel \
-    git && yum clean all
-
-WORKDIR /$appname
-
-# copy ONLY poetry artifact, install the dependencies but not gen3userdatalibrary
-# this will make sure that the dependencies are cached
-COPY poetry.lock pyproject.toml /$appname/
-RUN poetry config virtualenvs.in-project true \
-    && poetry install -vv --no-root --only main --no-interaction \
-    && poetry show -v
-
-# copy source code ONLY after installing dependencies
-COPY . /$appname
-
-# install gen3userdatalibrary
-RUN poetry config virtualenvs.in-project true \
-    && poetry install -vv --only main --no-interaction \
-    && poetry show -v
-
-# Creating the runtime image
-FROM quay.io/cdis/amazonlinux:python3.9-master
+ARG AZLINUX_BASE_VERSION=master
+FROM quay.io/cdis/python-nginx-al:${AZLINUX_BASE_VERSION} AS base
 
 ENV appname=gen3userdatalibrary
 
-USER root
+COPY --chown=gen3:gen3 /${appname} /${appname}
 
-RUN pip3 install --no-cache-dir --upgrade poetry
+WORKDIR /${appname}
 
-RUN yum update -y && yum install -y --setopt install_weak_deps=0 \
-    postgresql-devel shadow-utils\
-    bash && yum clean all
+# Builder stage
+FROM base AS builder
 
-RUN useradd -ms /bin/bash appuser
+USER gen3
 
-COPY --from=build-deps --chown=appuser:appuser /$appname /$appname
+COPY poetry.lock pyproject.toml /${appname}/
 
-WORKDIR /$appname
+# RUN python3 -m venv /env && . /env/bin/activate &&
+RUN poetry install -vv --no-interaction --without dev
 
-USER appuser
+COPY --chown=gen3:gen3 . /${appname}
 
-CMD ["poetry", "run", "gunicorn", "gen3userdatalibrary.main:app_instance", "-k", "uvicorn.workers.UvicornWorker", "-c", "gunicorn.conf.py", "--user", "appuser", "--group", "appuser"]
+RUN poetry install -vv --no-interaction --without dev
+
+ENV  PATH="$(poetry env info --path)/bin:$PATH"
+
+# Final stage
+FROM base
+
+COPY --from=builder /${appname} /${appname}
+
+# Switch to non-root user 'gen3' for the serving process
+
+USER gen3
+
+CMD ["/bin/bash", "-c", "/${appname}/dockerrun.bash"]
