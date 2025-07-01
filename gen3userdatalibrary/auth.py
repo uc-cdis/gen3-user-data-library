@@ -85,7 +85,7 @@ async def authorize_request(
 
             is_authorized = await arborist.auth_request(
                 token.credentials,
-                service="gen3_user_data_library",
+                service="gen3-user-data-library",
                 methods=authz_access_method,
                 resources=authz_resources,
             )
