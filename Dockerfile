@@ -1,5 +1,5 @@
-ARG AZLINUX_BASE_VERSION=master
-FROM quay.io/cdis/python-nginx-al:${AZLINUX_BASE_VERSION} AS base
+ARG AZLINUX_BASE_VERSION=3.13-pythonnginx
+FROM quay.io/cdis/amazonlinux-base:${AZLINUX_BASE_VERSION} AS base
 
 ENV appname=gen3userdatalibrary
 
@@ -9,6 +9,9 @@ WORKDIR /${appname}
 
 # Builder stage
 FROM base AS builder
+
+USER root
+RUN chown -R gen3:gen3 /venv
 
 USER gen3
 
