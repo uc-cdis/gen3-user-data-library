@@ -24,13 +24,15 @@ COPY --chown=gen3:gen3 . /${appname}
 
 RUN poetry install -vv --no-interaction --without dev
 
-ENV  PATH="$(poetry env info --path)/bin:$PATH"
-
 # Final stage
 FROM base
 
 COPY --from=builder /${appname} /${appname}
 COPY --from=builder /venv /venv
+ENV  PATH="/usr/sbin:$PATH"
+USER root
+RUN mkdir -p /var/log/nginx
+RUN chown -R gen3:gen3 /var/log/nginx
 
 # Switch to non-root user 'gen3' for the serving process
 
