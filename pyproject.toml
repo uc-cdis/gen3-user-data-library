@@ -8,9 +8,8 @@ readme = "README.md"
 packages = [{ include = "gen3userdatalibrary" }]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.10.dev0"
+python = ">=3.13,<4.0"
 
-requests = ">=2.31.0"
 fastapi = ">=0.115.8"
 cdislogging = ">=1.1.1"
 gunicorn = ">=20.1.0"
@@ -24,7 +23,6 @@ cdispyutils = ">=2.3.0"
 # NOTE:
 # for testing with updated libaries as git repos:
 # foobar = {git = "https://github.com/uc-cdis/some-repo", rev = "feat/test"}
-httpx = ">=0.23.3"
 pytest-asyncio = ">=0.23.8"
 jsonschema = ">=3.2.0"
 pytest-mock = "^3.14.0"

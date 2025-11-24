@@ -20,7 +20,7 @@ jobs:
     uses: uc-cdis/.github/.github/workflows/python_unit_test.yaml@master
     with:
       test-script: 'test.sh'
-      python-version: '3.9'
+      python-version: '3.13'
       use-cache: true
 
   # this creates linter settings and uploads to an artifact so the configs can be pulled and used across jobs
