@@ -20,6 +20,7 @@ alembic = ">=1.13.2"
 sqlalchemy = { extras = ["asyncio"], version = ">=2.0.31" }
 asyncpg = ">=0.29.0"
 cdispyutils = ">=2.3.0"
+urllib3 = ">=2.6.0"
 # NOTE:
 # for testing with updated libaries as git repos:
 # foobar = {git = "https://github.com/uc-cdis/some-repo", rev = "feat/test"}
