@@ -36,7 +36,7 @@ from gen3userdatalibrary.models.user_list import Base
 @pytest.fixture(scope="session", autouse=True)
 def ensure_test_config():
     """
-    validate we're using the test config for this session
+    Validate we're using the test config for this session
     """
     is_test = os.environ.get("ENV", None) == "test" or config.ENV == "test"
     if not is_test:

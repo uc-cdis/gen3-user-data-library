@@ -21,7 +21,7 @@ class TestConfigRouter(BaseTestRouter):
 
     async def test_item_schema_validation(self):
         """
-        Ensure validation error occurs?
+        Ensure validation error occurs
         """
         with pytest.raises(ValidationError):
             outcome = validate_user_list_item(VALID_LIST_A)
