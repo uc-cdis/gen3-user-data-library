@@ -9,17 +9,21 @@ from gen3userdatalibrary.models.user_list import ItemToUpdateModel
 from tests.routes.conftest import BaseTestRouter
 
 
-def raise_exce(exce: Exception, _):
+def _raise_exception(exce: Exception, _):
     raise exce
 
 
 @pytest.mark.asyncio
 class TestConfigRouter(BaseTestRouter):
+    """
+    Test the config router
+    """
+
     router = route_aggregator
 
     @patch(
         "gen3userdatalibrary.models.helpers.create_user_list_instance",
-        side_effect=raise_exce,
+        side_effect=_raise_exception,
     )
     async def test_try_conforming_list(self, modeling):
         """

@@ -22,4 +22,7 @@ async def create_basic_list(
 
 
 def get_id_from_response(resp):
+    """
+    Get the id from a response
+    """
     return list(json.loads(resp.content.decode("utf-8")).get("lists", {}).items())[0][0]

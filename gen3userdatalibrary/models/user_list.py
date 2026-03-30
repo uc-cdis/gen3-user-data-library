@@ -121,6 +121,9 @@ class UserList(Base):
     __table_args__ = (UniqueConstraint("name", "creator", name="_name_creator_uc"),)
 
     def to_dict(self) -> Dict:
+        """
+        Output instance representation as a Python dictionary
+        """
         return {
             "id": self.id,
             "version": self.version,
@@ -138,10 +141,24 @@ class UserList(Base):
 
 
 def is_dict(v: Any):
+    """
+    is_dict has an assert?
+
+    TODO: Please someone refactor this at some point.
+          We should just use isinstance() everywhere
+          needed. This has a weird code smell
+    """
     assert isinstance(v, dict)
     return v
 
 
 def is_nonempty(v: Any):
+    """
+    is_nonempty has an assert?
+
+    TODO: Please someone refactor this at some point.
+          We should just use isinstance() everywhere
+          needed. This has a weird code smell
+    """
     assert v
     return v

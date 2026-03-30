@@ -35,6 +35,9 @@ from gen3userdatalibrary.models.user_list import Base
 
 @pytest.fixture(scope="session", autouse=True)
 def ensure_test_config():
+    """
+    Validate we're using the test config for this session
+    """
     is_test = os.environ.get("ENV", None) == "test" or config.ENV == "test"
     if not is_test:
         os.chdir(os.path.dirname(os.path.abspath(__file__)).rstrip("/"))

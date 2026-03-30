@@ -1,4 +1,7 @@
 async def number_generator():
+    """
+    Helper function to return a generator
+    """
     yield 1
     yield 2
     yield 3
