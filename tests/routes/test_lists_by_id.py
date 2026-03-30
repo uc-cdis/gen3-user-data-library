@@ -224,10 +224,10 @@ class TestUserListsRouter(BaseTestRouter):
         app.state.arborist_client = AsyncMock()
 
         headers = {"Authorization": "Bearer ofa.valid.token"}
-        outcome_D = await create_basic_list(
+        outcome_d = await create_basic_list(
             arborist, get_token_claims, test_client, VALID_LIST_D, headers
         )
-        outcome_E = await create_basic_list(
+        outcome_e = await create_basic_list(
             arborist, get_token_claims, test_client, VALID_LIST_E, headers
         )
 
@@ -258,10 +258,10 @@ class TestUserListsRouter(BaseTestRouter):
         }
 
         response_one = await test_client.patch(
-            endpoint(outcome_D), headers=headers, json=body
+            endpoint(outcome_d), headers=headers, json=body
         )
         response_two = await test_client.patch(
-            endpoint(outcome_E), headers=headers, json=body
+            endpoint(outcome_e), headers=headers, json=body
         )
         for response in [response_one]:
             updated_list = response.json()
@@ -478,7 +478,7 @@ class TestUserListsRouter(BaseTestRouter):
             alt_session: direct db access
         """
         l_id = UUID("550e8400-e29b-41d4-a716-446655440000")
-        EXAMPLE_REQUEST = Request(
+        example_request = Request(
             {
                 "type": "http",
                 "method": "GET",
@@ -489,7 +489,7 @@ class TestUserListsRouter(BaseTestRouter):
             }
         )
         outcome = await get_list_by_id(
-            l_id, EXAMPLE_REQUEST, DataAccessLayer(alt_session)
+            l_id, example_request, DataAccessLayer(alt_session)
         )
         assert outcome.status_code == 404
 
@@ -498,7 +498,7 @@ class TestUserListsRouter(BaseTestRouter):
         headers = {"Authorization": "Bearer ofa.valid.token"}
         dal = DataAccessLayer(alt_session)
         r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
-        outcome = await get_list_by_id(r1.id, EXAMPLE_REQUEST, dal)
+        outcome = await get_list_by_id(r1.id, example_request, dal)
         assert outcome.status_code == 200
         assert json.loads(outcome.body).get("id", None) == str(r1.id)
 

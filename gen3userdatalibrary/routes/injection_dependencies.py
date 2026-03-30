@@ -290,7 +290,7 @@ def ensure_any_items_match_schema(endpoint_context, basic_user_lists):
             validate_user_list_item(item_contents)
 
 
-def raise_exception(e):
+def _raise_exception(e):
     raise e
 
 
@@ -334,7 +334,7 @@ async def validate_items(
                 conformed_body, dal, list_id
             ),
         },
-        lambda: raise_exception(Exception("Invalid route function identified! ")),
+        lambda: _raise_exception(Exception("Invalid route function identified! ")),
     )
     run_validation_handler = route_function_to_validation_handler(route_function)
     await run_validation_handler()

@@ -134,8 +134,8 @@ async def get_user_id(
 
 
 async def get_username(
-    token: HTTPAuthorizationCredentials = None, request: Request = None
-) -> Union[int, Any]:
+    token: HTTPAuthorizationCredentials | None = None, request: Request | None = None
+) -> str:
     """
     Retrieves the username from the provided token/request
 

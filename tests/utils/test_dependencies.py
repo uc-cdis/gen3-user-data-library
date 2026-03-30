@@ -38,19 +38,18 @@ class DependencyException(Exception):
         super().__init__(self.message)
 
 
-async def raises_mock_simple(r: Request):
+async def _raises_mock_simple(r: Request):
     raise DependencyException("Hit dependency")
 
 
-async def raises_mock(r: Request, d: DataAccessLayer = Depends(DataAccessLayer)):
-    raise DependencyException("Hit dependency")
-
-
-def mock_items(r: Request, dal: DataAccessLayer = Depends(get_data_access_layer)):
+def _mock_items(r: Request, dal: DataAccessLayer = Depends(get_data_access_layer)):
     raise DependencyException("hit dep")
 
 
 def test_validate_user_list_item():
+    """
+    Test that invalid list raises exception
+    """
     with pytest.raises(HTTPException):
         outcome = validate_user_list_item({"type": "foo"})
 
@@ -106,7 +105,7 @@ class TestConfigRouter(BaseTestRouter):
         # bonus: test auth request gets correct data instead of just getting hit
         app, client_instance = app_client_pair
         get_token_claims.return_value = {"sub": "foo"}
-        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        app.dependency_overrides[parse_and_auth_request] = _raises_mock_simple
         with pytest.raises(DependencyException) as e:
             response = await client_instance.get(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
@@ -128,7 +127,7 @@ class TestConfigRouter(BaseTestRouter):
             endpoint: endpoint to hit
         """
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        app.dependency_overrides[parse_and_auth_request] = _raises_mock_simple
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(DependencyException) as e:
             response = await client_instance.patch(
@@ -155,7 +154,7 @@ class TestConfigRouter(BaseTestRouter):
             endpoint: endpoint to hit
         """
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        app.dependency_overrides[parse_and_auth_request] = _raises_mock_simple
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(DependencyException) as e:
             response = await client_instance.put(
@@ -182,7 +181,7 @@ class TestConfigRouter(BaseTestRouter):
             endpoint: endpoint to hit
         """
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        app.dependency_overrides[parse_and_auth_request] = _raises_mock_simple
         with pytest.raises(DependencyException) as e:
             response = await client_instance.delete(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
@@ -204,7 +203,7 @@ class TestConfigRouter(BaseTestRouter):
         app, client_instance = app_client_pair
 
         app.dependency_overrides[parse_and_auth_request] = lambda r: Request({})
-        app.dependency_overrides[validate_items] = mock_items
+        app.dependency_overrides[validate_items] = _mock_items
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(DependencyException) as e:
             response = await client_instance.put(endpoint, headers=headers)
@@ -519,7 +518,7 @@ class TestConfigRouter(BaseTestRouter):
         # bonus: test auth request gets correct data instead of just getting hit
         app, client_instance = app_client_pair
         get_token_claims.return_value = {"sub": "foo"}
-        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        app.dependency_overrides[parse_and_auth_request] = _raises_mock_simple
         with pytest.raises(DependencyException) as e:
             response = await client_instance.get(endpoint)
         del app.dependency_overrides[parse_and_auth_request]
@@ -541,7 +540,7 @@ class TestConfigRouter(BaseTestRouter):
             endpoint: endpoints to hit
         """
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        app.dependency_overrides[parse_and_auth_request] = _raises_mock_simple
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(DependencyException) as e:
             response = await client_instance.patch(
@@ -568,7 +567,7 @@ class TestConfigRouter(BaseTestRouter):
             endpoint: endpoints to hit
         """
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        app.dependency_overrides[parse_and_auth_request] = _raises_mock_simple
         headers = {"Authorization": "Bearer ofa.valid.token"}
         with pytest.raises(DependencyException) as e:
             response = await client_instance.put(
@@ -595,7 +594,7 @@ class TestConfigRouter(BaseTestRouter):
             endpoint: endpoints to hit
         """
         app, client_instance = app_client_pair
-        app.dependency_overrides[parse_and_auth_request] = raises_mock_simple
+        app.dependency_overrides[parse_and_auth_request] = _raises_mock_simple
         with pytest.raises(DependencyException) as e:
             response = await client_instance.delete(endpoint)
         del app.dependency_overrides[parse_and_auth_request]

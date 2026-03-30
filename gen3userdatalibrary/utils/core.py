@@ -1,4 +1,4 @@
-""" General purpose functions """
+"""General purpose functions"""
 
 from functools import reduce
 from logging import Logger
@@ -57,10 +57,20 @@ def mutate_keys(mutator, updated_user_lists: dict):
 
 
 def mutate_values(mutator, provided_dict: dict):
+    """
+    TODO: Please someone consider refactoring this at some point. I find the readability
+          of this pretty poor.
+    """
     return dict(map(lambda kvp: (kvp[0], mutator(kvp[1])), provided_dict.items()))
 
 
 def filter_keys(filter_func, differences):
+    """
+    Applies a filter to provided dict input.
+
+    TODO: consider refactoring and just doing this in-line instead of having
+          a function for it.
+    """
     return {k: v for k, v in differences.items() if filter_func(k, v)}
 
 

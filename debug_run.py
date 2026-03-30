@@ -12,6 +12,7 @@ Specifically, this assumes you have properly migrated the database and have the 
 environment variables for prometheus (and another other setup done by the
 bash scripts in this same directory).
 """
+
 import uvicorn
 
 

@@ -7,10 +7,6 @@ from gen3userdatalibrary.main import route_aggregator
 from tests.routes.conftest import BaseTestRouter
 
 
-def raise_exce():
-    raise Exception
-
-
 @pytest.mark.asyncio
 class TestConfigRouter(BaseTestRouter):
     router = route_aggregator
