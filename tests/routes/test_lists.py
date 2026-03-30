@@ -22,7 +22,7 @@ from tests.data.example_lists import VALID_LIST_A, VALID_LIST_B, VALID_LIST_C
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
 from tests.routes.test_lists_by_id import EXAMPLE_ENDPOINT_REQUEST
-from tests.test_db import EXAMPLE_USER_LIST
+from tests.test_db import example_user_list
 
 
 @pytest.mark.asyncio
@@ -557,7 +557,7 @@ class TestUserListsRouter(BaseTestRouter):
         get_token_claims.return_value = {"sub": "0"}
         arborist.auth_request.return_value = True
         dal = DataAccessLayer(alt_session)
-        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        r1 = await dal.persist_user_list("0", example_user_list())
         read_all_outcome = await read_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)
         assert read_all_outcome.status_code == 200
         assert (
@@ -758,7 +758,7 @@ class TestUserListsRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
         dal = DataAccessLayer(alt_session)
-        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        r1 = await dal.persist_user_list("0", example_user_list())
         example_update_items_model = UpdateItemsModel(
             lists=[ItemToUpdateModel(name="fizzbuzz", items={"bug": {"type": "meh"}})]
         )
@@ -864,7 +864,7 @@ class TestUserListsRouter(BaseTestRouter):
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "0"}
         dal = DataAccessLayer(alt_session)
-        r1 = await dal.persist_user_list("0", EXAMPLE_USER_LIST())
+        r1 = await dal.persist_user_list("0", example_user_list())
         delete_all_lists_outcome = await delete_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)
         read_all_lists_outcome = await read_all_lists(EXAMPLE_ENDPOINT_REQUEST, dal)
         assert read_all_lists_outcome.status_code == 200
