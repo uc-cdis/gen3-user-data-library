@@ -15,7 +15,7 @@ cdislogging = ">=1.1.1"
 gunicorn = ">=20.1.0"
 gen3authz = ">=2.1.0"
 uvicorn = ">=0.27.0"
-authutils = ">=8.0.0"
+authutils = ">=7.2.8"
 alembic = ">=1.13.2"
 sqlalchemy = { extras = ["asyncio"], version = ">=2.0.31" }
 asyncpg = ">=0.29.0"
