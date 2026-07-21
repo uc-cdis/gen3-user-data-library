@@ -174,14 +174,14 @@ joserfc = ">=1.6.0"
 
 [[package]]
 name = "authutils"
-version = "8.0.0"
+version = "7.2.8"
 description = "Gen3 auth utility functions"
 optional = false
 python-versions = "<4.0,>=3.13"
 groups = ["main"]
 files = [
-    {file = "authutils-8.0.0-py3-none-any.whl", hash = "sha256:4781c24dac4e1349288a660fedc6fe78be396ebc53139ed20e138844b7bc4892"},
-    {file = "authutils-8.0.0.tar.gz", hash = "sha256:a4491d9d7d7d240f7ebc15037c45c60c2da092c30068002003337101e31a04b8"},
+    {file = "authutils-7.2.8-py3-none-any.whl", hash = "sha256:b2e1f65b725ce6bf8498e404474d70ab6a39e9debbaa3acd5744c5eeb5b08975"},
+    {file = "authutils-7.2.8.tar.gz", hash = "sha256:acd90983e0d442bf8854d39103a5fb39862a99762c7b30b71d70e726df3a3ff3"},
 ]
 
 [package.dependencies]
@@ -2140,4 +2140,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4.0"
-content-hash = "99b0158700f591f414cbd81e7c737de1e92be692b244a82529271ac536544538"
+content-hash = "7ff731535d5b3676c12cb4405526969554fb476c437ae528cf4fb0453ec6ec0a"
