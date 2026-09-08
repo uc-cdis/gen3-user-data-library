@@ -133,7 +133,7 @@ async def ensure_user_exists(request: Request) -> Union[bool, None]:
     resource_paths = get_user_data_library_endpoint(policy_id)
     policy_json = {
         "id": policy_id,
-        "description": "policy created by requestor",
+        "description": "policy created by gen3userdatalibrary",
         "role_ids": role_ids,
         "resource_paths": resource_paths,
     }
