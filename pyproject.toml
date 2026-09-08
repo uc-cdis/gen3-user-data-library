@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gen3userdatalibrary"
-version = "1.0.0"
+version = "1.0.1"
 description = "Gen3 User Data Library Service"
 authors = ["CTDS UChicago <cdis@uchicago.edu>"]
 license = "Apache-2.0"
