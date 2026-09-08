@@ -11,7 +11,6 @@ from gen3userdatalibrary import config
 from gen3userdatalibrary.auth import (
     get_user_id,
     authorize_request,
-    get_user_data_library_endpoint,
 )
 from gen3userdatalibrary.config import logging
 from gen3userdatalibrary.db import get_data_access_layer, DataAccessLayer
@@ -102,52 +101,6 @@ async def ensure_list_exists_and_items_less_than_max(basic_list_info, dal, list_
             detail="Something went wrong while validating request!",
         )
     ensure_items_less_than_max(len(basic_list_info["items"]), len(list_to_append.items))
-
-
-async def ensure_user_exists(request: Request) -> Union[bool, None]:
-    """
-    Handles ensuring a policy exists for the user or creates one otherwise
-
-    Args:
-        request (Request): fastapi request obj to get the policy id (user id)
-    Raises:
-        HTTPException if error when checking a policy or when creating a policy
-    """
-    if config.DEBUG_SKIP_AUTH:
-        return True
-
-    policy_id = await get_user_id(request=request)
-    try:
-        user_exists = request.app.state.arborist_client.policies_not_exist(policy_id)
-    except Exception as e:
-        logging.error(
-            f"Something went wrong when checking whether the policy exists: {str(e)}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed checking policy!",
-        )
-    if user_exists:
-        return False
-    role_ids = ("create", "read", "update", "delete")
-    resource_paths = get_user_data_library_endpoint(policy_id)
-    policy_json = {
-        "id": policy_id,
-        "description": "policy created by gen3userdatalibrary",
-        "role_ids": role_ids,
-        "resource_paths": resource_paths,
-    }
-    logging.debug(f"Policy {policy_id} does not exist, attempting to create....")
-    try:
-        outcome = await request.app.state.arborist_client.create_policy(
-            policy_json=policy_json
-        )
-    except ArboristError as ae:
-        logging.error(f"Error creating policy in arborist: {str(ae)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal error creating a policy in arborist",
-        )
 
 
 async def parse_and_auth_request(request: Request):
