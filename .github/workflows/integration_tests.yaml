@@ -5,7 +5,7 @@ on: pull_request
 jobs:
   integration_tests:
     name: Integration tests
-    uses: uc-cdis/.github/.github/workflows/integration_tests.yaml@master
+    uses: uc-cdis/.github/.github/workflows/integration_tests.yaml@fix/enable-udl-test
     with:
       # Tag used in tests that depend on this repo (https://github.com/uc-cdis/gen3-code-vigil/blob/master/gen3-integration-tests/pyproject.toml)
       SERVICE_TO_TEST: gen3_user_data_library

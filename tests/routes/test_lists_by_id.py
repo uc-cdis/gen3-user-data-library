@@ -6,6 +6,7 @@ import pytest
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
+from gen3userdatalibrary import config
 from gen3userdatalibrary.db import DataAccessLayer
 from gen3userdatalibrary.main import route_aggregator
 from gen3userdatalibrary.models.user_list import ItemToUpdateModel
@@ -25,6 +26,43 @@ from tests.data.example_lists import (
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
 from tests.test_db import example_user_list
+
+NON_EXISTENT_LIST_ID = "550e8400-e29b-41d4-a716-446655440000"
+
+INVALID_ITEMS_BODY = {
+    "name": "My Saved List 1",
+    "items": {"not_a_valid_item": {"type": "NOT_A_REAL_TYPE"}},
+}
+
+PATCH_BODY = {
+    "drs://dg.4503:943200c3-271d-4a04-a2b6-040272239123": {
+        "dataset_guid": "phs000001.v1.p1.c1.PATCHED_ITEM",
+        "type": "GA4GH_DRS",
+    },
+}
+
+
+def token_claims_for(user_id):
+    """
+    Build mock token claims for a user, including the username needed when authorization
+    fails and a policy creation is attempted
+    """
+    return {"sub": user_id, "context": {"user": {"name": f"user_{user_id}"}}}
+
+
+def only_authorize_own_resources(get_token_claims):
+    """
+    Build an arborist auth_request side effect which, like arborist, only authorizes
+    resources under the requesting user's own path
+    Args:
+        get_token_claims: get_token_claims mocker instance used to identify the requester
+    """
+
+    async def _auth_request(*args, resources=None, **kwargs):
+        requester_prefix = f"/users/{get_token_claims.return_value['sub']}/"
+        return all(resource.startswith(requester_prefix) for resource in resources)
+
+    return _auth_request
 
 
 @pytest.mark.asyncio
@@ -464,6 +502,143 @@ class TestUserListsRouter(BaseTestRouter):
             f"/lists/{l_id}", headers=headers, json={"name": "fizz", "items": {}}
         )
         assert outcome.status_code == 404
+
+    @pytest.mark.parametrize(
+        "endpoint", [lambda l_id: f"/lists/{l_id}", lambda l_id: f"/lists/{l_id}/"]
+    )
+    @pytest.mark.parametrize(
+        "method,body",
+        [
+            ("get", None),
+            ("put", VALID_REPLACEMENT_LIST),
+            ("put", INVALID_ITEMS_BODY),
+            ("patch", PATCH_BODY),
+            ("delete", None),
+        ],
+    )
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_cannot_access_other_users_list_by_id(
+        self, get_token_claims, arborist, method, body, endpoint, client, monkeypatch
+    ):
+        """
+        Test that a user cannot read, update, append to, or delete a list created by
+        another user, even when they know the list's id, and that the response is identical
+        to the one for a list that does not exist (so lists cannot be discovered by id)
+        Args:
+            get_token_claims: mock token
+            arborist: mock arborist that only grants access to the requester's own resources
+            method: http method to attempt on the other user's list
+            body: request body for the method, if any
+            endpoint: id endpoint callable strings
+            client: endpoint interface
+            monkeypatch: to disable DEBUG_SKIP_AUTH so authorization is actually checked
+        """
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        create_outcome = await create_basic_list(
+            arborist, get_token_claims, client, VALID_LIST_A, headers, user_id="1"
+        )
+        l_id = get_id_from_response(create_outcome)
+        original_list = (await client.get(endpoint(l_id), headers=headers)).json()
+
+        arborist.auth_request.side_effect = only_authorize_own_resources(
+            get_token_claims
+        )
+        get_token_claims.return_value = token_claims_for("2")
+        kwargs = {"headers": headers}
+        if body is not None:
+            kwargs["json"] = body
+        response = await getattr(client, method)(endpoint(l_id), **kwargs)
+        assert arborist.auth_request.await_args.kwargs["resources"] == [
+            f"/users/1/user-data-library/lists/{l_id}"
+        ]
+        non_existent_response = await getattr(client, method)(
+            endpoint(NON_EXISTENT_LIST_ID), **kwargs
+        )
+        assert response.status_code == 404
+        assert response.status_code == non_existent_response.status_code
+        assert response.content == non_existent_response.content
+        assert (
+            response.headers["content-type"]
+            == non_existent_response.headers["content-type"]
+        )
+
+        # the list is untouched and still accessible by its creator
+        get_token_claims.return_value = token_claims_for("1")
+        owner_response = await client.get(endpoint(l_id), headers=headers)
+        assert owner_response.status_code == 200
+        assert owner_response.json()["items"] == original_list["items"]
+        assert owner_response.json()["name"] == original_list["name"]
+
+    @pytest.mark.parametrize(
+        "endpoint", [lambda l_id: f"/lists/{l_id}", lambda l_id: f"/lists/{l_id}/"]
+    )
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_owner_access_is_checked_against_list_authz(
+        self, get_token_claims, arborist, endpoint, client, monkeypatch
+    ):
+        """
+        Test that the creator of a list can still access it when arborist only grants
+        access to their own resources, and that the list's stored authz is what gets checked
+        Args:
+            get_token_claims: mock token
+            arborist: mock arborist that only grants access to the requester's own resources
+            endpoint: id endpoint callable strings
+            client: endpoint interface
+            monkeypatch: to disable DEBUG_SKIP_AUTH so authorization is actually checked
+        """
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        create_outcome = await create_basic_list(
+            arborist, get_token_claims, client, VALID_LIST_A, headers, user_id="1"
+        )
+        l_id = get_id_from_response(create_outcome)
+
+        arborist.auth_request.side_effect = only_authorize_own_resources(
+            get_token_claims
+        )
+        get_token_claims.return_value = token_claims_for("1")
+        response = await client.get(endpoint(l_id), headers=headers)
+        assert response.status_code == 200
+        assert response.json()["authz"]["authz"] == [
+            f"/users/1/user-data-library/lists/{l_id}"
+        ]
+        assert (
+            arborist.auth_request.await_args.kwargs["resources"]
+            == response.json()["authz"]["authz"]
+        )
+
+        patch_response = await client.patch(
+            endpoint(l_id), headers=headers, json=PATCH_BODY
+        )
+        assert patch_response.status_code == 200
+        delete_response = await client.delete(endpoint(l_id), headers=headers)
+        assert delete_response.status_code == 204
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_other_user_gets_404_for_non_existent_list(
+        self, get_token_claims, arborist, client, monkeypatch
+    ):
+        """
+        Test that requesting a list id that does not exist still returns a 404 when
+        arborist only grants access to the requester's own resources
+        Args:
+            get_token_claims: mock token
+            arborist: mock arborist that only grants access to the requester's own resources
+            client: endpoint interface
+            monkeypatch: to disable DEBUG_SKIP_AUTH so authorization is actually checked
+        """
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        arborist.auth_request.side_effect = only_authorize_own_resources(
+            get_token_claims
+        )
+        get_token_claims.return_value = token_claims_for("2")
+        response = await client.get(f"/lists/{NON_EXISTENT_LIST_ID}", headers=headers)
+        assert response.status_code == 404
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")

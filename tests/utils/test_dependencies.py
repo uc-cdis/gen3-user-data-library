@@ -10,6 +10,7 @@ from gen3userdatalibrary import config
 from gen3userdatalibrary.config import PUBLIC_ROUTES
 from gen3userdatalibrary.db import DataAccessLayer, get_data_access_layer
 from gen3userdatalibrary.main import route_aggregator
+from gen3userdatalibrary.utils.core import ListNotFoundError
 from gen3userdatalibrary.routes.injection_dependencies import (
     validate_items,
     validate_user_list_item,
@@ -476,11 +477,11 @@ class TestConfigRouter(BaseTestRouter):
             mocker: direct mocker handler
         """
         dal = DataAccessLayer(alt_session)
-        with pytest.raises(HTTPException) as e:
+        # the app turns this into its standard 404 response
+        with pytest.raises(ListNotFoundError):
             outcome = await ensure_list_exists_and_items_less_than_max(
                 {}, dal, "550e8400-e29b-41d4-a716-446655440000"
             )
-        assert e.value.status_code == status.HTTP_404_NOT_FOUND
         mocker.patch(
             "gen3userdatalibrary.routes.injection_dependencies.DataAccessLayer.get_existing_list_or_throw",
             side_effect=ArboristError(message="mock error", code=0),

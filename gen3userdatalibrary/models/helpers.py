@@ -11,7 +11,7 @@ from gen3userdatalibrary.models.user_list import (
     UserList,
     USER_LIST_UPDATE_ALLOW_LIST,
 )
-from gen3userdatalibrary.utils.core import find_differences, filter_keys
+from gen3userdatalibrary.utils.core import find_differences
 
 
 def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
@@ -20,9 +20,11 @@ def derive_changes_to_make(list_to_update: UserList, new_list: UserList):
     to the old list
     """
     properties_to_old_new_difference = find_differences(list_to_update, new_list)
-    relevant_differences = filter_keys(
-        lambda k, _: k in USER_LIST_UPDATE_ALLOW_LIST, properties_to_old_new_difference
-    )
+    relevant_differences = {
+        property_name: difference
+        for property_name, difference in properties_to_old_new_difference.items()
+        if property_name in USER_LIST_UPDATE_ALLOW_LIST
+    }
     has_no_relevant_differences = not relevant_differences or (
         len(relevant_differences) == 1 and "updated_time" in relevant_differences
     )
