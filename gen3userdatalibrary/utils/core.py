@@ -5,29 +5,6 @@ from logging import Logger
 from typing import Dict, Tuple, Hashable, Any
 
 from sqlalchemy import inspect
-from starlette import status
-from starlette.responses import JSONResponse
-
-
-class ListNotFoundError(Exception):
-    """
-    Raised when a list does not exist OR the requester is not authorized to access it.
-
-    Both cases intentionally produce the exact same response (see `list_not_found_response`)
-    so a requester cannot use the response to discover lists that belong to other users.
-    """
-
-
-def list_not_found_response() -> JSONResponse:
-    """
-    The single response used whenever a list cannot be found or accessed by the requester
-
-    Returns:
-        JSONResponse: 404 response
-    """
-    return JSONResponse(
-        status_code=status.HTTP_404_NOT_FOUND, content="list_id not found!"
-    )
 
 
 def log_user_data_library_api_call(logging: Logger, debug_log: str = None, **kwargs):

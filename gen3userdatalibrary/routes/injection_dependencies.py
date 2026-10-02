@@ -23,7 +23,7 @@ from gen3userdatalibrary.routes.route_configurations import (
     ENDPOINT_TO_CONTEXT,
     get_resource_from_endpoint_context,
 )
-from gen3userdatalibrary.utils.core import build_switch_case, ListNotFoundError
+from gen3userdatalibrary.utils.core import build_switch_case
 
 
 async def validate_upsert_items(lists_to_upsert, dal, user_id):
@@ -87,13 +87,14 @@ async def ensure_list_exists_and_items_less_than_max(basic_list_info, dal, list_
         dal (DataAccessLayer): data access layer instance
         list_id (UUID): id of the list
     Raises:
-        ListNotFoundError if the id is not recognized
-        HTTPException if something happened with arborist
+        HTTPException if the id is not recognized or something happened with arborist
     """
     try:
         list_to_append = await dal.get_existing_list_or_throw(list_id)
     except ValueError:
-        raise ListNotFoundError()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+        )
     except ArboristError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -102,7 +103,9 @@ async def ensure_list_exists_and_items_less_than_max(basic_list_info, dal, list_
     ensure_items_less_than_max(len(basic_list_info["items"]), len(list_to_append.items))
 
 
-async def parse_and_auth_request(request: Request):
+async def parse_and_auth_request(
+    request: Request, dal: DataAccessLayer = Depends(get_data_access_layer)
+):
     """
     Authorize the request with arborist to ensure the request can be made
 
@@ -117,8 +120,8 @@ async def parse_and_auth_request(request: Request):
         dal (DataAccessLayer): data access instance
 
     Raises:
-        HTTPException based on authorize_request outcome
-        ListNotFoundError if access to a specific list is denied
+        HTTPException based on authorize_request outcome, or 404 if access to a specific
+            list is denied
     """
     user_id = await get_user_id(request=request)
     path_params = request.scope["path_params"]
@@ -145,7 +148,9 @@ async def parse_and_auth_request(request: Request):
     except HTTPException as exc:
         is_list_endpoint = endpoint_context.get("type", None) == "id"
         if is_list_endpoint and exc.status_code == status.HTTP_403_FORBIDDEN:
-            raise ListNotFoundError() from exc
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+            ) from exc
         raise
 
 
@@ -165,7 +170,7 @@ async def get_list_authz_resources(
         specific list or the list does not exist
 
     Raises:
-        ListNotFoundError if the list exists but has no authz resources recorded
+        HTTPException (404) if the list exists but has no authz resources recorded
     """
     if endpoint_context.get("type", None) != "id":
         return None
@@ -173,7 +178,7 @@ async def get_list_authz_resources(
     try:
         list_id = UUID(str(path_params["list_id"]))
     except ValueError:
-        # malformed id, the endpoint's path validation will reject it
+        logging.debug(f"Rejecting malformed list_id: {path_params["list_id"]}")
         return None
 
     user_list = await dal.get_user_list_by_list_id(list_id)
@@ -183,7 +188,9 @@ async def get_list_authz_resources(
     resources = (user_list.authz or {}).get("authz", [])
     if not resources:
         logging.error(f"List {user_list.id} has no authz resources, denying access")
-        raise ListNotFoundError()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+        )
     return resources
 
 
@@ -329,10 +336,12 @@ async def validate_items(
                 await dal.get_user_list_by_list_id(UUID(str(list_id))) is not None
             )
         except ValueError:
-            # malformed id, the endpoint's path validation will reject it
+            logging.debug(f"Rejecting malformed list_id: {list_id}")
             list_exists = True
         if not list_exists:
-            raise ListNotFoundError()
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+            )
 
     try:
         ensure_any_items_match_schema(endpoint_context, conformed_body)
@@ -394,13 +403,14 @@ async def validate_items_to_append(
         dal (DataAccessLayer): data access interface
         list_id (UUID): id of list
     Raises:
-        ListNotFoundError if list not found
-        HTTP Exception if error checking item length
+        HTTPException if list not found or error checking item length
     """
     try:
         list_to_append = await dal.get_existing_list_or_throw(list_id)
     except ValueError:
-        raise ListNotFoundError()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+        )
     ensure_items_less_than_max(len(item_list), len(list_to_append.items))
 
 

@@ -18,11 +18,7 @@ from gen3userdatalibrary.metrics import Metrics
 from gen3userdatalibrary.routes.basic import basic_router
 from gen3userdatalibrary.routes.lists import lists_router
 from gen3userdatalibrary.routes.lists_by_id import lists_by_id_router
-from gen3userdatalibrary.utils.core import (
-    ListNotFoundError,
-    list_not_found_response,
-    log_user_data_library_api_call,
-)
+from gen3userdatalibrary.utils.core import log_user_data_library_api_call
 
 route_aggregator = APIRouter()
 
@@ -134,10 +130,6 @@ def get_app() -> fastapi.FastAPI:
         lifespan=lifespan,
     )
     fastapi_app.include_router(route_aggregator)
-
-    @fastapi_app.exception_handler(ListNotFoundError)
-    async def list_not_found_handler(request: Request, exc: ListNotFoundError):
-        return list_not_found_response()
 
     # set up the prometheus metrics
     if config.ENABLE_PROMETHEUS_METRICS:

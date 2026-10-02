@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import UUID
 
 import pytest
+from fastapi import HTTPException
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
@@ -663,10 +664,9 @@ class TestUserListsRouter(BaseTestRouter):
                 "client": ("127.0.0.1", 8000),
             }
         )
-        outcome = await get_list_by_id(
-            l_id, example_request, DataAccessLayer(alt_session)
-        )
-        assert outcome.status_code == 404
+        with pytest.raises(HTTPException) as e:
+            await get_list_by_id(l_id, example_request, DataAccessLayer(alt_session))
+        assert e.value.status_code == 404
 
         arborist.auth_request.return_value = True
         get_token_claims.return_value = {"sub": "0", "otherstuff": "foobar"}
@@ -752,8 +752,9 @@ class TestUserListsRouter(BaseTestRouter):
         l_id = r1.id
         delete_outcome = await delete_list_by_id(l_id, EXAMPLE_ENDPOINT_REQUEST, dal)
         assert delete_outcome.status_code == 204
-        get_by_id_outcome = await get_list_by_id(l_id, EXAMPLE_ENDPOINT_REQUEST, dal)
-        assert get_by_id_outcome.status_code == 404
+        with pytest.raises(HTTPException) as e:
+            await get_list_by_id(l_id, EXAMPLE_ENDPOINT_REQUEST, dal)
+        assert e.value.status_code == 404
 
 
 EXAMPLE_ENDPOINT_REQUEST = Request(
