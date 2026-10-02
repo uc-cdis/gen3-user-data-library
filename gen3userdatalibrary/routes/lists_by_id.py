@@ -65,12 +65,11 @@ async def get_list_by_id(
     """
     result = await data_access_layer.get_user_list_by_list_id(list_id)
     if result is None:
-        response = JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND, content="list_id not found!"
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
         )
-    else:
-        data = jsonable_encoder(result)
-        response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
+    data = jsonable_encoder(result)
+    response = JSONResponse(status_code=status.HTTP_200_OK, content=data)
 
     return response
 
@@ -125,8 +124,7 @@ async def update_list_by_id(
     existing_list = await data_access_layer.get_user_list_by_list_id(list_id)
     if existing_list is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No UserList found with id {list_id}",
+            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
         )
     user_id = await get_user_id(request=request)
     new_user_list = create_user_list_instance(user_id, info_to_update_with)
@@ -200,7 +198,7 @@ async def append_items_to_list(
     list_exists = user_list is not None
     if not list_exists:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="List does not exist"
+            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
         )
 
     append_result, metrics_info = await data_access_layer.add_items_to_list(
@@ -261,7 +259,9 @@ async def delete_list_by_id(
 
     get_result = await data_access_layer.get_user_list_by_list_id(list_id)
     if get_result is None:
-        return Response(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+        )
 
     metrics_info = await data_access_layer.delete_list(list_id)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)

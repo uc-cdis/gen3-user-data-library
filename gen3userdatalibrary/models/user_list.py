@@ -13,13 +13,6 @@ Base = declarative_base()
 USER_LIST_UPDATE_ALLOW_LIST = {"items", "name", "updated_time"}
 
 
-class NonEmptyDict(Dict[str, Any]):
-    @classmethod
-    def __get_validators__(cls):
-        yield is_dict
-        yield is_nonempty
-
-
 class UserListModel(BaseModel):
     version: int
     creator: str = Field(min_length=1)
@@ -138,27 +131,3 @@ class UserList(Base):
             ),
             "items": self.items,
         }
-
-
-def is_dict(v: Any):
-    """
-    is_dict has an assert?
-
-    TODO: Please someone refactor this at some point.
-          We should just use isinstance() everywhere
-          needed. This has a weird code smell
-    """
-    assert isinstance(v, dict)
-    return v
-
-
-def is_nonempty(v: Any):
-    """
-    is_nonempty has an assert?
-
-    TODO: Please someone refactor this at some point.
-          We should just use isinstance() everywhere
-          needed. This has a weird code smell
-    """
-    assert v
-    return v

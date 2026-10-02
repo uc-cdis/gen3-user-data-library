@@ -476,11 +476,11 @@ class TestConfigRouter(BaseTestRouter):
             mocker: direct mocker handler
         """
         dal = DataAccessLayer(alt_session)
-        with pytest.raises(HTTPException) as e:
+        with pytest.raises(HTTPException) as e1:
             outcome = await ensure_list_exists_and_items_less_than_max(
                 {}, dal, "550e8400-e29b-41d4-a716-446655440000"
             )
-        assert e.value.status_code == status.HTTP_404_NOT_FOUND
+        assert e1.value.status_code == status.HTTP_404_NOT_FOUND
         mocker.patch(
             "gen3userdatalibrary.routes.injection_dependencies.DataAccessLayer.get_existing_list_or_throw",
             side_effect=ArboristError(message="mock error", code=0),
