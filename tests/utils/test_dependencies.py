@@ -380,7 +380,7 @@ class TestConfigRouter(BaseTestRouter):
         assert resp_1.status_code == 404
         l_id = "1"
         resp_2 = await client.get(f"/lists/{l_id}", headers=headers)
-        assert resp_2.status_code == 422
+        assert resp_2.status_code == 404
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")

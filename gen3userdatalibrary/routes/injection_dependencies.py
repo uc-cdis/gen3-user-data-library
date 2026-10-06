@@ -23,7 +23,10 @@ from gen3userdatalibrary.routes.route_configurations import (
     ENDPOINT_TO_CONTEXT,
     get_resource_from_endpoint_context,
 )
-from gen3userdatalibrary.utils.core import build_switch_case
+from gen3userdatalibrary.utils.core import (
+    build_switch_case,
+    LIST_ID_NOT_FOUND_ERROR_MSG,
+)
 
 
 async def validate_upsert_items(lists_to_upsert, dal, user_id):
@@ -93,7 +96,7 @@ async def ensure_list_exists_and_items_less_than_max(basic_list_info, dal, list_
         list_to_append = await dal.get_existing_list_or_throw(list_id)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+            status_code=status.HTTP_404_NOT_FOUND, detail=LIST_ID_NOT_FOUND_ERROR_MSG
         )
     except ArboristError as e:
         raise HTTPException(
@@ -149,7 +152,8 @@ async def parse_and_auth_request(
         is_list_endpoint = endpoint_context.get("type", None) == "id"
         if is_list_endpoint and exc.status_code == status.HTTP_403_FORBIDDEN:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=LIST_ID_NOT_FOUND_ERROR_MSG,
             ) from exc
         raise
 
@@ -179,7 +183,9 @@ async def get_list_authz_resources(
         list_id = UUID(str(path_params["list_id"]))
     except ValueError:
         logging.debug(f"Rejecting malformed list_id: {path_params["list_id"]}")
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=LIST_ID_NOT_FOUND_ERROR_MSG
+        )
 
     user_list = await dal.get_user_list_by_list_id(list_id)
     if user_list is None:
@@ -189,7 +195,7 @@ async def get_list_authz_resources(
     if not resources:
         logging.error(f"List {user_list.id} has no authz resources, denying access")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+            status_code=status.HTTP_404_NOT_FOUND, detail=LIST_ID_NOT_FOUND_ERROR_MSG
         )
     return resources
 
@@ -337,10 +343,11 @@ async def validate_items(
             )
         except ValueError:
             logging.debug(f"Rejecting malformed list_id: {list_id}")
-            list_exists = True
+            list_exists = False
         if not list_exists:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=LIST_ID_NOT_FOUND_ERROR_MSG,
             )
 
     try:
@@ -409,7 +416,7 @@ async def validate_items_to_append(
         list_to_append = await dal.get_existing_list_or_throw(list_id)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="list_id not found!"
+            status_code=status.HTTP_404_NOT_FOUND, detail=LIST_ID_NOT_FOUND_ERROR_MSG
         )
     ensure_items_less_than_max(len(item_list), len(list_to_append.items))
 

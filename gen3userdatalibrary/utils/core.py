@@ -6,6 +6,8 @@ from typing import Dict, Tuple, Hashable, Any
 
 from sqlalchemy import inspect
 
+LIST_ID_NOT_FOUND_ERROR_MSG = "list_id not found!"
+
 
 def log_user_data_library_api_call(logging: Logger, debug_log: str = None, **kwargs):
     """
