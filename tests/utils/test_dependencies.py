@@ -26,6 +26,7 @@ from tests.data.example_lists import (
 )
 from tests.helpers import create_basic_list, get_id_from_response
 from tests.routes.conftest import BaseTestRouter
+from tests.test_db import example_user_list
 
 
 class DependencyException(Exception):
@@ -381,6 +382,34 @@ class TestConfigRouter(BaseTestRouter):
         l_id = "1"
         resp_2 = await client.get(f"/lists/{l_id}", headers=headers)
         assert resp_2.status_code == 404
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    @patch("gen3userdatalibrary.auth._get_token_claims")
+    async def test_list_with_no_authz_resources_returns_404(
+        self, get_token_claims, arborist, client, session, monkeypatch
+    ):
+        """
+        Test that a list with no authz resources returns a 404 without ever reaching
+        arborist. The stored authz is still a truthy dict ({"authz": []}), so the check
+        must look at the resources rather than the authz field itself
+        """
+        # otherwise authorize_request skips arborist entirely, since parse_and_auth_request
+        # does not pass it a token, and the assert_not_called below could never fail
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        headers = {"Authorization": "Bearer ofa.valid.token"}
+        arborist.auth_request.return_value = (
+            True  # Ensure the 404 we're testing comes from an empty list authz
+        )
+        get_token_claims.return_value = {"sub": "0"}
+        user_list = await DataAccessLayer(session).persist_user_list(
+            "0", example_user_list()
+        )
+        user_list.authz = {"version": 0, "authz": []}
+        await session.flush()
+
+        response = await client.get(f"/lists/{user_list.id}", headers=headers)
+        assert response.status_code == 404
+        arborist.auth_request.assert_not_called()
 
     @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
     @patch("gen3userdatalibrary.auth._get_token_claims")
