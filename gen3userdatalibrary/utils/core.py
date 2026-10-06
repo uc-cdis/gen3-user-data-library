@@ -6,6 +6,8 @@ from typing import Dict, Tuple, Hashable, Any
 
 from sqlalchemy import inspect
 
+LIST_ID_NOT_FOUND_ERROR_MSG = "list_id not found!"
+
 
 def log_user_data_library_api_call(logging: Logger, debug_log: str = None, **kwargs):
     """
@@ -43,37 +45,6 @@ def build_switch_case(cases: dict[Hashable, Any], default):
     return lambda instance: cases.get(instance, default)
 
 
-def mutate_keys(mutator, updated_user_lists: dict):
-    """
-
-    Args:
-        mutator: function that takes a key k and return the key mutated in some way
-        updated_user_lists: id => user_list dictionary
-
-    Returns:
-
-    """
-    return dict(map(lambda kvp: (mutator(kvp[0]), kvp[1]), updated_user_lists.items()))
-
-
-def mutate_values(mutator, provided_dict: dict):
-    """
-    TODO: Please someone consider refactoring this at some point. I find the readability
-          of this pretty poor.
-    """
-    return dict(map(lambda kvp: (kvp[0], mutator(kvp[1])), provided_dict.items()))
-
-
-def filter_keys(filter_func, differences):
-    """
-    Applies a filter to provided dict input.
-
-    TODO: consider refactoring and just doing this in-line instead of having
-          a function for it.
-    """
-    return {k: v for k, v in differences.items() if filter_func(k, v)}
-
-
 def reg_match_key(matcher, dictionary_to_match):
     """
     Matcher should be a boolean lambda. Expects a dictionary.
@@ -92,11 +63,6 @@ def add_to_dict_set(dict_list, key, value):
     """If I want to add to a default dict set, I want to append and then return the list"""
     dict_list[key].add(value)
     return dict_list
-
-
-def map_values(mutator, keys_to_old_values: Dict):
-    """Quick way to update dict values while preserving relationship"""
-    return {key: mutator(value) for key, value in keys_to_old_values.items()}
 
 
 def find_differences(
@@ -118,8 +84,3 @@ def find_differences(
 
     differences_between_lists = reduce(add_difference, mapper.attrs, {})
     return differences_between_lists
-
-
-def remove_keys(d: dict, keys: set):
-    """Given a dictionary d and set of keys k, remove all k in d"""
-    return {k: v for k, v in d.items() if k not in keys}
