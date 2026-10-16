@@ -1,6 +1,11 @@
+import asyncio
+import time
 from unittest.mock import AsyncMock, patch
 
+import jwt
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from gen3authz.client.arborist.errors import ArboristError
@@ -11,6 +16,72 @@ from gen3userdatalibrary import config, auth
 from gen3userdatalibrary.auth import authorize_request, create_user_policy, _get_token
 from gen3userdatalibrary.main import route_aggregator
 from tests.routes.conftest import BaseTestRouter
+
+TEST_ISSUER = "https://test.gen3.org/user"
+TEST_KID = "test-key-id"
+
+
+def _generate_rsa_key_pair():
+    """
+    Generate an RSA key pair for signing test tokens
+
+    Returns:
+        tuple: (private key PEM, public key PEM)
+    """
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    public_pem = key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    return private_pem, public_pem.decode()
+
+
+TEST_PRIVATE_PEM, TEST_PUBLIC_PEM = _generate_rsa_key_pair()
+
+
+def _get_test_token(
+    private_pem=TEST_PRIVATE_PEM, iss=TEST_ISSUER, aud="gen3", exp_offset=300
+):
+    """
+    Build a signed access token with the claims gen3-user-data-library expects
+    """
+    now = int(time.time())
+    claims = {
+        "sub": "TEST_USER_ID",
+        "iss": iss,
+        "aud": aud,
+        "iat": now,
+        "exp": now + exp_offset,
+        "pur": "access",
+        "scope": ["openid", "user"],
+        "context": {"user": {"name": "test-user"}},
+    }
+    return jwt.encode(claims, private_pem, algorithm="RS256", headers={"kid": TEST_KID})
+
+
+def _mock_issuer_public_keys(public_pem=TEST_PUBLIC_PEM):
+    """
+    Seed authutils' public key cache so only TEST_ISSUER's keys are known, and fail
+    any attempt to fetch keys for other issuers instead of making network calls.
+    """
+    pub_keys = asyncio.get_running_loop().create_future()
+    pub_keys.set_result({TEST_KID: public_pem})
+    cache_patch = patch.dict(
+        "authutils.token.fastapi._jwt_public_keys",
+        {TEST_ISSUER: pub_keys},
+        clear=True,
+    )
+    fetch_patch = patch(
+        "authutils.token.fastapi.core.get_keys_url_async",
+        new_callable=AsyncMock,
+        side_effect=Exception("unable to fetch keys for unknown issuer"),
+    )
+    return cache_patch, fetch_patch
 
 
 @pytest.mark.asyncio
@@ -581,3 +652,90 @@ class TestUserListsRouter(BaseTestRouter):
                 example_request,
             )
         monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", previous_config)
+
+    async def _get_lists_with_token(self, client, token, monkeypatch):
+        """
+        Call an endpoint with the given token, using only the TEST_ISSUER keys
+        """
+        monkeypatch.setattr(config, "DEBUG_SKIP_AUTH", False)
+        cache_patch, fetch_patch = _mock_issuer_public_keys(TEST_PUBLIC_PEM)
+        with cache_patch, fetch_patch:
+            return await client.get(
+                "/lists", headers={"Authorization": f"bearer {token}"}
+            )
+
+    @pytest.mark.parametrize("test_case", ["match", "mismatch"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    async def test_token_audience_check(self, arborist, test_case, client, monkeypatch):
+        """
+        Test that a token's audience is validated before it is handed off to the authorization service.
+        """
+        arborist.auth_request.return_value = True
+        # `gen3` is the default audience for Gen3 Fence tokens and is accepted by authutils
+        token_aud = "gen3" if test_case == "match" else "WORKFLOW"
+        token = _get_test_token(aud=token_aud)
+
+        response = await self._get_lists_with_token(client, token, monkeypatch)
+
+        if test_case == "match":
+            assert response.status_code == 200, response.text
+            assert arborist.auth_request.called
+        else:
+            assert response.status_code == 401, response.text
+            assert not arborist.auth_request.called
+
+    @pytest.mark.parametrize("test_case", ["match", "mismatch"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    async def test_token_issuer_check(self, arborist, test_case, client, monkeypatch):
+        """
+        Test that a token's issuer is validated before it is handed off to the authorization service.
+        """
+        arborist.auth_request.return_value = True
+        token_iss = TEST_ISSUER if test_case == "match" else "other-issuer"
+        token = _get_test_token(iss=token_iss)
+
+        response = await self._get_lists_with_token(client, token, monkeypatch)
+
+        if test_case == "match":
+            assert response.status_code == 200, response.text
+            assert arborist.auth_request.called
+        else:
+            assert response.status_code == 401, response.text
+            assert not arborist.auth_request.called
+
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    async def test_token_signature_check(self, arborist, client, monkeypatch):
+        """
+        Test that a token claiming a known issuer but signed with a different key is rejected
+        before it is handed off to the authorization service.
+        """
+        arborist.auth_request.return_value = True
+        other_private_pem, _ = _generate_rsa_key_pair()
+        token = _get_test_token(other_private_pem)
+
+        response = await self._get_lists_with_token(client, token, monkeypatch)
+
+        assert response.status_code == 401, response.text
+        assert not arborist.auth_request.called
+
+    @pytest.mark.parametrize("test_case", ["expired", "valid"])
+    @patch("gen3userdatalibrary.auth.arborist", new_callable=AsyncMock)
+    async def test_token_expiration_check(
+        self, arborist, test_case, client, monkeypatch
+    ):
+        """
+        Test that a token's expiration is validated before it is handed off to the authorization
+        service.
+        """
+        arborist.auth_request.return_value = True
+        exp_offset = 300 if test_case == "valid" else -300
+        token = _get_test_token(exp_offset=exp_offset)
+
+        response = await self._get_lists_with_token(client, token, monkeypatch)
+
+        if test_case == "valid":
+            assert response.status_code == 200, response.text
+            assert arborist.auth_request.called
+        else:
+            assert response.status_code == 401, response.text
+            assert not arborist.auth_request.called
