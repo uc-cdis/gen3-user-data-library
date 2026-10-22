@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gen3userdatalibrary"
-version = "1.0.1"
+version = "1.3.0"
 description = "Gen3 User Data Library Service"
 authors = ["CTDS UChicago <cdis@uchicago.edu>"]
 license = "Apache-2.0"
@@ -15,7 +15,7 @@ cdislogging = ">=1.1.1"
 gunicorn = ">=20.1.0"
 gen3authz = ">=2.1.0"
 uvicorn = ">=0.27.0"
-authutils = ">=8.0.0"
+authutils = ">=9.0.0"
 alembic = ">=1.13.2"
 sqlalchemy = { extras = ["asyncio"], version = ">=2.0.31" }
 asyncpg = ">=0.29.0"
